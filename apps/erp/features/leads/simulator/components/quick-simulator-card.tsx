@@ -29,9 +29,17 @@ import {
   DEFAULT_DESTRAT_AGENT_FORM_STATE,
   type DestratAgentFormState,
 } from "@/features/leads/simulator/types/destrat-agent-form-state";
+import { LEAD_CIVILITY_OPTIONS } from "@/features/leads/lib/civility-options";
+import { cn } from "@/lib/utils";
+
+const civilitySelectClassName = cn(
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
+  "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+);
 
 type FormState = DestratAgentFormState & {
   companyName: string;
+  civility: string;
   contactName: string;
   phone: string;
   callbackAt: string;
@@ -43,6 +51,7 @@ type FormState = DestratAgentFormState & {
 const DEFAULT_FORM: FormState = {
   ...DEFAULT_DESTRAT_AGENT_FORM_STATE,
   companyName: "",
+  civility: "",
   contactName: "",
   phone: "",
   callbackAt: "",
@@ -84,6 +93,7 @@ export function QuickSimulatorCard() {
     return SimulateAndCreateLeadSchema.safeParse({
       ...normalizeSimulatorInput(leadValidation.data),
       companyName: form.companyName,
+      civility: form.civility,
       contactName: form.contactName,
       phone: form.phone,
       callbackAt: form.callbackAt,
@@ -132,6 +142,7 @@ export function QuickSimulatorCard() {
       const res = await simulateAndCreateLead({
         ...normalized,
         companyName: form.companyName,
+        civility: form.civility,
         contactName: form.contactName,
         phone: form.phone,
         callbackAt: form.callbackAt,
@@ -247,6 +258,21 @@ export function QuickSimulatorCard() {
             {step2Summary}
 
             <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2 max-w-xs">
+                <Label htmlFor="sim-civility">Civilité</Label>
+                <select
+                  id="sim-civility"
+                  className={civilitySelectClassName}
+                  value={form.civility}
+                  onChange={(e) => updateField("civility", e.target.value)}
+                >
+                  {LEAD_CIVILITY_OPTIONS.map((o) => (
+                    <option key={o.value === "" ? "_empty" : o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="sim-company">Société *</Label>
                 <Input

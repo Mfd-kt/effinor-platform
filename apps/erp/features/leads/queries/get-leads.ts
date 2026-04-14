@@ -30,5 +30,5 @@ export async function getLeads(access?: AccessContext): Promise<LeadRow[]> {
     throw new Error(`Impossible de charger les leads : ${error.message}`);
   }
 
-  return data ?? [];
+  return (data ?? []) as LeadRow[];
 }

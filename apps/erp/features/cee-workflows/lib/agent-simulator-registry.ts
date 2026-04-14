@@ -32,6 +32,19 @@ function matchesDestratSimulatorKey(raw: string | null | undefined): boolean {
 }
 
 /**
+ * Même moteur que la déstrat (entrée CEE + décision DESTRAT / PAC / NONE dans `simulateLead`).
+ * Les fiches PAC doivent donc afficher le quick simulateur, pas un écran vide.
+ */
+function matchesUnifiedCeeQuickSimulatorKey(raw: string | null | undefined): boolean {
+  if (!raw?.trim()) return false;
+  const k = stripAccents(raw.trim().toLowerCase());
+  if (k === "pac") return true;
+  if (k.startsWith("pac_")) return true;
+  if (k.startsWith("pac-")) return true;
+  return false;
+}
+
+/**
  * Fiches CEE déstrat (BAT-TH / IND-BA) créées avant simulator_key : profil coeff_zone_system_power
  * ou libellé / code identifiable.
  */
@@ -49,6 +62,15 @@ export function inferDestratSimulatorFromSheetMetadata(sheet: AgentSimulatorShee
   if (blob.includes("ind-ba")) {
     return true;
   }
+  return false;
+}
+
+/** Fiche PAC sans `simulator_key` renseigné (ex. libellé « Pac - … »). */
+export function inferPacQuickSimulatorFromSheetMetadata(sheet: AgentSimulatorSheetContext): boolean {
+  if (inferDestratSimulatorFromSheetMetadata(sheet)) return false;
+  const blob = stripAccents(`${sheet.code} ${sheet.label}`.toLowerCase());
+  if (blob.includes("pompe a chaleur")) return true;
+  if (/\bpac\b/.test(blob)) return true;
   return false;
 }
 
@@ -86,6 +108,9 @@ export function resolveAgentSimulatorDefinition(
     if (matchesDestratSimulatorKey(input ?? null)) {
       return DESTRAT_DEF;
     }
+    if (matchesUnifiedCeeQuickSimulatorKey(input ?? null)) {
+      return DESTRAT_DEF;
+    }
     return unsupportedFromKey(input ?? null);
   }
 
@@ -93,7 +118,13 @@ export function resolveAgentSimulatorDefinition(
   if (matchesDestratSimulatorKey(sheet.simulatorKey)) {
     return DESTRAT_DEF;
   }
+  if (matchesUnifiedCeeQuickSimulatorKey(sheet.simulatorKey)) {
+    return DESTRAT_DEF;
+  }
   if (inferDestratSimulatorFromSheetMetadata(sheet)) {
+    return DESTRAT_DEF;
+  }
+  if (inferPacQuickSimulatorFromSheetMetadata(sheet)) {
     return DESTRAT_DEF;
   }
   return unsupportedFromKey(sheet.simulatorKey ?? null);

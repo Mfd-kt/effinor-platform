@@ -22,10 +22,20 @@ function equipRow(p: StudyProductViewModel, qty: number): string {
 }
 
 export function renderAccordHtml(vm: StudyPdfViewModel): string {
+  const isPac = vm.ceeSolutionKind === "pac";
   const ceePrime = Math.round(vm.simulation.ceePrimeEuro * CEE_PRIME_RATIO);
   const restCharge = euro(Math.max(0, vm.simulation.installTotalEuro - ceePrime));
   const dt = dateFr(vm.generatedAtIso);
   const co = vm.client.companyName;
+  const docSub = isPac
+    ? "Projet pompe à chaleur air / eau — validation préalable à instruction technique et administrative"
+    : "Projet de déstratification d'air — validation préalable à instruction technique et administrative";
+  const intro = isPac
+    ? "Le présent document formalise l'accord de principe du client pour poursuivre l'instruction technique et administrative du projet de pompe à chaleur présenté par Effinor."
+    : "Le présent document formalise l'accord de principe du client pour poursuivre l'instruction technique et administrative du projet de déstratification présenté par Effinor.";
+  const synth = isPac
+    ? `Solution pompe à chaleur air / eau (Bosch) — ${num(vm.equipmentQuantity)} unité${vm.equipmentQuantity > 1 ? "s" : ""} — économies annuelles indicatives : ${euro(vm.simulation.annualSavingEuro)}.`
+    : `Solution de déstratification d'air — ${num(vm.simulation.neededDestrat)} appareil${vm.simulation.neededDestrat > 1 ? "s" : ""} ${vm.simulation.model}.`;
 
   return `<!doctype html>
 <html lang="fr">
@@ -187,9 +197,9 @@ body{
     <div class="doc-title">
       <h1>Accord de principe de lancement</h1>
     </div>
-    <p class="doc-sub">Projet de déstratification d'air — validation préalable à instruction technique et administrative</p>
+    <p class="doc-sub">${esc(docSub)}</p>
 
-    <p class="intro">Le présent document formalise l'accord de principe du client pour poursuivre l'instruction technique et administrative du projet de déstratification présenté par Effinor.</p>
+    <p class="intro">${esc(intro)}</p>
 
     <div class="partner">
       <div class="partner__logo-wrap"><img src="${esc(TOTAL_ENERGIES_LOGO)}" alt="TotalEnergies" /></div>
@@ -223,7 +233,7 @@ body{
 
     <div>
       <div class="sec-title">Rappel synthétique du projet</div>
-      <p style="font-size:13px;color:var(--ink2)">Solution de déstratification d'air — ${num(vm.simulation.neededDestrat)} appareil${vm.simulation.neededDestrat > 1 ? "s" : ""} ${esc(vm.simulation.model)}.</p>
+      <p style="font-size:13px;color:var(--ink2)">${esc(synth)}</p>
     </div>
 
 ${vm.products.length > 0 ? `
@@ -231,7 +241,7 @@ ${vm.products.length > 0 ? `
       <div class="sec-title">Équipement${vm.products.length > 1 ? "s" : ""} retenu${vm.products.length > 1 ? "s" : ""}</div>
       <table class="eq-tbl">
         <thead><tr><th class="eq-th-img"></th><th>Modèle</th><th>Qté</th><th>Repères techniques</th></tr></thead>
-        <tbody>${vm.products.map((p) => equipRow(p, vm.simulation.neededDestrat)).join("")}</tbody>
+        <tbody>${vm.products.map((p) => equipRow(p, vm.equipmentQuantity)).join("")}</tbody>
       </table>
     </div>
 ` : ""}

@@ -44,6 +44,9 @@ export function mergeAiLeadFillIntoForm(
   if (!isEmptyString(fill.company_name) && isEmptyString(current.company_name)) {
     setValue("company_name", fill.company_name!.trim(), setOpts);
   }
+  if (!isEmptyString(fill.civility) && isEmptyString(current.civility)) {
+    setValue("civility", fill.civility!.trim(), setOpts);
+  }
   if (!isEmptyString(fill.first_name) && isEmptyString(current.first_name)) {
     setValue("first_name", fill.first_name!.trim(), setOpts);
   }

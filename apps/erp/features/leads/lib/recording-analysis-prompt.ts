@@ -79,6 +79,7 @@ Un résumé court (5 à 10 lignes maximum) expliquant :
 
 ## 3. Informations société / contact
 - Société :
+- Civilité (M. / Mme) :
 - Nom du contact :
 - Prénom du contact :
 - Fonction :
@@ -156,6 +157,7 @@ Retourne ensuite un bloc structuré sous forme de JSON VALIDE avec uniquement le
 
 {
   "company_name": "",
+  "civility": "",
   "first_name": "",
   "last_name": "",
   "phone": "",
@@ -183,7 +185,7 @@ Retourne ensuite un bloc structuré sous forme de JSON VALIDE avec uniquement le
 Règles :
 - ne mets pas d'explication autour du JSON
 - laisse chaîne vide si non mentionné
-- **Contact & société (identité)** : remplis company_name, first_name, last_name, phone, email, contact_role, siret avec ce qui est **dit ou dicté** dans la transcription (orthographe des noms si incertaine : indique dans qualification_notes plutôt que d'inventer). Normalise le téléphone au format pratique (chiffres, +33 si indicatif). Ne remplis pas un champ si l'information n'apparaît pas dans l'audio.
+- **Contact & société (identité)** : remplis company_name, civility (une de : "M.", "Mme", ou "" si inconnu), first_name, last_name, phone, email, contact_role, siret avec ce qui est **dit ou dicté** dans la transcription (orthographe des noms si incertaine : indique dans qualification_notes plutôt que d'inventer). Normalise le téléphone au format pratique (chiffres, +33 si indicatif). Ne remplis pas un champ si l'information n'apparaît pas dans l'audio.
 - **Pré-qualification technique (priorité)** : pour les champs surface_m2, ceiling_height_m, warehouse_count, heated_building, heating_type, building_type du JSON, reprends **uniquement** ce qui est **explicitement dit** dans la transcription (ex. « 2460 m² », « 5 mètres sous plafond », « chauffage au gaz »). N’invente pas de chiffres. surface_m2 et ceiling_height_m = nombre (chaîne JSON acceptable, ex. "2460" ou 2460).
 - heated_building : "Oui" / "Non" / "Incertain" ou vide si non dit
 - heating_type : texte libre décrivant le mode (ex. "gaz", "électricité") — l’app le mappe sur les cases CRM

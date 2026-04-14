@@ -14,6 +14,7 @@ import { findDuplicateLead } from "@/features/leads/lib/find-duplicate-lead";
 import { sendStudyEmail } from "@/features/leads/study-pdf/actions/send-study-email";
 import { resolveAllowedCeeSheetIdsForAccess } from "@/lib/auth/cee-workflows-scope";
 import { getAccessContext } from "@/lib/auth/access-context";
+import { syncAgentQuickNoteToInternalNotes } from "@/features/cee-workflows/lib/sync-agent-quick-note-to-internal-notes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Database } from "@/types/database.types";
@@ -68,6 +69,7 @@ async function upsertAgentLead(
     ceeSheetId: string;
     prospect: {
       companyName: string;
+      civility?: string;
       contactName: string;
       phone: string;
       email?: string;
@@ -97,6 +99,7 @@ async function upsertAgentLead(
     worksite_city: city,
     worksite_postal_code: postalCode,
     recording_notes: input.prospect.notes?.trim() || null,
+    civility: input.prospect.civility?.trim() || null,
     cee_sheet_id: input.ceeSheetId,
     lead_channel: "phone",
     lead_origin: "agent_workstation",
@@ -148,6 +151,7 @@ async function upsertAgentLead(
     worksite_city: city,
     worksite_postal_code: postalCode,
     recording_notes: input.prospect.notes?.trim() || null,
+    civility: input.prospect.civility?.trim() || null,
   };
 
   const { data, error } = await supabase
@@ -251,12 +255,31 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
     ? await ensureEditableWorkflow(supabase, parsed.data.workflowId)
     : null;
 
+  const priorLeadId = parsed.data.leadId ?? workflowRecord?.lead_id ?? null;
+  let previousRecordingNotes: string | null = null;
+  if (priorLeadId) {
+    const { data: priorLead } = await supabase
+      .from("leads")
+      .select("recording_notes")
+      .eq("id", priorLeadId)
+      .maybeSingle();
+    previousRecordingNotes = priorLead?.recording_notes ?? null;
+  }
+
   const leadId = await upsertAgentLead(supabase, {
-    leadId: parsed.data.leadId ?? workflowRecord?.lead_id,
+    leadId: priorLeadId ?? undefined,
     userId: access.userId,
     ceeSheetId: parsed.data.ceeSheetId,
     prospect: parsed.data.prospect,
   });
+
+  await syncAgentQuickNoteToInternalNotes(
+    supabase,
+    access,
+    leadId,
+    previousRecordingNotes,
+    parsed.data.prospect.notes,
+  );
 
   const workflow =
     workflowRecord ??

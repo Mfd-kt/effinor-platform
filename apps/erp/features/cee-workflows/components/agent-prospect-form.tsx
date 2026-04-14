@@ -4,9 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { LEAD_CIVILITY_OPTIONS } from "@/features/leads/lib/civility-options";
+import { cn } from "@/lib/utils";
 
 export type AgentProspectFormValue = {
   companyName: string;
+  civility: string;
   contactName: string;
   phone: string;
   email: string;
@@ -18,6 +21,7 @@ export type AgentProspectFormValue = {
 
 export const DEFAULT_AGENT_PROSPECT_FORM: AgentProspectFormValue = {
   companyName: "",
+  civility: "",
   contactName: "",
   phone: "",
   email: "",
@@ -50,6 +54,11 @@ function Field({
   );
 }
 
+const selectClassName = cn(
+  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors",
+  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+);
+
 export function AgentProspectForm({
   value,
   onChange,
@@ -75,12 +84,27 @@ export function AgentProspectForm({
           onChange={(next) => patch("companyName", next)}
           placeholder="Ex. Logistique du Sud"
         />
+        <div className="space-y-1.5">
+          <Label htmlFor="agent-civility">Civilité</Label>
+          <select
+            id="agent-civility"
+            className={selectClassName}
+            value={value.civility}
+            onChange={(e) => patch("civility", e.target.value)}
+          >
+            {LEAD_CIVILITY_OPTIONS.map((o) => (
+              <option key={o.value === "" ? "_empty" : o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <Field
           id="agent-contact-name"
           label="Contact *"
           value={value.contactName}
           onChange={(next) => patch("contactName", next)}
-          placeholder="Ex. M. Martin"
+          placeholder="Ex. Martin"
         />
         <Field
           id="agent-phone"

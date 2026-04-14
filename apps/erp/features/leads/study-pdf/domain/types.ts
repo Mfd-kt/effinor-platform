@@ -1,5 +1,8 @@
 import type { LeadDetailRow } from "@/features/leads/types";
 
+/** Type de solution CEE issu du simulateur — pilote les PDF étude / accord. */
+export type StudyCeeSolutionKind = "destrat" | "pac" | "none";
+
 export type LeadStudyDocumentRow = {
   id: string;
   lead_id: string;
@@ -19,6 +22,8 @@ export type StudyPdfGenerationInput = {
   lead: LeadDetailRow;
   qualificationNotes: string[];
   generatedByLabel: string;
+  /** Résultat simulation workflow fusionné (prioritaire sur `sim_payload_json` pour détecter PAC). */
+  mergedSimulationJson?: unknown;
 };
 
 export type StudyPdfValidationIssue = {
@@ -65,6 +70,11 @@ export type StudyPdfViewModel = {
   templateVersion: string;
   generatedAtIso: string;
   generatedByLabel: string;
+  ceeSolutionKind: StudyCeeSolutionKind;
+  /** Quantité équipement tableau accord (1 pour PAC, sinon déstrats). */
+  equipmentQuantity: number;
+  /** Texte moteur PAC (si présent). */
+  pacCommercialMessage: string | null;
   client: {
     companyName: string;
     contactName: string;

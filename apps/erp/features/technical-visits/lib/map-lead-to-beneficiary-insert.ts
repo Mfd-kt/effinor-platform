@@ -41,7 +41,7 @@ export function buildBeneficiaryInsertInputFromLeadAndVt(
     siren: undefined,
     siret_head_office: trimOrUndef(lead.siret),
     siret_worksite: undefined,
-    civility: undefined,
+    civility: trimOrUndef(lead.civility),
     contact_first_name: trimOrUndef(lead.first_name),
     contact_last_name: trimOrUndef(lead.last_name),
     contact_role: trimOrUndef(lead.contact_role),

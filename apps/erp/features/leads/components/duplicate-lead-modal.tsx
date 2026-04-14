@@ -123,6 +123,7 @@ export function DuplicateLeadModal({
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Detail label="Raison sociale" value={str(lead.company_name)} className="sm:col-span-2" />
+                    <Detail label="Civilité" value={str(lead.civility)} />
                     <Detail label="Prénom" value={str(lead.first_name)} />
                     <Detail label="Nom" value={str(lead.last_name)} />
                     <Detail label="E-mail" value={str(lead.email)} />

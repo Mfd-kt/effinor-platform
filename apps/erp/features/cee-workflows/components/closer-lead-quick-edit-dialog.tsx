@@ -17,9 +17,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { updateLead } from "@/features/leads/actions/update-lead";
+import { LEAD_CIVILITY_OPTIONS } from "@/features/leads/lib/civility-options";
 import { leadRowToFormValues } from "@/features/leads/lib/form-defaults";
 import type { LeadFormInput } from "@/features/leads/schemas/lead.schema";
 import type { LeadDetailRow } from "@/features/leads/types";
+import { cn } from "@/lib/utils";
+
+const civilitySelectClassName = cn(
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
+  "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+);
 
 /**
  * Le dialogue n’édite qu’un sous-ensemble de champs. En envoyer tout le `LeadFormInput`
@@ -38,6 +45,7 @@ function buildCloserQuickEditPayload(lead: LeadDetailRow, leadId: string, form: 
     siret: siretLine,
     head_office_siret: siretLine,
     worksite_siret: form.worksite_siret,
+    civility: form.civility,
     first_name: form.first_name,
     last_name: form.last_name,
     email: form.email,
@@ -167,6 +175,20 @@ export function CloserLeadQuickEditDialog({
             <div>
               <h4 className="mb-3 text-sm font-semibold">Contact</h4>
               <div className="grid gap-3 sm:grid-cols-2">
+                <Field id="cl-civility" label="Civilité">
+                  <select
+                    id="cl-civility"
+                    className={civilitySelectClassName}
+                    value={form.civility ?? ""}
+                    onChange={(e) => patch("civility", e.target.value)}
+                  >
+                    {LEAD_CIVILITY_OPTIONS.map((o) => (
+                      <option key={o.value === "" ? "_empty" : o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
                 <Field id="cl-fn" label="Prénom">
                   <Input
                     id="cl-fn"

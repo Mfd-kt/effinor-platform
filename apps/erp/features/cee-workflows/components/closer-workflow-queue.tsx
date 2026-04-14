@@ -27,6 +27,7 @@ import {
 import type { CrmSortKey } from "@/features/cee-workflows/components/workflow-crm-queue-tools";
 import type { CloserQueueBuckets, CloserQueueItem } from "@/features/cee-workflows/lib/closer-workflow-activity";
 import type { CloserQueueTab } from "@/features/cee-workflows/lib/closer-paths";
+import { formatCivilityNamePair } from "@/features/leads/lib/contact-map";
 
 type QueueTab = CloserQueueTab;
 
@@ -61,7 +62,9 @@ function filterItems(items: CloserQueueItem[], q: string): CloserQueueItem[] {
   return items.filter((item) => {
     const hay = [
       item.companyName,
+      formatCivilityNamePair(item.civility, item.contactName),
       item.contactName,
+      item.civility,
       item.phone,
       item.email,
       item.sheetCode,
@@ -271,8 +274,11 @@ export function CloserWorkflowQueue({
                       {typeof item.score === "number" ? Math.round(item.score) : "—"}
                     </TableCell>
                     <TableCell className="max-w-[160px]">
-                      <div className="truncate text-sm" title={item.contactName ?? ""}>
-                        {item.contactName || "—"}
+                      <div
+                        className="truncate text-sm"
+                        title={formatCivilityNamePair(item.civility, item.contactName) || ""}
+                      >
+                        {formatCivilityNamePair(item.civility, item.contactName) || "—"}
                       </div>
                       {item.phone ? (
                         <div className="truncate text-xs text-muted-foreground tabular-nums">{item.phone}</div>

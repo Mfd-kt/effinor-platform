@@ -1,13 +1,18 @@
 import { z } from "zod";
 
 import { normalizeBuildingTypeForLead } from "@/features/leads/lib/building-types";
+import { normalizeLeadCivilityFromText } from "@/features/leads/lib/civility-options";
 import { HEATING_MODE_VALUES, type HeatingMode } from "@/features/leads/lib/heating-modes";
+import { normalizeProductInterestLabel } from "@/features/leads/lib/normalize-product-interest";
 import type { LeadInsertInput } from "@/features/leads/schemas/lead.schema";
+
+export { normalizeProductInterestLabel };
 
 /** Schéma aligné sur la section 9 du prompt d’analyse d’appel. */
 const ErpJsonBlockSchema = z
   .object({
     company_name: z.string().optional(),
+    civility: z.string().optional(),
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     phone: z.string().optional(),
@@ -49,38 +54,6 @@ function parseScore(raw: string | number | undefined): number | undefined {
   const n = parseNumericString(raw);
   if (n === undefined) return undefined;
   return Math.min(100, Math.max(0, Math.round(n)));
-}
-
-/** Sans accents, minuscules — pour tests de mots-clés. */
-function foldAscii(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-/**
- * Libellés courts et homogènes pour « Intérêt produit » (ERP).
- * Ordre : déstrat → PAC → luminaire/LED → texte d’origine (tronqué).
- */
-export function normalizeProductInterestLabel(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return "";
-  }
-  const f = foldAscii(trimmed);
-
-  if (/destratif|destratification|\bdestrat\b/.test(f)) {
-    return "Destratificateur";
-  }
-  if (/pompe\s+a\s+chaleur|\bpac\b|chaudiere/.test(f)) {
-    return "PAC";
-  }
-  if (/luminaire|\bleds?\b/.test(f)) {
-    return "Luminaire LED";
-  }
-
-  return trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
 }
 
 function mapHeatedBuilding(raw: string | undefined): boolean | null {
@@ -228,6 +201,8 @@ export function erpJsonToLeadFill(erp: ParsedRecordingErpFields | null): Partial
   const str = (v: string | undefined) => (v?.trim() ? v.trim() : undefined);
 
   if (str(erp.company_name)) out.company_name = str(erp.company_name);
+  const civ = normalizeLeadCivilityFromText(erp.civility);
+  if (civ) out.civility = civ;
   if (str(erp.first_name)) out.first_name = str(erp.first_name);
   if (str(erp.last_name)) out.last_name = str(erp.last_name);
   if (str(erp.phone)) out.phone = str(erp.phone);

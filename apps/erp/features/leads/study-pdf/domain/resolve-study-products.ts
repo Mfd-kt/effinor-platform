@@ -10,7 +10,7 @@ import type { StudyProductViewModel } from "./types";
 import type { PdfStudyProductViewModel, ProductWithDetails } from "../../../../features/products/domain/types";
 import { toPdfStudyProductFromDetails } from "../../../../features/products/domain/mappers";
 
-const KNOWN_IDS: DestratProductId[] = ["teddington_ds3", "teddington_ds7", "generfeu"];
+const KNOWN_IDS: DestratProductId[] = ["teddington_ds3", "teddington_ds7", "generfeu", "bosch_pac_air_eau"];
 
 const DEFAULT_RATIONALE =
   "Modèle retenu au regard de la hauteur, du volume traité et des hypothèses de brassage considérées au stade préliminaire.";
@@ -29,6 +29,9 @@ export function parseDestratProductId(raw: string | null | undefined): DestratPr
   }
   for (const id of KNOWN_IDS) {
     if (n.includes(id)) return id;
+  }
+  if (n.includes("bosch") && (n.includes("pac") || n.includes("chaleur"))) {
+    return "bosch_pac_air_eau";
   }
   return null;
 }

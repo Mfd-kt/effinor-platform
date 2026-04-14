@@ -152,6 +152,7 @@ export async function simulateAndCreateLead(input: unknown): Promise<SimulateCre
       ceiling_height_m: omitHeightOnLead ? null : normalized.heightM,
       building_type: technicalBuildingType ?? null,
       heating_type: heatingModesToDb(technicalHeatingTypes),
+      civility: parsed.data.civility?.trim() ? parsed.data.civility.trim() : null,
       first_name: contact.firstName,
       last_name: contact.lastName,
       contact_name: parsed.data.contactName.trim(),

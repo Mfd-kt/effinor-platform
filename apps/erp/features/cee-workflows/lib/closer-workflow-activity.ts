@@ -1,9 +1,11 @@
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
+import { contactDisplayName } from "@/features/leads/lib/contact-map";
 
 export type CloserQueueItem = {
   workflowId: string;
   leadId: string;
   companyName: string;
+  civility: string | null;
   contactName: string | null;
   phone: string | null;
   email: string | null;
@@ -55,7 +57,10 @@ export function mapWorkflowToCloserQueueItem(
     workflowId: workflow.id,
     leadId: workflow.lead_id,
     companyName: workflow.lead?.company_name ?? "Société inconnue",
-    contactName: workflow.lead?.contact_name ?? null,
+    civility: workflow.lead?.civility ?? null,
+    contactName: workflow.lead
+      ? (contactDisplayName(workflow.lead) ?? workflow.lead.contact_name?.trim() ?? null)
+      : null,
     phone: workflow.lead?.phone ?? null,
     email: workflow.lead?.email ?? null,
     sheetCode: workflow.cee_sheet?.code ?? null,

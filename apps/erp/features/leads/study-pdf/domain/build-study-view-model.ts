@@ -1,10 +1,16 @@
 import { formatHeatingModesDisplay } from "../../lib/heating-modes";
 import { stringArrayFromLeadJson } from "../../lib/lead-media-json";
+import { HEATING_MODE_LABELS_FR } from "@/features/leads/simulator/schemas/simulator.schema";
 import { STUDY_INSTALLATION_EXAMPLES } from "../content/installation-examples";
 import { filterParasiteNotes } from "./filter-study-notes";
+import {
+  extractWorkflowSimulationMetrics,
+  readStudyCeeSolutionKindFromInputs,
+} from "./merge-workflow-simulation-into-lead-for-pdf";
 import { resolveStudyProductsForPdf } from "./resolve-study-products";
 import type { StudyPdfGenerationInput, StudyPdfViewModel } from "./types";
 import { StudyPdfViewModelSchema } from "./validation";
+import { contactSalutationLine } from "@/features/leads/lib/contact-map";
 
 const TEMPLATE_VERSION = "v2.1.0";
 
@@ -17,21 +23,58 @@ function contactName(firstName: string | null, lastName: string | null, fallback
   return bySplit || fallback?.trim() || "Non renseigné";
 }
 
+function legacySimHeatingLabel(raw: string | null | undefined): string | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  if (Object.prototype.hasOwnProperty.call(HEATING_MODE_LABELS_FR, t)) {
+    return HEATING_MODE_LABELS_FR[t as keyof typeof HEATING_MODE_LABELS_FR];
+  }
+  return t;
+}
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  return v as Record<string, unknown>;
+}
+
 export function buildLeadStudyPdfViewModel(input: StudyPdfGenerationInput): StudyPdfViewModel {
-  const { lead, qualificationNotes: rawNotes, generatedByLabel } = input;
+  const { lead, qualificationNotes: rawNotes, generatedByLabel, mergedSimulationJson } = input;
   const qualificationNotes = filterParasiteNotes(rawNotes);
+  const ceeSolutionKind = readStudyCeeSolutionKindFromInputs({ lead, mergedSimulationJson });
+  const metrics = extractWorkflowSimulationMetrics(mergedSimulationJson ?? lead.sim_payload_json);
+  const pacRec = metrics ? asRecord(metrics.pacSavings) : null;
+  const pacCommercialMessage =
+    typeof pacRec?.commercialMessage === "string" && pacRec.commercialMessage.trim()
+      ? pacRec.commercialMessage.trim()
+      : null;
+
   const useSurface = lead.sim_surface_m2 ?? lead.surface_m2 ?? 0;
   const useHeight = lead.sim_height_m ?? lead.ceiling_height_m ?? 0;
   const useVolume = lead.sim_volume_m3 ?? Math.max(0, useSurface * useHeight);
-  const useHeating = lead.sim_heating_mode ?? formatHeatingModesDisplay(lead.heating_type);
+  const heatingFromLeadTypes = formatHeatingModesDisplay(lead.heating_type);
+  const useHeating =
+    (legacySimHeatingLabel(lead.sim_heating_mode) ??
+      (heatingFromLeadTypes !== "—" ? heatingFromLeadTypes : null)) || "Non renseigné";
+
+  const productModelKey = ceeSolutionKind === "pac" ? "bosch_pac_air_eau" : lead.sim_model;
+  const products = resolveStudyProductsForPdf(productModelKey);
+  const equipmentQuantity = ceeSolutionKind === "pac" ? 1 : Math.max(0, lead.sim_needed_destrat ?? 0);
+  const simulationModelLabel =
+    ceeSolutionKind === "pac"
+      ? (products[0]?.displayName ?? "Pompe à chaleur air / eau Bosch")
+      : lead.sim_model?.trim() || "Non renseigné";
 
   const vm: StudyPdfViewModel = {
     templateVersion: TEMPLATE_VERSION,
     generatedAtIso: new Date().toISOString(),
     generatedByLabel,
+    ceeSolutionKind,
+    equipmentQuantity,
+    pacCommercialMessage,
     client: {
       companyName: lead.company_name,
-      contactName: contactName(lead.first_name, lead.last_name, lead.contact_name),
+      contactName:
+        contactSalutationLine(lead) ?? contactName(lead.first_name, lead.last_name, lead.contact_name),
       contactRole: lead.contact_role?.trim() || lead.job_title?.trim() || "Non renseigné",
       phone: lead.phone?.trim() || "Non renseigné",
       email: lead.email?.trim() || "Non renseigné",
@@ -50,10 +93,10 @@ export function buildLeadStudyPdfViewModel(input: StudyPdfGenerationInput): Stud
       surfaceM2: useSurface,
       heightM: useHeight,
       volumeM3: useVolume,
-      heatingMode: useHeating || "Non renseigné",
+      heatingMode: useHeating,
     },
     simulation: {
-      model: lead.sim_model?.trim() || "Non renseigné",
+      model: simulationModelLabel,
       neededDestrat: lead.sim_needed_destrat ?? 0,
       modelCapacityM3h: lead.sim_model_capacity_m3h ?? 0,
       powerKw: lead.sim_power_kw ?? 0,
@@ -84,7 +127,7 @@ export function buildLeadStudyPdfViewModel(input: StudyPdfGenerationInput): Stud
       studyMediaUrls: stringArrayFromLeadJson(lead.study_media_files),
     },
     comparables: STUDY_INSTALLATION_EXAMPLES,
-    products: resolveStudyProductsForPdf(lead.sim_model),
+    products,
   };
 
   return StudyPdfViewModelSchema.parse(vm);

@@ -25,6 +25,7 @@ import {
 } from "@/features/cee-workflows/components/workflow-crm-queue-tools";
 import type { CrmSortKey } from "@/features/cee-workflows/components/workflow-crm-queue-tools";
 import type { ConfirmateurQueueBuckets, ConfirmateurQueueItem } from "@/features/cee-workflows/lib/confirmateur-workflow-activity";
+import { formatCivilityNamePair } from "@/features/leads/lib/contact-map";
 import type { ConfirmateurQueueTab } from "@/features/cee-workflows/lib/confirmateur-paths";
 
 type QueueTab = ConfirmateurQueueTab;
@@ -58,7 +59,9 @@ function filterItems(items: ConfirmateurQueueItem[], q: string): ConfirmateurQue
   return items.filter((item) => {
     const hay = [
       item.companyName,
+      formatCivilityNamePair(item.civility, item.contactName),
       item.contactName,
+      item.civility,
       item.phone,
       item.email,
       item.sheetCode,
@@ -242,8 +245,11 @@ export function ConfirmateurWorkflowQueue({
                       {typeof item.score === "number" ? Math.round(item.score) : "—"}
                     </TableCell>
                     <TableCell className="max-w-[200px]">
-                      <div className="truncate text-sm" title={item.contactName ?? ""}>
-                        {item.contactName || "—"}
+                      <div
+                        className="truncate text-sm"
+                        title={formatCivilityNamePair(item.civility, item.contactName) || ""}
+                      >
+                        {formatCivilityNamePair(item.civility, item.contactName) || "—"}
                       </div>
                       {item.phone ? (
                         <div className="truncate text-xs text-muted-foreground tabular-nums">{item.phone}</div>

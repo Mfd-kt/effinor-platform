@@ -1,5 +1,7 @@
 import type { LeadDetailRow } from "@/features/leads/types";
 
+import type { StudyCeeSolutionKind } from "./types";
+
 function toNum(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string" && v.trim() !== "") {
@@ -72,6 +74,72 @@ function resolveSimulationFieldSource(simulationResultJson: unknown): {
     simulatedAtIso: toStr(root.simulatedAtIso),
     version: toStr(root.version),
   };
+}
+
+export function extractWorkflowSimulationMetrics(simulationJson: unknown): Record<string, unknown> | null {
+  const resolved = resolveSimulationFieldSource(simulationJson);
+  return resolved?.metrics ?? null;
+}
+
+export function readStudyCeeSolutionKindFromInputs(input: {
+  lead: LeadDetailRow;
+  mergedSimulationJson?: unknown;
+}): StudyCeeSolutionKind {
+  const ordered = [input.mergedSimulationJson, input.lead.sim_payload_json];
+  for (const raw of ordered) {
+    const m = extractWorkflowSimulationMetrics(raw);
+    if (!m) continue;
+    const cee = asRecord(m.ceeSolution);
+    const s = typeof cee?.solution === "string" ? cee.solution : null;
+    if (s === "PAC") return "pac";
+    if (s === "DESTRAT") return "destrat";
+    if (s === "NONE") return "none";
+  }
+  return "destrat";
+}
+
+function roundMoney(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Lorsque le simulateur retient une PAC, les champs `sim_*` déstrat sont à zéro mais `pacSavings` contient les économies.
+ * On recopie vers les mêmes clés que le PDF attend, et on force investissement / reste à charge à 0 € (devis à confirmer).
+ */
+function applyPacStudyMetricsPatch(
+  lead: LeadDetailRow,
+  r: Record<string, unknown>,
+  patch: Partial<LeadDetailRow>,
+): void {
+  const cee = asRecord(r.ceeSolution);
+  const solution = typeof cee?.solution === "string" ? cee.solution : null;
+  if (solution !== "PAC") return;
+
+  const pac = asRecord(r.pacSavings);
+  if (!pac) return;
+
+  const saveEur = toNum(pac.annualCostSavings);
+  const saveKwh = toNum(pac.annualEnergySavingsKwh);
+
+  const leadSave = lead.sim_saving_eur_30_selected;
+  const shouldFillSavings =
+    saveEur != null && (leadSave == null || leadSave === 0 || (typeof leadSave === "number" && leadSave < 0.01));
+  if (shouldFillSavings) {
+    patch.sim_saving_eur_30_selected = Math.max(0, roundMoney(saveEur));
+  }
+
+  const leadKwh = lead.sim_saving_kwh_30;
+  const shouldFillKwh =
+    saveKwh != null && (leadKwh == null || leadKwh === 0 || (typeof leadKwh === "number" && leadKwh < 1));
+  if (shouldFillKwh) {
+    patch.sim_saving_kwh_30 = Math.max(0, Math.round(saveKwh));
+  }
+
+  patch.sim_install_total_price = 0;
+  patch.sim_install_unit_price = 0;
+  patch.sim_rest_to_charge = 0;
+  patch.sim_cee_prime_estimated = 0;
+  patch.sim_needed_destrat = 0;
 }
 
 /**
@@ -156,6 +224,8 @@ export function mergeLeadDetailWithWorkflowSimulationResult(
   if (score != null && lead.sim_lead_score == null) {
     patch.sim_lead_score = Math.round(score);
   }
+
+  applyPacStudyMetricsPatch(lead, r, patch);
 
   if (Object.keys(patch).length === 0) {
     return lead;

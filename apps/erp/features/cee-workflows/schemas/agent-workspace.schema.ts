@@ -13,6 +13,7 @@ const jsonRecord = z.record(z.string(), z.unknown()).optional();
 
 export const AgentProspectSchema = z.object({
   companyName: z.string().min(1, "La société est obligatoire.").max(500),
+  civility: z.string().max(20).optional(),
   contactName: z.string().min(1, "Le nom du contact est obligatoire.").max(200),
   phone: z.string().min(1, "Le téléphone est obligatoire.").max(50),
   email: z

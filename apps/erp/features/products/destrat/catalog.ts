@@ -63,6 +63,33 @@ export const DESTRAT_CATALOG: Record<DestratProductId, DestratProduct> = {
     sortOrder: 20,
     isActive: true,
   },
+  bosch_pac_air_eau: {
+    id: "bosch_pac_air_eau",
+    brand: "Bosch",
+    name: "Pompe à chaleur air / eau Bosch (étude CEE)",
+    shortLabel: "PAC Bosch air/eau",
+    slug: "bosch-pac-air-eau",
+    category: "pac",
+    description:
+      "Solution de remplacement ou d’optimisation par pompe à chaleur air / eau — rendement saisonnier élevé, compatible opérations CEE (référence commerciale indicative, modèle définitif après dimensionnement).",
+    imageUrl: null,
+    fallbackImageUrl: null,
+    specs: [
+      { label: "Type", value: "Pompe à chaleur air / eau" },
+      { label: "Marque", value: "Bosch" },
+      { label: "Usage", value: "Chauffage tertiaire / industriel léger" },
+      { label: "Fluide", value: "R32 (indicatif — selon gamme retenue)" },
+      { label: "Régulation", value: "Sonde extérieure / courbe d’eau (principe)" },
+      { label: "Garantie", value: "Selon conditions fabricant / poseur" },
+    ],
+    keyMetrics: [
+      { label: "Économies", value: "Potentiel indicatif (simulation)" },
+      { label: "CEE", value: "Éligibilité sous réserve dossier" },
+      { label: "Devis", value: "Chiffrage à confirmer" },
+    ],
+    sortOrder: 5,
+    isActive: true,
+  },
   generfeu: {
     id: "generfeu",
     brand: "Generfeu",

@@ -133,7 +133,7 @@ export async function sendConfirmateurWorkflowToCloser(
     const { data: leadRow, error: leadFetchError } = await supabase
       .from("leads")
       .select(
-        "company_name, first_name, last_name, contact_name, email, phone, contact_role, job_title, head_office_address, head_office_siret, siret, head_office_postal_code, head_office_city, worksite_address, worksite_siret, worksite_postal_code, worksite_city, aerial_photos, cadastral_parcel_files, study_media_files, recording_files",
+        "company_name, civility, first_name, last_name, contact_name, email, phone, contact_role, job_title, head_office_address, head_office_siret, siret, head_office_postal_code, head_office_city, worksite_address, worksite_siret, worksite_postal_code, worksite_city, aerial_photos, cadastral_parcel_files, study_media_files, recording_files",
       )
       .eq("id", snapshot.lead_id)
       .is("deleted_at", null)

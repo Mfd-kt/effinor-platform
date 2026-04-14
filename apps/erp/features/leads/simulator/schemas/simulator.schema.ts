@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { LEAD_CIVILITY_VALUES } from "@/features/leads/lib/civility-options";
+
 import {
   SIMULATOR_CONSTANTS,
   getSuggestedModel,
@@ -156,6 +158,7 @@ export const SimulateLeadSchema = SimulatorInputSchema;
 export const SimulateAndCreateLeadSchema = SimulatorInputSchema.extend({
   ceeSheetId: z.string().uuid().optional(),
   companyName: z.string().min(1, "Société obligatoire.").max(500),
+  civility: z.enum(LEAD_CIVILITY_VALUES).optional().default(""),
   contactName: z.string().min(1, "Nom contact obligatoire.").max(200),
   phone: z.string().min(1, "Téléphone obligatoire.").max(50),
   callbackAt: z.string().min(1, "Date et heure de rappel obligatoires."),

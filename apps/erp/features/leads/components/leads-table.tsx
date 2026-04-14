@@ -23,7 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { contactDisplayName } from "@/features/leads/lib/contact-map";
+import { contactSalutationLine } from "@/features/leads/lib/contact-map";
+import { normalizeProductInterestLabel } from "@/features/leads/lib/normalize-product-interest";
 import type { LeadRow } from "@/features/leads/types";
 import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS } from "@/features/leads/constants";
 import { LEAD_SOURCE_VALUES, LEAD_STATUS_VALUES } from "@/features/leads/schemas/lead.schema";
@@ -35,6 +36,16 @@ import { LeadStatusBadge } from "./lead-status-badge";
 type LeadsTableProps = {
   data: LeadRow[];
 };
+
+/** Même normalisation que l’IA / enregistrement (PAC, Destratificateur, Luminaire LED, …). */
+function normalizedProductCategory(lead: LeadRow): string {
+  return normalizeProductInterestLabel(lead.product_interest ?? "");
+}
+
+function formatNormalizedCategoryCell(lead: LeadRow): string {
+  const s = normalizedProductCategory(lead).trim();
+  return s || "—";
+}
 
 function LeadNotationCell({ score }: { score: number | null }) {
   if (score == null || !Number.isFinite(score)) {
@@ -67,10 +78,13 @@ function leadMatchesSearch(lead: LeadRow, needle: string): boolean {
   const q = needle.toLowerCase();
   const hay = [
     lead.company_name,
+    lead.civility,
     lead.first_name,
     lead.last_name,
     lead.email,
     lead.phone,
+    lead.product_interest,
+    normalizedProductCategory(lead),
   ]
     .filter(Boolean)
     .join(" ")
@@ -115,11 +129,11 @@ export function LeadsTable({ data }: LeadsTableProps) {
       {
         id: "contact_name",
         header: "Contact",
-        accessorFn: (row) => contactDisplayName(row) ?? "",
+        accessorFn: (row) => contactSalutationLine(row) ?? "",
         sortUndefined: "last",
         cell: ({ row }) => (
           <span className="text-muted-foreground">
-            {contactDisplayName(row.original) ?? "—"}
+            {contactSalutationLine(row.original) ?? "—"}
           </span>
         ),
       },
@@ -151,6 +165,25 @@ export function LeadsTable({ data }: LeadsTableProps) {
         cell: ({ row }) => (
           <span className="text-muted-foreground">
             {LEAD_SOURCE_LABELS[row.original.source]}
+          </span>
+        ),
+      },
+      {
+        id: "normalized_category",
+        header: "Catégorie normalisée",
+        accessorFn: (row) => normalizedProductCategory(row),
+        sortUndefined: "last",
+        sortingFn: (rowA, rowB, columnId) => {
+          const a = String(rowA.getValue(columnId) ?? "");
+          const b = String(rowB.getValue(columnId) ?? "");
+          return a.localeCompare(b, "fr", { sensitivity: "base" });
+        },
+        cell: ({ row }) => (
+          <span
+            className="max-w-[14rem] truncate text-muted-foreground"
+            title={formatNormalizedCategoryCell(row.original)}
+          >
+            {formatNormalizedCategoryCell(row.original)}
           </span>
         ),
       },
@@ -221,7 +254,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
               id="leads-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Société, contact, e-mail, téléphone…"
+              placeholder="Société, contact, e-mail, téléphone, catégorie…"
               className="h-9 pl-9"
               aria-label="Filtrer les leads"
             />

@@ -117,7 +117,8 @@ export function AgentSheetSimulatorPanel({
       <CardHeader>
         <CardTitle>Simulation rapide</CardTitle>
         <CardDescription>
-          Étape 1 — Paramètres déstrat, estimation instantanée et script d&apos;argumentaire (comme sur le tableau de bord).
+          Étape 1 — Paramètres site et chauffage (déstrat ou PAC selon éligibilité), estimation instantanée et script
+          d&apos;argumentaire.
         </CardDescription>
       </CardHeader>
       <CardContent>

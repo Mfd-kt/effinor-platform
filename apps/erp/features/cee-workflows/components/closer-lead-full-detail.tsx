@@ -145,6 +145,7 @@ export function CloserLeadFullDetailPanel({
 
       <CollapsibleSection title="Contact" icon={<User className="size-4" />} defaultOpen>
         <DetailGrid>
+          <Item label="Civilité" value={lead.civility} />
           <Item label="Prénom" value={lead.first_name} />
           <Item label="Nom" value={lead.last_name} />
           <Item label="Nom affiché" value={lead.contact_name} />

@@ -292,6 +292,7 @@ body{
 // ---------------------------------------------------------------------------
 
 export function renderPresentationHtml(vm: StudyPdfViewModel): string {
+  const isPac = vm.ceeSolutionKind === "pac";
   const ceePrime = Math.round(vm.simulation.ceePrimeEuro * CEE_PRIME_RATIO);
   const restCharge = euro(Math.max(0, vm.simulation.installTotalEuro - ceePrime));
   const productsHtml = vm.products.map((p) => productCard(p)).join("");
@@ -314,7 +315,7 @@ export function renderPresentationHtml(vm: StudyPdfViewModel): string {
 <section class="pg cover">
   <div class="cover__logo">${LOGO_COVER}</div>
 
-  <h1>Étude d'opportunité<br/>Déstratification d'air</h1>
+  <h1>${isPac ? "Étude d'opportunité<br/>Pompe à chaleur air / eau" : "Étude d'opportunité<br/>Déstratification d'air"}</h1>
   <p class="cover__sub">Analyse technique et économique préliminaire</p>
 
   <ul class="cover__checks">
@@ -341,7 +342,11 @@ export function renderPresentationHtml(vm: StudyPdfViewModel): string {
     </div>
   </div>
 
-  <div class="cover__impact">Dans de nombreux cas comparables, le financement via les CEE permet de couvrir une part significative, voire la totalité de l'investissement.</div>
+  <div class="cover__impact">${
+    isPac && vm.pacCommercialMessage
+      ? esc(vm.pacCommercialMessage)
+      : "Dans de nombreux cas comparables, le financement via les CEE permet de couvrir une part significative, voire la totalité de l'investissement."
+  }</div>
 
   <div class="cover__partner">
     <div class="cover__partner-logo">
@@ -539,7 +544,9 @@ ${vm.comparables.length > 0 ? `
       <div class="step">
         <div class="step__num">2</div>
         <div class="step__title">Financement CEE</div>
-        <div class="step__desc">Ils soutiennent des opérations éligibles comme la déstratification dans le cadre du dispositif CEE.</div>
+        <div class="step__desc">Ils soutiennent des opérations éligibles comme ${
+          isPac ? "les pompes à chaleur performantes" : "la déstratification"
+        } dans le cadre du dispositif CEE.</div>
       </div>
       <div class="step">
         <div class="step__num">3</div>

@@ -36,6 +36,7 @@ function mapCommon(data: LeadInsertInput): Omit<
     worksite_siret: trimOrNull(data.worksite_siret),
     first_name: firstName,
     last_name: lastName,
+    civility: trimOrNull(data.civility),
     contact_name: contactNameFromParts,
     email: trimOrNull(data.email),
     phone: trimOrNull(data.phone),

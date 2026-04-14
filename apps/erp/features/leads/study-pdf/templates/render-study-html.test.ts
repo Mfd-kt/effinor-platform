@@ -10,6 +10,9 @@ function sampleVm(): StudyPdfViewModel {
     templateVersion: "v3",
     generatedAtIso: new Date().toISOString(),
     generatedByLabel: "Expert",
+    ceeSolutionKind: "destrat",
+    equipmentQuantity: 6,
+    pacCommercialMessage: null,
     client: {
       companyName: "Client Test",
       contactName: "Marie Dupont",

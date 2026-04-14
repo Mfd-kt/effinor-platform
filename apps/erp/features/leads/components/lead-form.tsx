@@ -38,6 +38,7 @@ import {
   type LeadInsertInput,
 } from "@/features/leads/schemas/lead.schema";
 import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS } from "@/features/leads/constants";
+import { LEAD_CIVILITY_OPTIONS } from "@/features/leads/lib/civility-options";
 import type { LeadRow } from "@/features/leads/types";
 import type { ProfileOption } from "@/features/leads/queries/get-lead-form-options";
 import type { Json } from "@/types/database.types";
@@ -457,6 +458,16 @@ export function LeadForm({
             {errors.company_name ? (
               <p className="text-sm text-destructive">{errors.company_name.message}</p>
             ) : null}
+          </div>
+          <div className="space-y-2 md:col-span-2 max-w-xs">
+            <Label htmlFor="civility">Civilité</Label>
+            <select id="civility" className={selectClassName} {...register("civility")}>
+              {LEAD_CIVILITY_OPTIONS.map((o) => (
+                <option key={o.value === "" ? "_empty" : o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="first_name">Prénom</Label>

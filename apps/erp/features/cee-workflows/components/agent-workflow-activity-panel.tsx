@@ -26,6 +26,7 @@ import {
 } from "@/features/cee-workflows/components/workflow-crm-queue-tools";
 import type { CrmSortKey } from "@/features/cee-workflows/components/workflow-crm-queue-tools";
 import type { AgentActivityBuckets, AgentActivityItem } from "@/features/cee-workflows/lib/agent-workflow-activity";
+import { formatCivilityNamePair } from "@/features/leads/lib/contact-map";
 import { cn } from "@/lib/utils";
 
 const AGENT_RESUMABLE_STATUSES = new Set(["draft", "simulation_done"]);
@@ -63,7 +64,9 @@ function filterItems(items: AgentActivityItem[], q: string): AgentActivityItem[]
   return items.filter((item) => {
     const hay = [
       item.companyName,
+      formatCivilityNamePair(item.civility, item.contactName),
       item.contactName,
+      item.civility,
       item.phone,
       item.email,
       item.sheetCode,
@@ -252,8 +255,11 @@ export function AgentWorkflowActivityPanel({
                       {typeof item.score === "number" ? Math.round(item.score) : "—"}
                     </TableCell>
                     <TableCell className="max-w-[180px]">
-                      <div className="truncate text-sm" title={item.contactName ?? ""}>
-                        {item.contactName || "—"}
+                      <div
+                        className="truncate text-sm"
+                        title={formatCivilityNamePair(item.civility, item.contactName) || ""}
+                      >
+                        {formatCivilityNamePair(item.civility, item.contactName) || "—"}
                       </div>
                       {item.phone ? (
                         <div className="truncate text-xs text-muted-foreground tabular-nums">{item.phone}</div>

@@ -114,6 +114,7 @@ export const LeadInsertSchema = z.object({
   worksite_siret: z.string().max(20).optional(),
   first_name: z.string().max(120).optional(),
   last_name: z.string().max(120).optional(),
+  civility: z.string().max(20).optional(),
   email: z
     .string()
     .optional()

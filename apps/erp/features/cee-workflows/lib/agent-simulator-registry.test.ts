@@ -7,6 +7,11 @@ describe("resolveAgentSimulatorDefinition", () => {
     expect(resolveAgentSimulatorDefinition("destrat").kind).toBe("destrat");
   });
 
+  it("returns the same quick simulator for pac keys (moteur CEE unifié)", () => {
+    expect(resolveAgentSimulatorDefinition("pac").kind).toBe("destrat");
+    expect(resolveAgentSimulatorDefinition("pac_air_eau").kind).toBe("destrat");
+  });
+
   it("returns a clean placeholder for unsupported simulators", () => {
     expect(resolveAgentSimulatorDefinition("led")).toEqual({
       kind: "unsupported",
@@ -31,6 +36,17 @@ describe("resolveAgentSimulatorDefinition", () => {
       resolveAgentSimulatorDefinition({
         code: "X",
         label: "Système de déstratification d'air",
+        simulatorKey: null,
+        calculationProfile: null,
+      }).kind,
+    ).toBe("destrat");
+  });
+
+  it("infers quick simulator from PAC label when simulator_key is null", () => {
+    expect(
+      resolveAgentSimulatorDefinition({
+        code: "PAC-AIR",
+        label: "Pac - Pompe a chaleur Air Eau",
         simulatorKey: null,
         calculationProfile: null,
       }).kind,

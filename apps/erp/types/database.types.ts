@@ -424,6 +424,7 @@ export interface Database {
           worksite_siret: string | null;
           first_name: string | null;
           last_name: string | null;
+          civility: string | null;
           contact_name: string | null;
           job_title: string | null;
           department: string | null;
@@ -505,6 +506,7 @@ export interface Database {
           worksite_siret?: string | null;
           first_name?: string | null;
           last_name?: string | null;
+          civility?: string | null;
           contact_name?: string | null;
           job_title?: string | null;
           department?: string | null;
@@ -586,6 +588,7 @@ export interface Database {
           worksite_siret?: string | null;
           first_name?: string | null;
           last_name?: string | null;
+          civility?: string | null;
           contact_name?: string | null;
           job_title?: string | null;
           department?: string | null;

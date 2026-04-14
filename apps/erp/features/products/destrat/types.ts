@@ -1,17 +1,16 @@
 import type { DestratModel } from "@/features/leads/simulator/domain/types";
 
 /**
- * Identifiant catalogue — aligné sur le simulateur (`DestratModel`).
- * Une seule source de vérité pour les clés métier lead / simulation / PDF.
+ * Identifiant catalogue — modèles simulateur déstrat + fiches PAC / autres (PDF, études).
  */
-export type DestratProductId = DestratModel;
+export type DestratProductId = DestratModel | "bosch_pac_air_eau";
 
 export type ProductSpec = {
   label: string;
   value: string;
 };
 
-export type DestratProductCategory = "destratificateur";
+export type DestratProductCategory = "destratificateur" | "pac";
 
 /**
  * Fiche produit complète (catalogue local ou future ligne DB).

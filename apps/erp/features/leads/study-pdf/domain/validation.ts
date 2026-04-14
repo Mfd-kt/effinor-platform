@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { LeadDetailRow } from "@/features/leads/types";
+import { readStudyCeeSolutionKindFromInputs } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
 import type { StudyPdfValidationIssue } from "@/features/leads/study-pdf/domain/types";
 
 export const StudyPdfViewModelSchema = z.object({
@@ -54,6 +55,9 @@ export const StudyPdfViewModelSchema = z.object({
     cadastralPhotoUrl: z.string().url().nullable(),
     studyMediaUrls: z.array(z.string().url()),
   }),
+  ceeSolutionKind: z.enum(["destrat", "pac", "none"]),
+  equipmentQuantity: z.number().int().nonnegative(),
+  pacCommercialMessage: z.string().nullable(),
   comparables: z.array(
     z.object({
       id: z.string(),
@@ -84,8 +88,16 @@ export const StudyPdfViewModelSchema = z.object({
   ),
 });
 
-export function validateLeadForStudyPdf(lead: LeadDetailRow): StudyPdfValidationIssue[] {
+export function validateLeadForStudyPdf(
+  lead: LeadDetailRow,
+  opts?: { mergedSimulationJson?: unknown },
+): StudyPdfValidationIssue[] {
   const issues: StudyPdfValidationIssue[] = [];
+
+  const ceeKind = readStudyCeeSolutionKindFromInputs({
+    lead,
+    mergedSimulationJson: opts?.mergedSimulationJson ?? lead.sim_payload_json,
+  });
 
   if (!lead.company_name.trim()) {
     issues.push({ code: "missing_company", label: "Société manquante" });
@@ -99,8 +111,8 @@ export function validateLeadForStudyPdf(lead: LeadDetailRow): StudyPdfValidation
   if (!lead.sim_heating_mode && (!lead.heating_type || lead.heating_type.length === 0)) {
     issues.push({ code: "missing_heating_mode", label: "Mode de chauffage manquant" });
   }
-  if (!lead.sim_model) {
-    issues.push({ code: "missing_model", label: "Modèle de déstratificateur manquant" });
+  if (!lead.sim_model?.trim() && ceeKind !== "pac") {
+    issues.push({ code: "missing_model", label: "Modèle d'équipement manquant" });
   }
   if (!lead.sim_client_type) {
     issues.push({ code: "missing_client_type", label: "Type de site manquant" });

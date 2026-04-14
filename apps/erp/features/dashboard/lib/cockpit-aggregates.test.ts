@@ -58,6 +58,9 @@ describe("filterWorkflowsForCockpit", () => {
       lead: {
         id: "l1",
         company_name: "A",
+        civility: null,
+        first_name: null,
+        last_name: null,
         lead_status: "new",
         cee_sheet_id: "s1",
         current_workflow_id: "a",
@@ -93,6 +96,9 @@ describe("filterWorkflowsForCockpit", () => {
       lead: {
         id: "l2",
         company_name: "B",
+        civility: null,
+        first_name: null,
+        last_name: null,
         lead_status: "new",
         cee_sheet_id: "s2",
         current_workflow_id: "b",

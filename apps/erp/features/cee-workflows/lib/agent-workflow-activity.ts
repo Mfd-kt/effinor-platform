@@ -31,6 +31,7 @@ export type AgentActivityItem = {
   score: number | null;
   savingEuro: number | null;
   recommendedModel: string | null;
+  civility: string | null;
   contactName: string | null;
   phone: string | null;
   email: string | null;
@@ -79,6 +80,7 @@ const AGENT_ACTIVITY_RECENT_CAP = 120;
 export function mapWorkflowToAgentActivityItem(
   workflow: WorkflowScopedListRow,
   leadExtras?: {
+    civility?: string | null;
     contactName?: string | null;
     phone?: string | null;
     email?: string | null;
@@ -99,6 +101,7 @@ export function mapWorkflowToAgentActivityItem(
     score: extractScore(workflow.simulation_result_json),
     savingEuro: extractSavingEuro(workflow.simulation_result_json),
     recommendedModel: extractRecommendedModel(workflow.simulation_result_json),
+    civility: leadExtras?.civility ?? null,
     contactName: leadExtras?.contactName ?? null,
     phone: leadExtras?.phone ?? null,
     email: leadExtras?.email ?? null,

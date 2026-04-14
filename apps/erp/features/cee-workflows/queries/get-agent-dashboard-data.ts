@@ -7,6 +7,7 @@ import {
   type AgentActivityBuckets,
   type AgentAvailableSheet,
 } from "@/features/cee-workflows/lib/agent-workflow-activity";
+import { contactDisplayName } from "@/features/leads/lib/contact-map";
 import type { CockpitIsoRange } from "@/features/dashboard/lib/cockpit-period";
 import { getAgentAvailableSheets } from "@/features/cee-workflows/queries/get-agent-available-sheets";
 import {
@@ -39,7 +40,10 @@ export async function getAgentDraftWorkflows(access: AccessContext) {
   const workflows = await getLeadSheetWorkflowsForAccess(access, { workflowStatus: "draft" });
   return workflows.map((workflow) =>
     mapWorkflowToAgentActivityItem(workflow, {
-      contactName: workflow.lead?.contact_name ?? null,
+      civility: workflow.lead?.civility ?? null,
+      contactName: workflow.lead
+        ? (contactDisplayName(workflow.lead) ?? workflow.lead.contact_name?.trim() ?? null)
+        : null,
       phone: workflow.lead?.phone ?? null,
       email: workflow.lead?.email ?? null,
       address: workflow.lead?.worksite_address ?? null,
@@ -61,7 +65,10 @@ export async function getAgentRecentValidatedWorkflows(access: AccessContext) {
     )
     .map((workflow) =>
       mapWorkflowToAgentActivityItem(workflow, {
-        contactName: workflow.lead?.contact_name ?? null,
+        civility: workflow.lead?.civility ?? null,
+        contactName: workflow.lead
+          ? (contactDisplayName(workflow.lead) ?? workflow.lead.contact_name?.trim() ?? null)
+          : null,
         phone: workflow.lead?.phone ?? null,
         email: workflow.lead?.email ?? null,
         address: workflow.lead?.worksite_address ?? null,
@@ -97,7 +104,10 @@ export async function getAgentDashboardData(
   }
   const items = workflows.map((workflow) =>
     mapWorkflowToAgentActivityItem(workflow, {
-      contactName: workflow.lead?.contact_name ?? null,
+      civility: workflow.lead?.civility ?? null,
+      contactName: workflow.lead
+        ? (contactDisplayName(workflow.lead) ?? workflow.lead.contact_name?.trim() ?? null)
+        : null,
       phone: workflow.lead?.phone ?? null,
       email: workflow.lead?.email ?? null,
       address: workflow.lead?.worksite_address ?? null,

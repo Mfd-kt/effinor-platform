@@ -75,6 +75,8 @@ export async function generateLeadStudyPdf(
     return { ok: false, error: "Lead introuvable ou accès refusé." };
   }
 
+  let mergedSimulationJson: unknown = lead.sim_payload_json ?? undefined;
+
   if (options?.workflowId) {
     const supabaseForSim = await createClient();
     const { data: wfRow, error: wfErr } = await supabaseForSim
@@ -90,6 +92,7 @@ export async function generateLeadStudyPdf(
       return { ok: false, error: "Ce workflow n'est pas rattaché à ce lead." };
     }
     if (wfRow.simulation_result_json) {
+      mergedSimulationJson = wfRow.simulation_result_json;
       lead = mergeLeadDetailWithWorkflowSimulationResult(lead, wfRow.simulation_result_json);
     }
     if (wfRow.simulation_input_json) {
@@ -97,7 +100,11 @@ export async function generateLeadStudyPdf(
     }
   }
 
-  const validationIssues = validateLeadForStudyPdf(lead);
+  if (lead.sim_payload_json) {
+    lead = mergeLeadDetailWithWorkflowSimulationResult(lead, lead.sim_payload_json);
+  }
+
+  const validationIssues = validateLeadForStudyPdf(lead, { mergedSimulationJson });
   if (validationIssues.length) {
     return {
       ok: false,
@@ -111,6 +118,7 @@ export async function generateLeadStudyPdf(
     lead,
     qualificationNotes: notes.map((n) => n.body),
     generatedByLabel: access.fullName?.trim() || access.email || "Chargé d'étude",
+    mergedSimulationJson,
   });
 
   // ── Enrich product images + gallery from Supabase ──

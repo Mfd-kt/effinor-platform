@@ -20,12 +20,12 @@ import { getLeadStudyDocuments } from "@/features/leads/study-pdf/queries/get-le
 import { getEmailTrackingForLead } from "@/features/leads/study-pdf/queries/get-email-tracking";
 import { getLeadEmails } from "@/features/leads/queries/get-lead-emails";
 import { getLeadWorkflowActivityEvents } from "@/features/leads/queries/get-lead-workflow-activity-events";
-import { contactDisplayName } from "@/features/leads/lib/contact-map";
+import { contactSalutationLine } from "@/features/leads/lib/contact-map";
 import { leadAddressesComplete } from "@/features/leads/lib/lead-address-validation";
 import { leadRowToFormValues } from "@/features/leads/lib/form-defaults";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessCloserWorkspace, canAccessLeadsDirectoryNav } from "@/lib/auth/module-access";
+import { canAccessCeeWorkflowsModule, canAccessCloserWorkspace, canAccessLeadsDirectoryNav } from "@/lib/auth/module-access";
 import { canDeleteLead, canReassignLeadCreator } from "@/lib/auth/lead-permissions";
 import {
   isRestrictedAgentLeadConsultationReadOnly,
@@ -40,6 +40,7 @@ import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Headset } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -151,7 +152,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
         ? "Retour au poste Closer"
         : "Retour à la liste";
 
-  const contact = contactDisplayName(lead);
+  const contact = contactSalutationLine(lead);
   const createdByLabel =
     lead.created_by_agent?.full_name?.trim() ||
     lead.created_by_agent?.email ||
@@ -160,6 +161,9 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const addressesOk = leadAddressesComplete(lead);
   const companyNameOk = Boolean(lead.company_name?.trim());
   const pipelineBlocked = lead.lead_status === "lost" || lead.lead_status === "converted";
+
+  const canOpenAgentWorkstation =
+    access.kind === "authenticated" && canAccessCeeWorkflowsModule(access);
 
   return (
     <div>
@@ -181,7 +185,10 @@ export default async function LeadDetailPage({ params }: PageProps) {
               {contact && <span className="text-muted-foreground/50">·</span>}
               {lead.product_interest?.trim() && (
                 <>
-                  <span>{lead.product_interest.trim()}</span>
+                  <span>
+                    <span className="text-muted-foreground">Catégorie · </span>
+                    <span className="font-medium text-foreground">{lead.product_interest.trim()}</span>
+                  </span>
                   <span className="text-muted-foreground/50">·</span>
                 </>
               )}
@@ -196,6 +203,16 @@ export default async function LeadDetailPage({ params }: PageProps) {
             {canDelete && (
               <DeleteLeadButton leadId={lead.id} companyLabel={lead.company_name} />
             )}
+            {canOpenAgentWorkstation ? (
+              <Link
+                href={`/agent?lead=${lead.id}`}
+                className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
+                title="Ouvre le poste agent avec la fiche CEE adaptée à la catégorie du lead"
+              >
+                <Headset className="size-3.5 shrink-0" aria-hidden />
+                Poste agent
+              </Link>
+            ) : null}
             <Link href={leadListBackHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
               {leadListBackLabel}
             </Link>

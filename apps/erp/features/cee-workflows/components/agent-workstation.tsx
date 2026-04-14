@@ -66,6 +66,7 @@ function makeEmptyMessage(message: string) {
 function prospectFromActivity(item: AgentActivityItem): AgentProspectFormValue {
   return {
     companyName: item.companyName,
+    civility: item.civility ?? "",
     contactName: item.contactName ?? "",
     phone: item.phone ?? "",
     email: item.email ?? "",
@@ -115,6 +116,8 @@ export function AgentWorkstation({
   commercialCallbacks,
   callbackKpis,
   callbackPerformance,
+  /** Fiche CEE à privilégier (ex. `?lead=` résolu côté serveur) — prime sur le dernier choix en localStorage. */
+  initialSheetId = null,
 }: {
   sheets: AgentAvailableSheet[];
   activity: AgentActivityBuckets;
@@ -122,10 +125,15 @@ export function AgentWorkstation({
   commercialCallbacks: CommercialCallbackRow[];
   callbackKpis: CommercialCallbackKpis;
   callbackPerformance: CallbackPerformanceStats;
+  initialSheetId?: string | null;
 }) {
   const router = useRouter();
   const skipDraftHydrate = useRef(false);
-  const [activeSheetId, setActiveSheetId] = useState<string | null>(() => resolveAgentInitialSheetId(sheets, null));
+  const [activeSheetId, setActiveSheetId] = useState<string | null>(() => {
+    const trimmed = initialSheetId?.trim() ?? "";
+    const urlOk = trimmed && sheets.some((s) => s.id === trimmed) ? trimmed : null;
+    return resolveAgentInitialSheetId(sheets, urlOk);
+  });
   const [prospect, setProspect] = useState<AgentProspectFormValue>(DEFAULT_AGENT_PROSPECT_FORM);
   const [destratState, setDestratState] = useState<AgentDestratFormState>(DEFAULT_AGENT_DESTRAT_STATE);
   const [workflowId, setWorkflowId] = useState<string | undefined>();
@@ -139,12 +147,14 @@ export function AgentWorkstation({
   const [callbackEditing, setCallbackEditing] = useState<CommercialCallbackRow | null>(null);
 
   useEffect(() => {
+    const trimmed = initialSheetId?.trim() ?? "";
+    const urlOk = trimmed && sheets.some((s) => s.id === trimmed) ? trimmed : null;
     const saved = typeof window === "undefined" ? null : window.localStorage.getItem(SHEET_STORAGE_KEY);
-    const resolved = resolveAgentInitialSheetId(sheets, saved);
+    const resolved = resolveAgentInitialSheetId(sheets, urlOk ?? saved);
     if (resolved) {
       queueMicrotask(() => setActiveSheetId(resolved));
     }
-  }, [sheets]);
+  }, [sheets, initialSheetId]);
 
   useEffect(() => {
     if (activeSheetId && typeof window !== "undefined") {
