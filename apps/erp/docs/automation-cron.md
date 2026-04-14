@@ -170,7 +170,8 @@ Les emails ne sont plus rafraîchis **en boucle** depuis le navigateur sur la fi
 
 | Élément | Détail |
 |--------|--------|
-| **URL** | `https://<votre-domaine-erp>/api/cron/lead-email-sync` |
+| **URL** | `https://<votre-domaine-erp>/api/cron/lead-email-sync` — alias identique : `/api/cron/mail-sync` |
+| **404 sur ces URLs** | L’image déployée est **plus ancienne** que le code : faire un **Rebuild complet** (sans cache) sur la branche `main`, vérifier que le build clone bien le dernier commit. Tester aussi `/api/cron/automation` sans Bearer → doit répondre **401** (si **404**, ce n’est pas le bon service / domaine). |
 | **Auth** | Identique au cron automation : `Authorization: Bearer <AUTOMATION_CRON_SECRET>` (ou `CRON_SECRET`). |
 | **Prérequis** | `GMAIL_USER` + credentials Gmail déjà utilisés par `syncLeadEmails`. |
 | **Variable optionnelle** | `LEAD_EMAIL_SYNC_CRON_MAX_LEADS` — nombre max de leads traités par exécution (défaut **120**, plafonné à **500**). |

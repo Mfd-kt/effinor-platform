@@ -46,6 +46,12 @@ FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app
 
+# Même besoin que Dockerfile.erp : tâches planifiées `docker exec … curl …`.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
