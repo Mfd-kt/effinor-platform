@@ -64,8 +64,8 @@ Import dans une app : `import { Button } from "@effinor/ui"` et `import { format
 ## Docker / Dokploy
 
 - **Contexte de build** : répertoire `effinor-platform` (racine du monorepo — celui qui contient le `package-lock.json` unique).
-- **Dockerfile** : un par app (`apps/<nom>/Dockerfile`). Ex. ERP : fichier **`apps/erp/Dockerfile`**, contexte **toujours la racine** (sinon `npm ci` échoue).
-- **Fichier Docker** dans Dokploy : chemin Dockerfile = `apps/erp/Dockerfile` (ou autre app), **Build Context** = racine du repo cloné.
+- **ERP (Dokploy)** : utiliser **`Dockerfile.erp`** à la **racine** du dépôt (évite un contexte limité à `apps/erp`, qui provoque des erreurs « file not found » sur `package-lock.json` / `packages/`). Alternative : `apps/erp/Dockerfile` uniquement si le contexte est explicitement la racine du clone.
+- **Autres apps** : un Dockerfile par app sous `apps/<nom>/` si besoin, avec les mêmes règles de contexte.
 
 Variables Vite (`VITE_SUPABASE_*`) : les passer en **build args** dans Dokploy puis dans le Dockerfile avant `npm run build`, par exemple :
 

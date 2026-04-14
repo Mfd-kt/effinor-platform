@@ -1,15 +1,14 @@
-# Debian bookworm-slim : Playwright/Chromium (PDF) + Next.js `output: "standalone"`.
+# Image Effinor ERP (Next.js standalone + Playwright).
 #
-# Dokploy : préférer Dockerfile.erp à la racine du dépôt
-#    (sinon l’UI peut limiter le contexte à apps/erp → « package-lock.json not found »).
+# Contexte de build OBLIGATOIRE : racine du dépôt `effinor-platform`
+#    (là où se trouvent package-lock.json, apps/, packages/).
 #
-# Build manuel depuis la racine : docker build -f apps/erp/Dockerfile .
+# Dokploy : Docker file = Dockerfile.erp (racine), pas apps/erp/Dockerfile seul,
+#           sinon le contexte peut être limité à apps/erp (fichiers introuvables).
 #
-# Build context Dokploy : racine du monorepo `effinor-platform` (pas `apps/erp` seul).
+# Build local : docker build -f Dockerfile.erp .
 #
-# Monorepo : la sortie standalone est sous `.next/standalone/apps/erp/` (pas `server.js` à la racine).
-# Ne pas utiliser `next start` ni `npm run start` si la commande Dokploy pointe encore vers Next classique :
-# la CMD ci-dessous est la source de vérité pour le runtime.
+# Monorepo : server standalone sous apps/erp/.next/standalone/apps/erp/server.js
 FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
@@ -41,7 +40,6 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build -w @effinor/erp
 
-# ── Runtime ─────────────────────────────────────────────────────────────────
 FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app
@@ -53,9 +51,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY --from=builder /ms-playwright /ms-playwright
 
-# Bundle tracé (node_modules à la racine du standalone + app sous apps/erp/).
 COPY --from=builder /app/apps/erp/.next/standalone ./.next/standalone
-# Fichiers statiques : attendus sous apps/erp/.next/static par le serveur après chdir.
 COPY --from=builder /app/apps/erp/.next/static ./.next/standalone/apps/erp/.next/static
 COPY --from=builder /app/apps/erp/public ./.next/standalone/apps/erp/public
 

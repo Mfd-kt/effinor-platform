@@ -56,7 +56,7 @@ Ne commitez jamais de secrets ; saisissez-les uniquement dans Dokploy.
 1. Ouvrir le **panel Dokploy** (bouton « Gérer le panel » sur Hostinger).
 2. **New application** (ou équivalent) → type **Docker** ou **Git + Dockerfile**.
 3. **Repository** : URL Git + branche (ex. `main`).
-4. **Build** : **Dockerfile** = chemin `apps/erp/Dockerfile` ; **contexte de build** = racine du repo (dossier qui contient `package-lock.json` à la racine), pas le sous-dossier `apps/erp`.
+4. **Build** : **Dockerfile** = **`Dockerfile.erp`** à la **racine** du dépôt (recommandé). Si vous pointez vers `apps/erp/Dockerfile`, vérifiez que le **contexte de build** est bien la racine du clone (pas seulement `apps/erp`) — sinon le build échoue avec des fichiers introuvables (`package-lock.json`, `packages/lib`, etc.).
 5. **Port du conteneur** : **3000** (Next écoute sur `PORT`, défaut 3000).
 6. **Commande de démarrage** : laisser **vide** pour utiliser la `CMD` du Dockerfile (`node .next/standalone/apps/erp/server.js`). Ne pas forcer `next start` — avec `output: "standalone"`, ce n’est pas le runtime prévu.
 7. Coller les variables d’environnement (section ci-dessus). Pour **`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** et les `ARG` du `Dockerfile`, vérifier que Dokploy les transmet aussi à l’étape **build** (pas seulement au conteneur final).
