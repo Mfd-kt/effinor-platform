@@ -2,14 +2,13 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copie tout le monorepo
 COPY . .
 
-# Installe toutes les dépendances (workspaces inclus)
 RUN npm install
 
-# Build complet (workspaces + apps)
-RUN npm run build
+RUN npm run build -w @effinor/lib
+RUN npm run build -w @effinor/ui
+RUN npm run build -w @effinor/website
 
 EXPOSE 3000
 
