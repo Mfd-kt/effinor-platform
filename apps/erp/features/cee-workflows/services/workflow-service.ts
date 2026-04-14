@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  CEE_WORKFLOW_STATUS_VALUES,
   DEFAULT_WORKFLOW_STATUS,
   type CeeWorkflowStatus,
 } from "@/features/cee-workflows/domain/constants";
@@ -19,6 +20,7 @@ import type {
   WorkflowSimulationPayload,
 } from "@/features/cee-workflows/types";
 import { sendSlackAutomationTypedEvent, buildAbsoluteLeadUrl } from "@/features/notifications/services/slack-automation-event-send";
+import { commercialCategoryFromCeeSheet } from "@/features/leads/lib/resolve-lead-commercial-category";
 import type { Database, Json } from "@/types/database.types";
 
 type Supabase = SupabaseClient<Database>;
@@ -48,6 +50,90 @@ function mergeJsonObject(base: Json | null | undefined, patch: Json | null | und
     ...ensureObjectJson(base),
     ...ensureObjectJson(patch),
   };
+}
+
+function carriedWorkflowStatus(prev: CeeSheetWorkflowRow | null): CeeWorkflowStatus {
+  const s = prev?.workflow_status;
+  if (s && (CEE_WORKFLOW_STATUS_VALUES as readonly string[]).includes(s)) {
+    return s as CeeWorkflowStatus;
+  }
+  return DEFAULT_WORKFLOW_STATUS;
+}
+
+type WorkflowDocumentCarryover = Pick<
+  Database["public"]["Tables"]["lead_sheet_workflows"]["Insert"],
+  | "presentation_document_id"
+  | "agreement_document_id"
+  | "quote_document_id"
+  | "agreement_signature_status"
+  | "agreement_signature_provider"
+  | "agreement_signature_request_id"
+  | "agreement_sent_at"
+  | "agreement_signed_at"
+  | "closer_notes"
+>;
+
+function documentFieldsCarryoverFromPrev(prev: CeeSheetWorkflowRow | null): WorkflowDocumentCarryover {
+  if (!prev) {
+    return {};
+  }
+  return {
+    presentation_document_id: prev.presentation_document_id,
+    agreement_document_id: prev.agreement_document_id,
+    quote_document_id: prev.quote_document_id,
+    agreement_signature_status: prev.agreement_signature_status,
+    agreement_signature_provider: prev.agreement_signature_provider,
+    agreement_signature_request_id: prev.agreement_signature_request_id,
+    agreement_sent_at: prev.agreement_sent_at,
+    agreement_signed_at: prev.agreement_signed_at,
+    closer_notes: prev.closer_notes,
+  };
+}
+
+async function deleteOtherLeadSheetWorkflowsForLead(
+  cleanupClient: Supabase,
+  leadId: string,
+  keepWorkflowId: string,
+): Promise<void> {
+  const { data: stale, error: selErr } = await cleanupClient
+    .from("lead_sheet_workflows")
+    .select("id")
+    .eq("lead_id", leadId)
+    .neq("id", keepWorkflowId);
+
+  if (selErr) {
+    throw new Error(selErr.message);
+  }
+
+  const staleIds = stale?.map((r) => r.id) ?? [];
+  if (staleIds.length > 0) {
+    const { error: tvErr } = await cleanupClient
+      .from("technical_visits")
+      .update({ workflow_id: keepWorkflowId })
+      .eq("lead_id", leadId)
+      .in("workflow_id", staleIds);
+    if (tvErr) {
+      throw new Error(tvErr.message);
+    }
+    const { error: pcErr } = await cleanupClient
+      .from("project_carts")
+      .update({ workflow_id: keepWorkflowId })
+      .eq("lead_id", leadId)
+      .in("workflow_id", staleIds);
+    if (pcErr) {
+      throw new Error(pcErr.message);
+    }
+  }
+
+  const { error: delErr } = await cleanupClient
+    .from("lead_sheet_workflows")
+    .delete()
+    .eq("lead_id", leadId)
+    .neq("id", keepWorkflowId);
+
+  if (delErr) {
+    throw new Error(delErr.message);
+  }
 }
 
 async function getWorkflowOrThrow(supabase: Supabase, workflowId: string): Promise<CeeSheetWorkflowRow> {
@@ -206,6 +292,8 @@ export async function createLeadSheetWorkflow(
     simulationResultJson?: Json;
     qualificationDataJson?: Json;
     assignmentPatch?: WorkflowAssignmentPatch;
+    /** Reprise documents / signature / notes closer depuis un workflow précédent (changement de fiche). */
+    documentCarryover?: WorkflowDocumentCarryover;
   },
 ): Promise<CeeSheetWorkflowRow> {
   await getLeadOrThrow(supabase, input.leadId);
@@ -245,6 +333,7 @@ export async function createLeadSheetWorkflow(
       simulation_input_json: ensureObjectJson(input.simulationInputJson),
       simulation_result_json: ensureObjectJson(input.simulationResultJson),
       qualification_data_json: ensureObjectJson(input.qualificationDataJson),
+      ...(input.documentCarryover ?? {}),
     })
     .select("*")
     .single();
@@ -272,6 +361,113 @@ export async function createLeadSheetWorkflow(
   await logWorkflowCreated(supabase, { workflow: data, actorUserId: input.actorUserId ?? null });
 
   return data;
+}
+
+/**
+ * Bascule le lead sur une **nouvelle fiche CEE** : crée un workflow sur la fiche cible en **reprendant**
+ * simulateur, qualification, documents de signature et affectations (si demandé), puis **supprime** tous les
+ * autres `lead_sheet_workflows` du même lead pour éviter les doublons de tunnel. Le dossier `leads` (notes,
+ * e-mails, champs simulateur sur la ligne lead, etc.) reste **le même enregistrement**.
+ *
+ * `workflowCleanupClient` : en général client `service_role` (contrôle métier côté action), car la RLS ne
+ * permet pas à tous les profils habilités au changement de fiche de supprimer des workflows.
+ */
+export async function switchLeadToCeeSheetWorkflow(
+  supabase: Supabase,
+  input: {
+    leadId: string;
+    newCeeSheetId: string;
+    actorUserId?: string | null;
+    copyRoleAssignments?: boolean;
+    syncProductInterest?: boolean;
+  },
+  opts?: {
+    workflowCleanupClient?: Supabase;
+  },
+): Promise<CeeSheetWorkflowRow> {
+  const lead = await getLeadOrThrow(supabase, input.leadId);
+
+  const { data: newSheet, error: newSheetErr } = await supabase
+    .from("cee_sheets")
+    .select("id, code, label, simulator_key, workflow_key, is_commercial_active")
+    .eq("id", input.newCeeSheetId)
+    .is("deleted_at", null)
+    .single();
+
+  if (newSheetErr || !newSheet) {
+    throw new Error(newSheetErr?.message ?? "Fiche CEE introuvable.");
+  }
+  assertCommercialSheetIsActive(newSheet);
+
+  const { data: activeList, error: listErr } = await supabase
+    .from("lead_sheet_workflows")
+    .select("*")
+    .eq("lead_id", input.leadId)
+    .eq("is_archived", false);
+
+  if (listErr) {
+    throw new Error(listErr.message);
+  }
+
+  const active = activeList ?? [];
+  if (active.some((w) => w.cee_sheet_id === input.newCeeSheetId)) {
+    throw new Error("Un workflow actif existe déjà pour cette fiche CEE.");
+  }
+
+  const copyRoles = input.copyRoleAssignments !== false;
+  let prev: CeeSheetWorkflowRow | null = null;
+  if (active.length > 0) {
+    prev =
+      (lead.current_workflow_id ? active.find((w) => w.id === lead.current_workflow_id) : null) ??
+      active[0] ??
+      null;
+  } else if (lead.current_workflow_id) {
+    const { data: archivedRef } = await supabase
+      .from("lead_sheet_workflows")
+      .select("*")
+      .eq("id", lead.current_workflow_id)
+      .maybeSingle();
+    prev = archivedRef ?? null;
+  }
+
+  let assignmentPatch: WorkflowAssignmentPatch | undefined;
+  if (copyRoles && prev) {
+    assignmentPatch = {
+      assignedAgentUserId: prev.assigned_agent_user_id,
+      assignedConfirmateurUserId: prev.assigned_confirmateur_user_id,
+      assignedCloserUserId: prev.assigned_closer_user_id,
+    };
+  }
+
+  const created = await createLeadSheetWorkflow(supabase, {
+    leadId: input.leadId,
+    ceeSheetId: input.newCeeSheetId,
+    workflowStatus: carriedWorkflowStatus(prev),
+    simulationInputJson: prev?.simulation_input_json,
+    simulationResultJson: prev?.simulation_result_json,
+    qualificationDataJson: prev?.qualification_data_json,
+    documentCarryover: documentFieldsCarryoverFromPrev(prev),
+    assignmentPatch,
+    actorUserId: input.actorUserId,
+  });
+
+  const cleanupClient = opts?.workflowCleanupClient ?? supabase;
+  await deleteOtherLeadSheetWorkflowsForLead(cleanupClient, input.leadId, created.id);
+
+  if (input.syncProductInterest !== false) {
+    const cat = commercialCategoryFromCeeSheet(newSheet);
+    if (cat) {
+      const { error: upLeadErr } = await supabase
+        .from("leads")
+        .update({ product_interest: cat })
+        .eq("id", input.leadId);
+      if (upLeadErr) {
+        throw new Error(upLeadErr.message);
+      }
+    }
+  }
+
+  return created;
 }
 
 export async function assignWorkflowUsers(

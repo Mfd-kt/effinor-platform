@@ -11,6 +11,7 @@ import { ProductEditForm } from "@/features/products/components/product-edit-for
 import { ProductImageGallery } from "@/features/products/components/product-image-gallery";
 import { ProductSpecsPanel } from "@/features/products/components/product-specs-panel";
 import { queryProductByIdForAdmin } from "@/features/products/queries/get-product-admin";
+import { productFamilyLabel } from "@/features/products/lib/product-taxonomy";
 import { requireSuperAdmin } from "@/lib/auth/guards";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +75,7 @@ export default async function SettingsProductDetailPage({ params }: Props) {
             </CardHeader>
             <CardContent className="pt-6">
               <ProductSpecsPanel
+                productId={product.id}
                 specs={product.specs}
                 keyMetrics={product.keyMetrics}
               />
@@ -113,7 +115,7 @@ export default async function SettingsProductDetailPage({ params }: Props) {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Famille</dt>
-                  <dd>{product.product_family ?? "—"}</dd>
+                  <dd>{productFamilyLabel(product.product_family)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Référence</dt>

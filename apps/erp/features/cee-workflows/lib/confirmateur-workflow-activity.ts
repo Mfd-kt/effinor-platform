@@ -1,5 +1,6 @@
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import { contactDisplayName } from "@/features/leads/lib/contact-map";
+import { resolveAgentActivityNotesPreview } from "@/features/cee-workflows/lib/sync-agent-quick-note-to-internal-notes";
 
 export type ConfirmateurQueueItem = {
   workflowId: string;
@@ -59,7 +60,10 @@ export function mapWorkflowToConfirmateurQueueItem(
       typeof getSimulationValue(workflow.simulation_result_json, "model") === "string"
         ? (getSimulationValue(workflow.simulation_result_json, "model") as string)
         : null,
-    recordingNotes: workflow.lead?.recording_notes ?? null,
+    recordingNotes: resolveAgentActivityNotesPreview(
+      workflow.simulation_input_json,
+      workflow.lead?.recording_notes,
+    ),
   };
 }
 

@@ -1,5 +1,6 @@
 import {
   CircleDollarSign,
+  ClipboardCheck,
   ContactRound,
   FolderKanban,
   Headset,
@@ -10,6 +11,7 @@ import {
   Settings,
   ShieldCheck,
   UserRound,
+  UserRoundX,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -41,6 +43,8 @@ export const sidebarNavigation: SidebarNavEntry[] = [
   { kind: "link", href: "/confirmateur", label: "Confirmateur", icon: ShieldCheck },
   { kind: "link", href: "/closer", label: "Closer", icon: CircleDollarSign },
   { kind: "link", href: "/leads", label: "Fiches prospects", icon: FolderKanban },
+  { kind: "link", href: "/leads/lost", label: "Prospects perdus", icon: UserRoundX },
+  { kind: "link", href: "/technical-visits", label: "Visites techniques", icon: ClipboardCheck },
   { kind: "link", href: "/tasks", label: "Tâches", icon: ListTodo },
   { kind: "link", href: "/digests", label: "Digest", icon: ScrollText },
   { kind: "link", href: "/account", label: "Mon compte", icon: UserRound },

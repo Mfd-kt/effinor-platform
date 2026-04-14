@@ -263,7 +263,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
 
   const inWeek = (iso: string) => new Date(iso).getTime() >= weekStartMs;
 
-  const workflows = await getLeadSheetWorkflowsForAccess(access, {});
+  const workflows = await getLeadSheetWorkflowsForAccess(access, { includeLostWorkflows: true });
   const workflowsById = new Map(workflows.map((w) => [w.id, w]));
 
   const [bundle, allCallbacks, automationRes, newLeadsRes, leadsWeekRes, workflowLogsRes] =

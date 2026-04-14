@@ -9,7 +9,9 @@ export type AutomationType =
   | "ai_follow_up_scheduled"
   | "rebalance_assignments"
   | "ai_orchestrator_tick"
-  | "ai_orchestrator_report";
+  | "ai_orchestrator_report"
+  | "technical_visit_reminder"
+  | "cee_workflow_nudge";
 
 export type AutomationLogStatus = "success" | "skipped" | "failed";
 

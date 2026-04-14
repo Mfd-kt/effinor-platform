@@ -12,7 +12,8 @@ export type CockpitVariant =
   | "sales_agent"
   | "default";
 
-async function userIsActiveCeeTeamManager(userId: string): Promise<boolean> {
+/** Manager d’équipe CEE actif (membre `cee_sheet_team_members` avec rôle manager). */
+export async function userIsActiveCeeTeamManager(userId: string): Promise<boolean> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cee_sheet_team_members")

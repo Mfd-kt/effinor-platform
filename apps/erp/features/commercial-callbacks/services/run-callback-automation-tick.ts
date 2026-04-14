@@ -11,7 +11,7 @@ import type { Database } from "@/types/database.types";
 
 type CommercialCallbackUpdate = Database["public"]["Tables"]["commercial_callbacks"]["Update"];
 
-const NO_AUTO = new Set(["in_progress", "completed", "cancelled", "converted_to_lead"]);
+const NO_AUTO = new Set(["in_progress", "completed", "cancelled", "converted_to_lead", "lost"]);
 
 function computeNextStatus(row: CommercialCallbackRow, now: Date): string | null {
   if (NO_AUTO.has(row.status)) return null;

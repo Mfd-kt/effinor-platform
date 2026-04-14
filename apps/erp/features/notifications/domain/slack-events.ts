@@ -18,6 +18,8 @@ export const SlackEventType = {
   QUOTE_GENERATED: "slack.quote.generated",
   DOCUMENT_SIGNED: "slack.document.signed",
   CEE_DOSSIER_INCOMPLETE: "slack.cee.dossier_incomplete",
+  /** Relance interne (cron) — workflow CEE stagnant sans contact client. */
+  CEE_WORKFLOW_NUDGE_CRON: "slack.cee.workflow_nudge_cron",
   CEE_DOSSIER_VALIDATED: "slack.cee.dossier_validated",
   CEE_DOSSIER_DEPOSITED: "slack.cee.dossier_deposited",
   CEE_DOSSIER_REFUSED: "slack.cee.dossier_refused",
@@ -26,6 +28,8 @@ export const SlackEventType = {
   READY_TO_INVOICE: "slack.finance.ready_to_invoice",
   TREASURY_ALERT: "slack.finance.treasury_alert",
   VT_SCHEDULED: "slack.vt.scheduled",
+  /** Rappel interne (cron) J-1 / ~H-2 avant une VT planifiée — pas de contact client. */
+  VT_REMINDER_CRON: "slack.vt.reminder_cron",
   VT_PERFORMED: "slack.vt.performed",
   SITE_PLANNED: "slack.site.planned",
   SITE_COMPLETED: "slack.site.completed",

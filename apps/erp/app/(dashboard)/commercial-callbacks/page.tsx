@@ -6,6 +6,8 @@ import {
   fetchCommercialCallbacksAllVisible,
   fetchProfileDisplayNamesByIds,
 } from "@/features/commercial-callbacks/queries/get-commercial-callbacks-for-agent";
+import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
+import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
 import { PageHeader } from "@/components/shared/page-header";
 import { getAccessContext } from "@/lib/auth/access-context";
 
@@ -15,7 +17,11 @@ export default async function CommercialCallbacksTeamPage() {
     redirect("/");
   }
 
-  const rows = await fetchCommercialCallbacksAllVisible();
+  const [rows, dashboard, destratProducts] = await Promise.all([
+    fetchCommercialCallbacksAllVisible(),
+    getAgentDashboardData(access, undefined, { restrictToLeadsCreatedByCurrentUser: false }),
+    getAgentDestratSimulatorProducts(),
+  ]);
   const agentIds = rows
     .map((r) => r.assigned_agent_user_id)
     .filter((id): id is string => id != null && id !== "");
@@ -27,7 +33,11 @@ export default async function CommercialCallbacksTeamPage() {
         title="Rappels commerciaux — vue équipe"
         description="Consultez les rappels de chaque agent commercial et retirez-les de la liste si nécessaire (suppression logique)."
       />
-      <CommercialCallbacksTeamClient rows={rows} agentNameById={agentNameById} />
+      <CommercialCallbacksTeamClient
+        rows={rows}
+        agentNameById={agentNameById}
+        agentSimulator={{ sheets: dashboard.sheets, destratProducts }}
+      />
     </div>
   );
 }

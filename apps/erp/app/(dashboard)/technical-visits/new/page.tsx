@@ -5,7 +5,7 @@ import { fetchLeadInternalNotesPlainBlock } from "@/features/leads/lib/lead-inte
 import { buildTechnicalVisitDefaultsFromLead } from "@/features/leads/lib/lead-to-technical-visit";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessTechnicalVisitsModule } from "@/lib/auth/module-access";
+import { canAccessTechnicalVisitsDirectoryNav } from "@/lib/auth/module-access";
 import { createClient } from "@/lib/supabase/server";
 import { TechnicalVisitForm } from "@/features/technical-visits/components/technical-visit-form";
 import { getTechnicalVisitFormOptions } from "@/features/technical-visits/queries/get-technical-visit-form-options";
@@ -22,7 +22,7 @@ export default async function NewTechnicalVisitPage({ searchParams }: PageProps)
   const rawLeadId = typeof sp.lead_id === "string" ? sp.lead_id.trim() : "";
 
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessTechnicalVisitsModule(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessTechnicalVisitsDirectoryNav(access))) {
     notFound();
   }
   const options = await getTechnicalVisitFormOptions(

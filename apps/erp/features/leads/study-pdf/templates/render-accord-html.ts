@@ -27,14 +27,15 @@ export function renderAccordHtml(vm: StudyPdfViewModel): string {
   const restCharge = euro(Math.max(0, vm.simulation.installTotalEuro - ceePrime));
   const dt = dateFr(vm.generatedAtIso);
   const co = vm.client.companyName;
+  const pacEquipLabel = vm.products[0]?.displayName?.trim() || "Pompe à chaleur air / eau";
   const docSub = isPac
-    ? "Projet pompe à chaleur air / eau — validation préalable à instruction technique et administrative"
+    ? "Projet pompe à chaleur air / eau (tertiaire et résidentiel collectif) — validation préalable à instruction technique et administrative"
     : "Projet de déstratification d'air — validation préalable à instruction technique et administrative";
   const intro = isPac
-    ? "Le présent document formalise l'accord de principe du client pour poursuivre l'instruction technique et administrative du projet de pompe à chaleur présenté par Effinor."
+    ? "Le présent document formalise l'accord de principe du client pour poursuivre l'instruction technique et administrative d'un projet de pompe à chaleur air / eau, applicable aux bâtiments tertiaires et à l'habitat collectif, présenté par Effinor."
     : "Le présent document formalise l'accord de principe du client pour poursuivre l'instruction technique et administrative du projet de déstratification présenté par Effinor.";
   const synth = isPac
-    ? `Solution pompe à chaleur air / eau (Bosch) — ${num(vm.equipmentQuantity)} unité${vm.equipmentQuantity > 1 ? "s" : ""} — économies annuelles indicatives : ${euro(vm.simulation.annualSavingEuro)}.`
+    ? `Solution ${pacEquipLabel} — ${num(vm.equipmentQuantity)} unité${vm.equipmentQuantity > 1 ? "s" : ""} — champs d'application visés : tertiaire et résidentiel collectif — économies annuelles indicatives : ${euro(vm.simulation.annualSavingEuro)}.`
     : `Solution de déstratification d'air — ${num(vm.simulation.neededDestrat)} appareil${vm.simulation.neededDestrat > 1 ? "s" : ""} ${vm.simulation.model}.`;
 
   return `<!doctype html>

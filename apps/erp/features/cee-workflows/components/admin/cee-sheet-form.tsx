@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,8 +74,8 @@ export function CeeSheetForm({
   onSaved: (sheetId: string) => void;
 }) {
   const [form, setForm] = useState<AdminCeeSheetFormValue>(formFromSheet(sheet));
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [feedback, setFeedback] = useState<{ text: string; variant: "ok" | "err" } | null>(null);
+  const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
     setForm(formFromSheet(sheet));
@@ -86,9 +86,10 @@ export function CeeSheetForm({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function submit() {
+  async function submit() {
     setFeedback(null);
-    startTransition(async () => {
+    setIsPending(true);
+    try {
       const action = form.id ? updateCeeSheet : createCeeSheet;
       const result = await action({
         id: form.id,
@@ -108,13 +109,22 @@ export function CeeSheetForm({
         internal_notes: form.internal_notes || null,
       });
       if (!result.ok) {
-        setFeedback(result.message);
+        setFeedback({ text: result.message, variant: "err" });
         return;
       }
-      setFeedback("Fiche CEE enregistrée.");
+      setFeedback({ text: "Fiche CEE enregistrée.", variant: "ok" });
       onSaved(result.data);
-    });
+    } finally {
+      setIsPending(false);
+    }
   }
+
+  const canSubmit =
+    Boolean(form.code.trim()) &&
+    Boolean(form.name.trim()) &&
+    Boolean(form.simulator_key.trim()) &&
+    Boolean(form.presentation_template_key.trim()) &&
+    Boolean(form.agreement_template_key.trim());
 
   return (
     <Card className="border-border/80 shadow-sm">
@@ -123,6 +133,19 @@ export function CeeSheetForm({
         <CardDescription>Configuration métier, simulateur, templates et comportement du workflow.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {feedback ? (
+          <div
+            role={feedback.variant === "err" ? "alert" : "status"}
+            className={
+              feedback.variant === "err"
+                ? "rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                : "rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200"
+            }
+          >
+            {feedback.text}
+          </div>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="cee-code">Code *</Label>
@@ -143,6 +166,10 @@ export function CeeSheetForm({
           <div className="space-y-1.5">
             <Label htmlFor="cee-simulator">Simulator key *</Label>
             <Input id="cee-simulator" value={form.simulator_key} onChange={(e) => patch("simulator_key", e.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              Lier à la ligne métier : <code className="rounded bg-muted px-1">destrat</code> pour déstratificateurs,{" "}
+              <code className="rounded bg-muted px-1">pac</code> pour pompes à chaleur (présentation / accord / simulateur).
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="cee-workflow-key">Workflow key</Label>
@@ -186,12 +213,8 @@ export function CeeSheetForm({
           <Textarea id="cee-internal-notes" value={form.internal_notes} onChange={(e) => patch("internal_notes", e.target.value)} className="min-h-20" />
         </div>
 
-        {feedback ? (
-          <div className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">{feedback}</div>
-        ) : null}
-
         <div className="flex justify-end">
-          <Button onClick={submit} disabled={isPending || !form.code.trim() || !form.name.trim()}>
+          <Button onClick={submit} disabled={isPending || !canSubmit}>
             {form.id ? "Mettre à jour" : "Créer la fiche"}
           </Button>
         </div>

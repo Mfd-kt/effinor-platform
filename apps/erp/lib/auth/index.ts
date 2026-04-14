@@ -23,9 +23,11 @@ export {
   canAccessInvoicesModule,
   canAccessLeadsDirectoryNav,
   canAccessLeadsModule,
+  canAccessLostLeadsInbox,
   canAccessProductsModule,
   canAccessQuotesModule,
   canAccessTechnicalStudiesModule,
+  canAccessTechnicalVisitsDirectoryNav,
   canAccessTechnicalVisitsModule,
 } from "./module-access";
 export { canAccessInstallationsPage } from "./installations-access";

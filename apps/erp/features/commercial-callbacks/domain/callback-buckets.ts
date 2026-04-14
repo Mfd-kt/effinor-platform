@@ -71,8 +71,12 @@ export function partitionCallbacksBySection(
 }
 
 /** Onglets agent : sans chevauchement (jour J vs jours passés). */
-export type AgentCallbackTabKey = "due_now" | "today" | "overdue" | "upcoming" | "archive";
+export type AgentCallbackTabKey = "due_now" | "today" | "overdue" | "upcoming" | "lost";
 
+/**
+ * Rappels terminaux hors `lost` (effectué, annulé, converti…) : exclus des onglets —
+ * le dossier converti est sur les leads ; les autres clôtures ne sont plus listées ici.
+ */
 export function partitionAgentCallbackViews(
   rows: CommercialCallbackRow[],
   now: Date = new Date(),
@@ -81,13 +85,15 @@ export function partitionAgentCallbackViews(
   const todayLater: CommercialCallbackRow[] = [];
   const overduePast: CommercialCallbackRow[] = [];
   const upcoming: CommercialCallbackRow[] = [];
-  const archive: CommercialCallbackRow[] = [];
+  const lost: CommercialCallbackRow[] = [];
 
   const todayYmd = calendarDateInParis(now);
 
   for (const row of rows) {
     if (isTerminalCallbackStatus(row.status)) {
-      archive.push(row);
+      if (row.status === "lost") {
+        lost.push(row);
+      }
       continue;
     }
     if (row.callback_date > todayYmd) {
@@ -114,13 +120,13 @@ export function partitionAgentCallbackViews(
   todayLater.sort(sortFn);
   overduePast.sort(sortFn);
   upcoming.sort(sortFn);
-  archive.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  lost.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   return {
     due_now: dueNow,
     today: todayLater,
     overdue: overduePast,
     upcoming,
-    archive,
+    lost,
   };
 }

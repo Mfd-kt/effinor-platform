@@ -13,6 +13,7 @@ export const CALLBACK_STATUSES = [
   "cancelled",
   "converted_to_lead",
   "cold_followup",
+  "lost",
 ] as const;
 
 export type CallbackStatus = (typeof CALLBACK_STATUSES)[number];
@@ -28,6 +29,7 @@ export const CALLBACK_STATUS_LABELS: Record<CallbackStatus, string> = {
   cancelled: "Annulé",
   converted_to_lead: "Converti lead",
   cold_followup: "Relance froide",
+  lost: "Perdu",
 };
 
 export const CALLBACK_PRIORITIES = ["low", "normal", "high", "critical"] as const;
@@ -77,6 +79,7 @@ export function callbackStatusBadgeVariant(
     case "cold_followup":
       return "secondary";
     case "cancelled":
+    case "lost":
       return "secondary";
     default:
       return "outline";

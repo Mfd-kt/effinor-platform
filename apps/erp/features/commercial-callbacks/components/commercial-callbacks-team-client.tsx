@@ -18,17 +18,24 @@ import {
   computeCommercialCallbackKpis,
 } from "@/features/commercial-callbacks/lib/commercial-callback-metrics";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
+import type { AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
+import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 
 const UNASSIGNED_VALUE = "__unassigned__";
 
 type CommercialCallbacksTeamClientProps = {
   rows: CommercialCallbackRow[];
   agentNameById: Record<string, string>;
+  agentSimulator: {
+    sheets: AgentAvailableSheet[];
+    destratProducts: SimulatorProductCardViewModel[];
+  };
 };
 
 export function CommercialCallbacksTeamClient({
   rows,
   agentNameById,
+  agentSimulator,
 }: CommercialCallbacksTeamClientProps) {
   const router = useRouter();
   const [agentFilter, setAgentFilter] = useState<string>("all");
@@ -116,6 +123,7 @@ export function CommercialCallbacksTeamClient({
         }}
         assignedAgentLabels={labelsWithUnassigned}
         directorTeamMode
+        agentSimulator={agentSimulator}
       />
 
       <CommercialCallbackSheet

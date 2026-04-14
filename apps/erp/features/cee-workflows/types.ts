@@ -100,6 +100,17 @@ export type WorkflowScopedListRow = CeeSheetWorkflowRow & {
     full_name: string | null;
     email: string;
   } | null;
+  /** Équipe CEE rattachée au workflow (pour affichage du manager). */
+  cee_sheet_team?: {
+    id: string;
+    name: string;
+    cee_sheet_team_members: Array<{
+      role_in_team: string;
+      is_active: boolean;
+      user_id: string;
+      profile: { id: string; full_name: string | null; email: string } | null;
+    }> | null;
+  } | null;
 };
 
 export type WorkflowRoleBucket = Record<CeeTeamRole, CeeSheetTeamMemberWithProfile[]>;

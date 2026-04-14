@@ -16,7 +16,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AgentProspectForm, DEFAULT_AGENT_PROSPECT_FORM, type AgentProspectFormValue } from "@/features/cee-workflows/components/agent-prospect-form";
+import {
+  AgentProspectForm,
+  DEFAULT_AGENT_PROSPECT_FORM,
+  type AgentProspectFormValue,
+} from "@/features/cee-workflows/components/agent-prospect-form";
+
+export type AgentSimulatorLeadSession = { leadId: string } & AgentProspectFormValue;
 import { AgentSheetSelector } from "@/features/cee-workflows/components/agent-sheet-selector";
 import { AgentSheetSimulatorPanel } from "@/features/cee-workflows/components/agent-sheet-simulator-panel";
 import { AgentWorkflowActivityPanel } from "@/features/cee-workflows/components/agent-workflow-activity-panel";
@@ -118,6 +124,8 @@ export function AgentWorkstation({
   callbackPerformance,
   /** Fiche CEE à privilégier (ex. `?lead=` résolu côté serveur) — prime sur le dernier choix en localStorage. */
   initialSheetId = null,
+  /** Ouvre le simulateur avec prospect prérempli (ex. conversion rappel → `?lead=&simulator=1`). */
+  initialSimulatorSession = null,
 }: {
   sheets: AgentAvailableSheet[];
   activity: AgentActivityBuckets;
@@ -126,6 +134,7 @@ export function AgentWorkstation({
   callbackKpis: CommercialCallbackKpis;
   callbackPerformance: CallbackPerformanceStats;
   initialSheetId?: string | null;
+  initialSimulatorSession?: AgentSimulatorLeadSession | null;
 }) {
   const router = useRouter();
   const skipDraftHydrate = useRef(false);
@@ -145,6 +154,28 @@ export function AgentWorkstation({
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [callbackSheetOpen, setCallbackSheetOpen] = useState(false);
   const [callbackEditing, setCallbackEditing] = useState<CommercialCallbackRow | null>(null);
+  const simulatorBootstrapRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const key = initialSimulatorSession?.leadId ?? null;
+    if (!initialSimulatorSession || !key) {
+      return;
+    }
+    if (simulatorBootstrapRef.current === key) {
+      return;
+    }
+    simulatorBootstrapRef.current = key;
+    skipDraftHydrate.current = true;
+    const { leadId: sessionLeadId, ...prospectVals } = initialSimulatorSession;
+    setLeadId(sessionLeadId);
+    setWorkflowId(undefined);
+    setWorkflowStatus("draft");
+    setProspect(prospectVals);
+    setDestratState(DEFAULT_AGENT_DESTRAT_STATE);
+    setDestratUiStep(1);
+    setFeedback(null);
+    queueMicrotask(() => setSimulatorOpen(true));
+  }, [initialSimulatorSession]);
 
   useEffect(() => {
     const trimmed = initialSheetId?.trim() ?? "";
@@ -556,6 +587,7 @@ export function AgentWorkstation({
           setCallbackEditing(row);
           setCallbackSheetOpen(true);
         }}
+        agentSimulator={{ sheets, destratProducts }}
       />
 
       <CommercialCallbackSheet

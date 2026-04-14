@@ -12,7 +12,8 @@ import {
   canAccessCockpitRoute,
   canAccessConfirmateurWorkspace,
   canAccessLeadsDirectoryNav,
-  canAccessTechnicalVisitsModule,
+  canAccessLostLeadsInbox,
+  canAccessTechnicalVisitsDirectoryNav,
 } from "./module-access";
 
 const CORE_HREFS = ["/", "/tasks", "/account", "/agent-operations", "/digests"] as const;
@@ -47,7 +48,10 @@ export async function buildAllowedNavHrefs(
   if (canAccessLeadsDirectoryNav(access)) {
     extra.push("/leads");
   }
-  if (canAccessTechnicalVisitsModule(access)) {
+  if (await canAccessLostLeadsInbox(access)) {
+    extra.push("/leads/lost");
+  }
+  if (await canAccessTechnicalVisitsDirectoryNav(access)) {
     extra.push("/technical-visits");
   }
   if (await canAccessInstallationsPage(supabase, access)) {

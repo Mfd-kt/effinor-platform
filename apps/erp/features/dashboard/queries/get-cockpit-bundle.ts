@@ -235,7 +235,8 @@ export async function getCockpitBundle(
 
   const supabase = await createClient();
   const workflows =
-    opts?.preloadedWorkflows ?? (await getLeadSheetWorkflowsForAccess(access, {}));
+    opts?.preloadedWorkflows ??
+    (await getLeadSheetWorkflowsForAccess(access, { includeLostWorkflows: true }));
   const filterOptions = await loadFilterOptions(access, workflows);
 
   const leadIds = await getLeadIdsForAccess(supabase, access);

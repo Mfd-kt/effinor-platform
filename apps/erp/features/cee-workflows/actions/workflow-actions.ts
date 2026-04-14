@@ -8,6 +8,7 @@ import {
   assignWorkflowUsers as assignWorkflowUsersInService,
   completeSimulation as completeSimulationInService,
   createLeadSheetWorkflow as createLeadSheetWorkflowInService,
+  switchLeadToCeeSheetWorkflow as switchLeadToCeeSheetWorkflowInService,
   markAgreementSent as markAgreementSentInService,
   markAgreementSigned as markAgreementSignedInService,
   markWorkflowLost as markWorkflowLostInService,
@@ -20,6 +21,7 @@ import {
   AssignWorkflowUsersSchema,
   CompleteSimulationSchema,
   CreateLeadSheetWorkflowSchema,
+  SwitchLeadCeeSheetWorkflowSchema,
   MarkAgreementSentSchema,
   MarkAgreementSignedSchema,
   MarkWorkflowLostSchema,
@@ -29,6 +31,10 @@ import {
   WorkflowQualificationSchema,
 } from "@/features/cee-workflows/schemas/cee-workflow.schema";
 import type { CeeSheetWorkflowEventRow, CeeSheetWorkflowRow } from "@/features/cee-workflows/types";
+import { getAccessContext } from "@/lib/auth/access-context";
+import { canReassignWorkflowRoles } from "@/lib/auth/lead-permissions";
+import { canUserSwitchLeadCeeSheetOnLead } from "@/lib/auth/switch-cee-sheet-eligibility";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database.types";
 
@@ -81,12 +87,72 @@ export async function createLeadSheetWorkflow(
   }
 }
 
+export async function switchLeadToCeeSheetWorkflow(
+  input: unknown,
+): Promise<WorkflowActionResult<CeeSheetWorkflowRow>> {
+  const parsed = SwitchLeadCeeSheetWorkflowSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Données invalides." };
+  }
+  const access = await getAccessContext();
+  const auth = await getAuthenticatedSupabase();
+  if (!auth.ok) return auth;
+
+  const { data: leadRow, error: leadErr } = await auth.supabase
+    .from("leads")
+    .select("id, created_by_agent_id, confirmed_by_user_id")
+    .eq("id", parsed.data.leadId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (leadErr || !leadRow) {
+    return { ok: false, message: leadErr?.message ?? "Lead introuvable." };
+  }
+  if (!(await canUserSwitchLeadCeeSheetOnLead(auth.supabase, access, leadRow))) {
+    return {
+      ok: false,
+      message:
+        "Accès refusé : seuls le super administrateur, le confirmateur, le closer ou un manager d’équipe CEE (sur la fiche du dossier) peuvent changer la fiche CEE.",
+    };
+  }
+
+  try {
+    let workflowCleanupClient = auth.supabase;
+    try {
+      workflowCleanupClient = createAdminClient();
+    } catch {
+      // Sans service_role, le nettoyage des anciens workflows repose sur les droits RLS (ex. super_admin).
+    }
+    const workflow = await switchLeadToCeeSheetWorkflowInService(
+      auth.supabase,
+      {
+        leadId: parsed.data.leadId,
+        newCeeSheetId: parsed.data.newCeeSheetId,
+        actorUserId: auth.userId,
+        copyRoleAssignments: parsed.data.copyRoleAssignments,
+        syncProductInterest: parsed.data.syncProductInterest,
+      },
+      { workflowCleanupClient },
+    );
+    revalidateWorkflowPaths(workflow);
+    revalidatePath("/confirmateur");
+    revalidatePath("/closer");
+    revalidatePath("/agent");
+    return { ok: true, data: workflow };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Erreur inattendue." };
+  }
+}
+
 export async function assignWorkflowUsers(
   input: unknown,
 ): Promise<WorkflowActionResult<CeeSheetWorkflowRow>> {
   const parsed = AssignWorkflowUsersSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: "Données invalides." };
+  }
+  const access = await getAccessContext();
+  if (access.kind !== "authenticated" || !canReassignWorkflowRoles(access.roleCodes)) {
+    return { ok: false, message: "Seul le super administrateur peut modifier les affectations du workflow." };
   }
   const auth = await getAuthenticatedSupabase();
   if (!auth.ok) return auth;

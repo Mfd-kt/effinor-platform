@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 
 import type { AccessContext } from "./access-context";
+import { getManagedTeamsContext } from "@/features/dashboard/queries/get-managed-teams-context";
 import { getLeadScopeForAccess, hasFullCommercialDataAccess } from "./lead-scope";
 import type { LeadScope } from "./lead-scope";
 import { permScopeAllCode, permScopeCreatorCode } from "./table-scope";
@@ -261,6 +262,29 @@ export function shouldRestrictTechnicalVisitsToCreatorOnly(access: AccessContext
   return pc.has(PERM_TECH_VISITS_SCOPE_CREATOR) || pc.has(PERM_TECH_VISITS_CREATOR_ONLY);
 }
 
+async function canAccessTechnicalVisitViaManagedCeeSheets(
+  supabase: SupabaseClient<Database>,
+  leadId: string,
+  userId: string,
+): Promise<boolean> {
+  const ctx = await getManagedTeamsContext(userId);
+  if (!ctx?.sheetIds.length) {
+    return false;
+  }
+  const { data, error } = await supabase
+    .from("lead_sheet_workflows")
+    .select("id")
+    .eq("lead_id", leadId)
+    .in("cee_sheet_id", ctx.sheetIds)
+    .eq("is_archived", false)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    return false;
+  }
+  return Boolean(data);
+}
+
 export async function canAccessTechnicalVisitDetail(
   supabase: SupabaseClient<Database>,
   visit: { lead_id: string; created_by_user_id: string | null },
@@ -272,7 +296,10 @@ export async function canAccessTechnicalVisitDetail(
   if (shouldRestrictTechnicalVisitsToCreatorOnly(access)) {
     return visit.created_by_user_id === access.userId;
   }
-  return canAccessTechnicalVisitByLeadId(supabase, visit.lead_id, access);
+  if (await canAccessTechnicalVisitByLeadId(supabase, visit.lead_id, access)) {
+    return true;
+  }
+  return canAccessTechnicalVisitViaManagedCeeSheets(supabase, visit.lead_id, access.userId);
 }
 
 export async function canAccessTechnicalVisitByLeadId(

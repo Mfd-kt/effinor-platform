@@ -114,7 +114,7 @@ export function isCallbackOverdue(
 
 export type CallbackListFilter = "today" | "upcoming" | "overdue" | "completed" | "all";
 
-const TERMINAL = new Set(["completed", "cancelled", "converted_to_lead"]);
+const TERMINAL = new Set(["completed", "cancelled", "converted_to_lead", "lost"]);
 
 export function isTerminalCallbackStatus(status: string): boolean {
   return TERMINAL.has(status);

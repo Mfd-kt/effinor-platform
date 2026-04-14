@@ -1,5 +1,7 @@
 import type { AccessContext } from "./access-context";
-import { isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
+import {
+  isCeeTeamManager,
+} from "@/features/dashboard/queries/get-managed-teams-context";
 import { canAccessCeeWorkflowsModule as canAccessCeeWorkflowsModuleByScope } from "./cee-workflows-scope";
 import { hasFullCommercialDataAccess } from "./lead-scope";
 import { PERM_ACCESS_INSTALLATIONS, PERM_ACCESS_TECHNICAL_VISITS } from "./permission-codes";
@@ -66,6 +68,20 @@ export function canAccessLeadsDirectoryNav(access: AccessContext): boolean {
   );
 }
 
+/**
+ * Liste dédiée `/leads/lost` : direction commerciale / admin et managers d’équipe CEE actifs.
+ * Les leads au statut `lost` sont exclus des autres listes opérationnelles.
+ */
+export async function canAccessLostLeadsInbox(access: AccessContext): Promise<boolean> {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (canAccessLeadsDirectoryNav(access)) {
+    return true;
+  }
+  return isCeeTeamManager(access.userId);
+}
+
 /** Visites techniques : matrice OU leads (parcours lié). */
 export function canAccessTechnicalVisitsModule(access: AccessContext): boolean {
   return hasAnyTableScopeModuleAccess(
@@ -73,6 +89,29 @@ export function canAccessTechnicalVisitsModule(access: AccessContext): boolean {
     ["technical_visits", "leads"],
     { technical_visits: legacyTechnicalVisitsModule },
   );
+}
+
+/**
+ * Liste / fiches `/technical-visits` : droits matière visites OU pilotage commercial,
+ * ou manager d’équipe CEE (périmètre workflows des fiches gérées).
+ */
+export async function canAccessTechnicalVisitsDirectoryNav(access: AccessContext): Promise<boolean> {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (canAccessTechnicalVisitsModule(access)) {
+    return true;
+  }
+  const rc = access.roleCodes;
+  if (
+    rc.includes("super_admin") ||
+    rc.includes("admin") ||
+    rc.includes("closer") ||
+    rc.includes("sales_director")
+  ) {
+    return true;
+  }
+  return isCeeTeamManager(access.userId);
 }
 
 /** Installations : matrice, rôles internes, ou technicien terrain (liste filtrée par assignation). */

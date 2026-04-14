@@ -63,6 +63,7 @@ export const DESTRAT_CATALOG: Record<DestratProductId, DestratProduct> = {
     sortOrder: 20,
     isActive: true,
   },
+  /** Fiche PAC des PDF d’étude. Pour afficher photo / galerie depuis l’ERP : créer (ou garder) un produit dont le `product_code` en base est exactement `bosch_pac_air_eau`, puis ajouter la couverture dans Paramètres → Produits. */
   bosch_pac_air_eau: {
     id: "bosch_pac_air_eau",
     brand: "Bosch",
@@ -71,13 +72,13 @@ export const DESTRAT_CATALOG: Record<DestratProductId, DestratProduct> = {
     slug: "bosch-pac-air-eau",
     category: "pac",
     description:
-      "Solution de remplacement ou d’optimisation par pompe à chaleur air / eau — rendement saisonnier élevé, compatible opérations CEE (référence commerciale indicative, modèle définitif après dimensionnement).",
+      "Pompe à chaleur air / eau pour le chauffage et l’eau chaude sanitaire — bâtiments tertiaires et résidentiel collectif. Rendement saisonnier élevé, compatible opérations CEE (référence indicative, modèle définitif après dimensionnement).",
     imageUrl: null,
     fallbackImageUrl: null,
     specs: [
       { label: "Type", value: "Pompe à chaleur air / eau" },
       { label: "Marque", value: "Bosch" },
-      { label: "Usage", value: "Chauffage tertiaire / industriel léger" },
+      { label: "Usage", value: "Tertiaire, résidentiel collectif, chauffage et ECS" },
       { label: "Fluide", value: "R32 (indicatif — selon gamme retenue)" },
       { label: "Régulation", value: "Sonde extérieure / courbe d’eau (principe)" },
       { label: "Garantie", value: "Selon conditions fabricant / poseur" },

@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { completeCallbackOutcome } from "@/features/commercial-callbacks/actions/complete-callback-outcome";
-import { convertCommercialCallbackToLead } from "@/features/commercial-callbacks/actions/convert-callback-to-lead";
 import { rescheduleCommercialCallback } from "@/features/commercial-callbacks/actions/reschedule-commercial-callback";
 import { isTerminalCallbackStatus } from "@/features/commercial-callbacks/domain/callback-dates";
 import {
@@ -47,13 +46,14 @@ import { cn } from "@/lib/utils";
 type CallbackRowActionsProps = {
   row: CommercialCallbackRow;
   onEdit: (row: CommercialCallbackRow) => void;
+  /** Ouvre le simulateur de conversion (poste agent / vue équipe avec fiches CEE). */
+  onOpenConvertSimulator?: () => void;
 };
 
-export function CallbackRowActions({ row, onEdit }: CallbackRowActionsProps) {
+export function CallbackRowActions({ row, onEdit, onOpenConvertSimulator }: CallbackRowActionsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const [convertOpen, setConvertOpen] = useState(false);
   const [resForm, setResForm] = useState({
     callback_date: row.callback_date,
     callback_time: timeForInput(row.callback_time),
@@ -124,22 +124,13 @@ export function CallbackRowActions({ row, onEdit }: CallbackRowActionsProps) {
     });
   }
 
-  function submitConvert() {
-    startTransition(async () => {
-      const res = await convertCommercialCallbackToLead({ callbackId: row.id });
-      if (!res.ok) {
-        toast.error("Conversion impossible", { description: res.error });
-        return;
-      }
-      toast.success("Lead créé depuis le rappel.", {
-        description: (
-          <Link href={`/leads/${res.leadId}`} className="underline">
-            Ouvrir le lead
-          </Link>
-        ),
-      });
-      setConvertOpen(false);
-      refresh();
+  function openConvertSimulatorFromMenu() {
+    if (onOpenConvertSimulator) {
+      onOpenConvertSimulator();
+      return;
+    }
+    toast.error("Conversion impossible", {
+      description: "Aucune fiche CEE n’est disponible pour lancer le simulateur.",
     });
   }
 
@@ -170,7 +161,7 @@ export function CallbackRowActions({ row, onEdit }: CallbackRowActionsProps) {
               <DropdownMenuItem variant="destructive" onClick={markCancelled}>
                 Annuler
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setConvertOpen(true)}>Convertir en lead</DropdownMenuItem>
+              <DropdownMenuItem onClick={openConvertSimulatorFromMenu}>Convertir en lead</DropdownMenuItem>
             </>
           ) : row.status !== "converted_to_lead" ? (
             <DropdownMenuItem onClick={() => onEdit(row)}>
@@ -253,25 +244,6 @@ export function CallbackRowActions({ row, onEdit }: CallbackRowActionsProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Convertir en lead</DialogTitle>
-            <DialogDescription>
-              Un lead « commercial_callback » sera créé à partir de ce rappel. L’e-mail « premier contact » ne sera pas
-              envoyé automatiquement.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setConvertOpen(false)}>
-              Retour
-            </Button>
-            <Button type="button" onClick={submitConvert} disabled={pending}>
-              Confirmer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

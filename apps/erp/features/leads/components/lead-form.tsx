@@ -3,7 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type Resolver,
+  type UseFormRegister,
+  type UseFormSetValue,
+  type UseFormWatch,
+} from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +47,11 @@ import {
 } from "@/features/leads/schemas/lead.schema";
 import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS } from "@/features/leads/constants";
 import { LEAD_CIVILITY_OPTIONS } from "@/features/leads/lib/civility-options";
+import {
+  PRODUCT_INTEREST_CUSTOM_SENTINEL,
+  PRODUCT_INTEREST_QUICK_OPTIONS,
+  PRODUCT_INTEREST_QUICK_VALUE_SET,
+} from "@/features/leads/lib/product-interest-options";
 import type { LeadRow } from "@/features/leads/types";
 import type { ProfileOption } from "@/features/leads/queries/get-lead-form-options";
 import type { Json } from "@/types/database.types";
@@ -48,6 +61,57 @@ const selectClassName = cn(
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
   "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 );
+
+function ProductInterestFields({
+  register,
+  setValue,
+  watch,
+  readOnly,
+}: {
+  register: UseFormRegister<LeadFormInput>;
+  setValue: UseFormSetValue<LeadFormInput>;
+  watch: UseFormWatch<LeadFormInput>;
+  readOnly: boolean;
+}) {
+  const raw = watch("product_interest") ?? "";
+  const isQuick = PRODUCT_INTEREST_QUICK_VALUE_SET.has(raw);
+  const selectValue = isQuick ? raw : raw === "" ? "" : PRODUCT_INTEREST_CUSTOM_SENTINEL;
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+      <select
+        id="product_interest_select"
+        className={selectClassName}
+        disabled={readOnly}
+        value={selectValue}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "" || v === PRODUCT_INTEREST_CUSTOM_SENTINEL) {
+            setValue("product_interest", "", { shouldDirty: true });
+          } else {
+            setValue("product_interest", v, { shouldDirty: true });
+          }
+        }}
+      >
+        <option value="">— Non renseigné —</option>
+        {PRODUCT_INTEREST_QUICK_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+        <option value={PRODUCT_INTEREST_CUSTOM_SENTINEL}>Autre (saisie libre)</option>
+      </select>
+      {(selectValue === PRODUCT_INTEREST_CUSTOM_SENTINEL || (raw !== "" && !isQuick)) && (
+        <Input
+          id="product_interest"
+          placeholder="Libellé court"
+          disabled={readOnly}
+          {...register("product_interest")}
+        />
+      )}
+    </div>
+  );
+}
 
 type LeadFormProps = {
   mode: "create" | "edit";
@@ -109,6 +173,7 @@ export function LeadForm({
     getValues,
     reset,
     setValue,
+    watch,
     getFieldState,
   } = form;
 
@@ -300,7 +365,9 @@ export function LeadForm({
           <CardHeader>
             <CardTitle>Enregistrement &amp; analyse d&apos;appel</CardTitle>
             <CardDescription>
-              Ajoutez au moins un fichier audio pour lancer l’analyse (transcription puis synthèse).
+              Ajoutez au moins un fichier audio pour lancer l’analyse (transcription puis synthèse). Ce bloc
+              alimente uniquement la note d&apos;appel ci‑dessous — les « notes rapides » saisies sur le simulateur
+              poste agent sont enregistrées dans les notes internes du lead, au nom de l&apos;auteur.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 md:grid-cols-2">
@@ -366,7 +433,6 @@ export function LeadForm({
 
       <input type="hidden" {...register("campaign")} />
       <input type="hidden" {...register("landing")} />
-      <input type="hidden" {...register("product_interest")} />
 
       {!simplifiedAgentView ? (
         <Card>
@@ -459,6 +525,22 @@ export function LeadForm({
               <p className="text-sm text-destructive">{errors.company_name.message}</p>
             ) : null}
           </div>
+          {mode === "create" ? (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="product_interest_select">Catégorie commerciale</Label>
+              <p className="text-xs text-muted-foreground">
+                Ce libellé (souvent prérempli par l&apos;IA) fait foi pour l&apos;affichage en tête de fiche. S&apos;il
+                ne correspond pas à la fiche CEE du workflow (ex. dossier PAC avec workflow déstrat), corrigez ici
+                puis enregistrez.
+              </p>
+              <ProductInterestFields
+                register={register}
+                setValue={setValue}
+                watch={watch}
+                readOnly={readOnly}
+              />
+            </div>
+          ) : null}
           <div className="space-y-2 md:col-span-2 max-w-xs">
             <Label htmlFor="civility">Civilité</Label>
             <select id="civility" className={selectClassName} {...register("civility")}>
@@ -545,6 +627,25 @@ export function LeadForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
+          <section className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Catégorie commerciale
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Ce libellé (souvent prérempli par l&apos;IA) fait foi pour l&apos;affichage en tête de fiche. S&apos;il ne
+              correspond pas à la fiche CEE du workflow (ex. dossier PAC avec workflow déstrat), corrigez ici puis
+              enregistrez.
+            </p>
+            <ProductInterestFields
+              register={register}
+              setValue={setValue}
+              watch={watch}
+              readOnly={readOnly}
+            />
+          </section>
+
+          <Separator />
+
           <section className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Volumes

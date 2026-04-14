@@ -20,6 +20,7 @@ export {
   assignWorkflowUsers as assignWorkflowUsersInService,
   completeSimulation as completeWorkflowSimulationInService,
   createLeadSheetWorkflow as createLeadSheetWorkflowInService,
+  switchLeadToCeeSheetWorkflow as switchLeadToCeeSheetWorkflowInService,
   linkTechnicalVisitToWorkflow,
   markAgreementSent as markAgreementSentInService,
   markAgreementSigned as markAgreementSignedInService,

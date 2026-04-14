@@ -51,6 +51,7 @@ export type ProductFamily =
   | "destratification"
   | "balancing"
   | "heat_recovery"
+  | "heat_pump"
   | "other";
 
 /** Aligné sur `public.sales_status`. */

@@ -130,7 +130,8 @@ export async function generateLeadStudyPdf(
     const { data: dbProducts } = await supabaseForImages
       .from("products")
       .select("id, product_code, image_url, fallback_image_url")
-      .in("product_code", productCodes);
+      .in("product_code", productCodes)
+      .is("deleted_at", null);
 
     if (dbProducts && dbProducts.length > 0) {
       const imageMap = new Map(
@@ -154,7 +155,8 @@ export async function generateLeadStudyPdf(
 
       for (const product of viewModel.products) {
         const dbImage = imageMap.get(product.id);
-        if (dbImage && !product.imageUrlResolved) {
+        // Image admin (Supabase) prime sur le catalogue TS — même logique que les déstratificateurs.
+        if (dbImage) {
           product.imageUrlResolved = dbImage;
         }
         const dbId = productIdMap.get(product.id);

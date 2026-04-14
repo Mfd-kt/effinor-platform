@@ -316,12 +316,22 @@ export function renderPresentationHtml(vm: StudyPdfViewModel): string {
   <div class="cover__logo">${LOGO_COVER}</div>
 
   <h1>${isPac ? "Étude d'opportunité<br/>Pompe à chaleur air / eau" : "Étude d'opportunité<br/>Déstratification d'air"}</h1>
-  <p class="cover__sub">Analyse technique et économique préliminaire</p>
+  <p class="cover__sub">${
+    isPac
+      ? "Analyse technique et économique préliminaire — bâtiments tertiaires et résidentiels (collectif)"
+      : "Analyse technique et économique préliminaire"
+  }</p>
 
   <ul class="cover__checks">
-    <li>Étude basée sur les caractéristiques réelles du site</li>
+    ${
+      isPac
+        ? `<li>Pré-étude pour chauffage et eau chaude sanitaire en tertiaire ou résidentiel collectif</li>
+    <li>Solution air / eau à haut rendement saisonnier, compatible opérations CEE</li>
+    <li>Dispositif CEE mobilisable via partenaire obligé</li>`
+        : `<li>Étude basée sur les caractéristiques réelles du site</li>
     <li>Simulation économique cohérente avec votre mode de chauffage</li>
-    <li>Dispositif CEE mobilisable via partenaire obligé</li>
+    <li>Dispositif CEE mobilisable via partenaire obligé</li>`
+    }
   </ul>
 
   <div class="cover__kpis">
@@ -371,7 +381,26 @@ export function renderPresentationHtml(vm: StudyPdfViewModel): string {
 <section class="pg">
   ${pageHead()}
   <div class="sec">
-    <div>
+    ${
+      isPac
+        ? `<div>
+      <div class="sec__label">Le constat</div>
+      <h2>Chauffage performant pour le tertiaire<br/>et le résidentiel collectif</h2>
+    </div>
+
+    <p class="lead-text">Les bâtiments tertiaires (bureaux, commerces, ERP légers, locaux d'activité) et les immeubles résidentiels collectifs restent souvent équipés de générateurs à rendement limité ou d'installations mal dimensionnées. La facture de chauffage et d'eau chaude sanitaire pèse sur les charges, tandis que les objectifs de décarbonation appellent à des solutions à haut rendement saisonnier.</p>
+
+    <ul class="blist">
+      <li>Consommation énergétique élevée pour le chauffage et, le cas échéant, l'ECS</li>
+      <li>Confort thermique et régulation perfectibles selon les usages réels</li>
+      <li>Trajectoire réglementaire et environnementale à intégrer (rénovation, performance)</li>
+      <li>Façade technique et réseau hydraulique à valider avant dimensionnement définitif</li>
+    </ul>
+
+    <div class="reading-box">
+      <p>La <strong>pompe à chaleur air / eau</strong> capte l'énergie présente dans l'air extérieur pour la transférer à un circuit d'eau de chauffage. Elle s'inscrit dans une démarche d'efficacité énergétique reconnue, applicable à de nombreux contextes <strong>tertiaires</strong> et <strong>résidentiels collectifs</strong>, sous réserve d'étude de faisabilité et d'éligibilité CEE.</p>
+    </div>`
+        : `<div>
       <div class="sec__label">Le constat</div>
       <h2>Vous payez pour chauffer l'air<br/>qui ne sert pas au sol</h2>
     </div>
@@ -388,7 +417,8 @@ export function renderPresentationHtml(vm: StudyPdfViewModel): string {
     <figure class="schema">
       <img src="${esc(SCHEMA_URL)}" alt="Schéma stratification thermique" />
       <figcaption>Avant : stratification thermique — Après : homogénéisation par brassage contrôlé</figcaption>
-    </figure>
+    </figure>`
+    }
 
     <div class="meta-strip">
       <span>Site <strong>${esc(vm.site.label)}</strong></span>
@@ -406,7 +436,49 @@ export function renderPresentationHtml(vm: StudyPdfViewModel): string {
 <section class="pg">
   ${pageHead()}
   <div class="sec">
-    <div>
+    ${
+      isPac
+        ? `<div>
+      <div class="sec__label">La solution</div>
+      <h2>Pompe à chaleur air / eau<br/>pour le tertiaire et le résidentiel</h2>
+    </div>
+
+    <p class="lead-text">La solution étudiée repose sur une <strong>pompe à chaleur air / eau</strong> : elle produit la chaleur utile en prélevant l'énergie de l'air extérieur et en l'élevant au niveau du réseau hydraulique (radiateurs, planchers chauffants, convecteurs, etc.). Elle convient à de nombreux bâtiments <strong>tertiaires</strong> et à l'<strong>habitat collectif</strong> (copropriétés, résidences), dans le respect des contraintes acoustiques, d'implantation et de raccordement au réseau existant ou projeté.</p>
+
+    <div class="quote-block">
+      <p>Une même technologie pour sécuriser le confort</p>
+      <p>et réduire la facture énergétique sur le long terme.</p>
+    </div>
+
+    <ul class="blist">
+      <li>Haut rendement saisonnier et pilotage adapté aux usages</li>
+      <li>Réduction des consommations par rapport à une chaudière seule ou ancienne</li>
+      <li>Compatibilité avec les opérations CEE (sous conditions d'éligibilité et de dossier)</li>
+      <li>Dimensionnement et référence matériel à confirmer après audit technique</li>
+    </ul>
+
+    <div class="params">
+      <div class="param"><div class="param__lbl">Solution indiquée</div><div class="param__val">${esc(vm.simulation.model)}</div></div>
+      <div class="param"><div class="param__lbl">Unités préconisées</div><div class="param__val">${num(vm.equipmentQuantity)}</div></div>
+      ${
+        vm.simulation.powerKw > 0
+          ? `<div class="param"><div class="param__lbl">Puissance (indicatif)</div><div class="param__val">${num(vm.simulation.powerKw, 1)} kW</div></div>`
+          : ""
+      }
+      <div class="param"><div class="param__lbl">Surface de référence</div><div class="param__val">${num(vm.site.surfaceM2)} m²</div></div>
+      <div class="param"><div class="param__lbl">Volume / hauteur</div><div class="param__val">${num(vm.site.volumeM3)} m³ · ${num(vm.site.heightM, 1)} m</div></div>
+    </div>
+
+    <div class="hyp">
+      <h3>Hypothèses de calcul</h3>
+      <ul class="hyp-list">
+        <li>Données site et usages transmis par le donneur d'ordre</li>
+        <li>Simulation économique cohérente avec le mode de chauffage déclaré</li>
+        <li>Ordres de grandeur non contractuels avant visite technique et devis définitif</li>
+        <li>Éligibilité CEE et prime estimée sous réserve de validation du dossier</li>
+      </ul>
+    </div>`
+        : `<div>
       <div class="sec__label">La solution</div>
       <h2>Utiliser la chaleur<br/>que vous payez déjà</h2>
     </div>
@@ -440,7 +512,8 @@ export function renderPresentationHtml(vm: StudyPdfViewModel): string {
         <li>Taux d'économie indicatif retenu : 30&nbsp;%</li>
         <li>Les valeurs définitives seront ajustées après validation terrain</li>
       </ul>
-    </div>
+    </div>`
+    }
   </div>
   ${pageFoot(++pg, totalPages)}
 </section>
@@ -504,7 +577,11 @@ ${vm.products.length > 0 ? `
 
     ${climateZoneUri ? `<figure class="climate-zone">
       <img src="${climateZoneUri}" alt="Gains par zone climatique et hauteur de bâtiment" />
-      <figcaption>Gains estimés en % sur la facture de chauffage, par zone climatique (H1, H2, H3) et hauteur de bâtiment</figcaption>
+      <figcaption>${
+        isPac
+          ? "Illustration indicative — gains liés au chauffage en tertiaire et résidentiel collectif selon zone climatique et contexte bâtiment (non contractuel)."
+          : "Gains estimés en % sur la facture de chauffage, par zone climatique (H1, H2, H3) et hauteur de bâtiment"
+      }</figcaption>
     </figure>` : ""}
   </div>
   ${pageFoot(++pg, totalPages)}
@@ -545,7 +622,9 @@ ${vm.comparables.length > 0 ? `
         <div class="step__num">2</div>
         <div class="step__title">Financement CEE</div>
         <div class="step__desc">Ils soutiennent des opérations éligibles comme ${
-          isPac ? "les pompes à chaleur performantes" : "la déstratification"
+          isPac
+            ? "les pompes à chaleur air / eau performantes (tertiaire, résidentiel collectif)"
+            : "la déstratification"
         } dans le cadre du dispositif CEE.</div>
       </div>
       <div class="step">
@@ -568,7 +647,11 @@ ${vm.comparables.length > 0 ? `
 
     <div class="conclusion">
       <p>Au regard des données analysées, le projet présente une <strong>cohérence technique et économique forte</strong>.</p>
-      <p>La solution proposée permet de réduire significativement les pertes énergétiques tout en s'inscrivant dans un cadre de financement structuré.</p>
+      <p>${
+        isPac
+          ? "La <strong>pompe à chaleur air / eau</strong> étudiée vise à moderniser la production de chaleur pour des usages <strong>tertiaires</strong> et <strong>résidentiels collectifs</strong>, avec un potentiel d'économies et de décarbonation, dans un cadre de financement CEE structuré."
+          : "La solution proposée permet de réduire significativement les pertes énergétiques tout en s'inscrivant dans un cadre de financement structuré."
+      }</p>
       <p>Les éléments réunis à ce stade permettent d'envisager une <strong>mise en œuvre rapide</strong>, sous réserve de validation technique finale et des conditions d'éligibilité.</p>
     </div>
 

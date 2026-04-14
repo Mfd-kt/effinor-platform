@@ -27,6 +27,13 @@ export const CreateLeadSheetWorkflowSchema = z.object({
     .optional(),
 });
 
+export const SwitchLeadCeeSheetWorkflowSchema = z.object({
+  leadId: z.string().uuid(),
+  newCeeSheetId: z.string().uuid(),
+  copyRoleAssignments: z.boolean().optional(),
+  syncProductInterest: z.boolean().optional(),
+});
+
 export const AssignWorkflowUsersSchema = z.object({
   workflowId: z.string().uuid(),
   ceeSheetTeamId: optionalUuidOrNull.optional(),

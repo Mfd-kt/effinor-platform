@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Phone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { abandonCommercialCallbackCall } from "@/features/commercial-callbacks/actions/abandon-commercial-callback-call";
 import { completeCallbackOutcome } from "@/features/commercial-callbacks/actions/complete-callback-outcome";
-import { convertCommercialCallbackToLead } from "@/features/commercial-callbacks/actions/convert-callback-to-lead";
 import { quickRescheduleCommercialCallback } from "@/features/commercial-callbacks/actions/quick-reschedule-commercial-callback";
 import { recordCallbackNoAnswer } from "@/features/commercial-callbacks/actions/record-callback-no-answer";
 import { startCommercialCallbackCall } from "@/features/commercial-callbacks/actions/start-commercial-callback-call";
@@ -47,6 +45,8 @@ type CommercialCallbackCallDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone?: () => void;
+  canRunSimulator?: boolean;
+  onRequestConvertSimulator?: (row: CommercialCallbackRow) => void;
 };
 
 export function CommercialCallbackCallDialog({
@@ -54,6 +54,8 @@ export function CommercialCallbackCallDialog({
   open,
   onOpenChange,
   onDone,
+  canRunSimulator = false,
+  onRequestConvertSimulator,
 }: CommercialCallbackCallDialogProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -145,22 +147,20 @@ export function CommercialCallbackCallDialog({
               size="sm"
               className="gap-1"
               disabled={pending}
-              onClick={() =>
-                runOutcome(async () => {
-                  const res = await convertCommercialCallbackToLead({ callbackId: row.id });
-                  if (res.ok) {
-                    toast.success("Lead créé", {
-                      description: (
-                        <Link href={`/leads/${res.leadId}`} className="underline">
-                          Ouvrir le lead
-                        </Link>
-                      ),
-                    });
-                    return { ok: true };
-                  }
-                  return { ok: false, error: res.error };
-                })
-              }
+              onClick={() => {
+                if (!canRunSimulator || !onRequestConvertSimulator) {
+                  toast.error("Conversion impossible", {
+                    description: "Aucune fiche CEE n’est disponible pour lancer le simulateur.",
+                  });
+                  return;
+                }
+                startTransition(() => {
+                  outcomeHandled.current = true;
+                  onRequestConvertSimulator(row);
+                  onOpenChange(false);
+                  onDone?.();
+                });
+              }}
             >
               Convertir en lead
             </Button>

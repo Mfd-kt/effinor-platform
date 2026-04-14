@@ -10,7 +10,10 @@ export async function getLeadSheetWorkflowById(
     return null;
   }
 
-  const workflows = await getLeadSheetWorkflowsForAccess(access, { includeArchived: true });
+  const workflows = await getLeadSheetWorkflowsForAccess(access, {
+    includeArchived: true,
+    includeLostWorkflows: true,
+  });
   const workflow = workflows.find((row) => row.id === workflowId);
   if (workflow) {
     return workflow;

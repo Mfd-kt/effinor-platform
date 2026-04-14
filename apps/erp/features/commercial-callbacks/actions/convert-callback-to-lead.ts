@@ -17,9 +17,17 @@ export type ConvertCallbackToLeadResult =
   | { ok: true; leadId: string }
   | { ok: false; error: string };
 
-export async function convertCommercialCallbackToLead(
+export type CreateCallbackLeadForSimulationResult =
+  | { ok: true; leadId: string; callbackWasAlreadyConverted: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Crée le lead à partir du rappel sans marquer le rappel comme converti.
+ * Utilisé pour enchaîner avec la validation du simulateur avant de clôturer le rappel.
+ */
+export async function createCommercialCallbackLeadForSimulation(
   raw: z.infer<typeof schema>,
-): Promise<ConvertCallbackToLeadResult> {
+): Promise<CreateCallbackLeadForSimulationResult> {
   const access = await getAccessContext();
   if (!canAccessCommercialCallbacks(access) || access.kind !== "authenticated") {
     return { ok: false, error: "Accès refusé." };
@@ -43,11 +51,19 @@ export async function convertCommercialCallbackToLead(
   }
 
   if (cb.status === "converted_to_lead" && cb.converted_lead_id) {
-    return { ok: true, leadId: cb.converted_lead_id };
+    return { ok: true, leadId: cb.converted_lead_id, callbackWasAlreadyConverted: true };
   }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { first_name, last_name } = splitContactName(cb.contact_name);
   const notesPrefix = `[Créé depuis rappel ${cb.id}]\n\n`;
+  const noteBlocks = [cb.callback_comment, cb.call_context_summary].filter(
+    (s): s is string => Boolean(s && String(s).trim()),
+  );
+  const recordingBody = noteBlocks.length > 0 ? noteBlocks.join("\n\n") : "";
   const parsedLead = LeadInsertSchema.safeParse({
     ...EMPTY_LEAD_FORM,
     source: "commercial_callback",
@@ -63,7 +79,7 @@ export async function convertCommercialCallbackToLead(
     worksite_address: "",
     worksite_postal_code: "",
     worksite_city: "",
-    recording_notes: `${notesPrefix}${cb.callback_comment}`,
+    recording_notes: `${notesPrefix}${recordingBody}`.trim(),
   });
 
   if (!parsedLead.success) {
@@ -71,12 +87,53 @@ export async function convertCommercialCallbackToLead(
     return { ok: false, error: first?.message ?? "Données lead invalides." };
   }
 
-  const created = await createLead(parsedLead.data, { skipPremierContactEmail: true });
+  const assignCreator = cb.assigned_agent_user_id ?? user?.id ?? null;
+  const created = await createLead(parsedLead.data, {
+    skipPremierContactEmail: true,
+    createdByAgentId: assignCreator,
+  });
   if (!created.ok) {
     return { ok: false, error: created.message };
   }
 
-  const leadId = created.data.id;
+  return { ok: true, leadId: created.data.id, callbackWasAlreadyConverted: false };
+}
+
+export async function convertCommercialCallbackToLead(
+  raw: z.infer<typeof schema>,
+): Promise<ConvertCallbackToLeadResult> {
+  const access = await getAccessContext();
+  if (!canAccessCommercialCallbacks(access) || access.kind !== "authenticated") {
+    return { ok: false, error: "Accès refusé." };
+  }
+
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: "Identifiant invalide." };
+  }
+
+  const supabase = await createClient();
+  const { data: cb, error: fetchErr } = await supabase
+    .from("commercial_callbacks")
+    .select("id, status, converted_lead_id")
+    .eq("id", parsed.data.callbackId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (fetchErr || !cb) {
+    return { ok: false, error: fetchErr?.message ?? "Rappel introuvable." };
+  }
+
+  if (cb.status === "converted_to_lead" && cb.converted_lead_id) {
+    return { ok: true, leadId: cb.converted_lead_id };
+  }
+
+  const created = await createCommercialCallbackLeadForSimulation(parsed.data);
+  if (!created.ok) {
+    return { ok: false, error: created.error };
+  }
+
+  const leadId = created.leadId;
 
   const now = new Date().toISOString();
   const { error: updErr } = await supabase

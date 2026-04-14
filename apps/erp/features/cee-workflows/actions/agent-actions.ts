@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
+import { createCommercialCallbackLeadForSimulation } from "@/features/commercial-callbacks/actions/convert-callback-to-lead";
+import { canAccessCommercialCallbacks } from "@/features/commercial-callbacks/lib/callback-access";
 import { maybeAutoAssignAfterHandoff } from "@/features/automation/services/workflow-assignment-service";
 import {
   appendWorkflowEvent as appendWorkflowEventInService,
@@ -14,7 +17,11 @@ import { findDuplicateLead } from "@/features/leads/lib/find-duplicate-lead";
 import { sendStudyEmail } from "@/features/leads/study-pdf/actions/send-study-email";
 import { resolveAllowedCeeSheetIdsForAccess } from "@/lib/auth/cee-workflows-scope";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { syncAgentQuickNoteToInternalNotes } from "@/features/cee-workflows/lib/sync-agent-quick-note-to-internal-notes";
+import {
+  extractSyncedProspectNotesFromSimulationJson,
+  insertAgentProspectQuickNoteIfChanged,
+  mergeProspectNotesSyncIntoSimulationJson,
+} from "@/features/cee-workflows/lib/sync-agent-quick-note-to-internal-notes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Database } from "@/types/database.types";
@@ -29,6 +36,10 @@ type AgentActionResult = {
   duplicateLeadId?: string;
   duplicateReason?: "company" | "email" | "phone";
 };
+
+const FinalizeCommercialCallbackSchema = AgentWorkflowPayloadSchema.extend({
+  callbackId: z.string().uuid(),
+});
 
 function parseContactName(contactName: string): { firstName: string | null; lastName: string | null } {
   const clean = contactName.trim().replace(/\s+/g, " ");
@@ -98,7 +109,6 @@ async function upsertAgentLead(
     worksite_address: address,
     worksite_city: city,
     worksite_postal_code: postalCode,
-    recording_notes: input.prospect.notes?.trim() || null,
     civility: input.prospect.civility?.trim() || null,
     cee_sheet_id: input.ceeSheetId,
     lead_channel: "phone",
@@ -150,7 +160,6 @@ async function upsertAgentLead(
     worksite_address: address,
     worksite_city: city,
     worksite_postal_code: postalCode,
-    recording_notes: input.prospect.notes?.trim() || null,
     civility: input.prospect.civility?.trim() || null,
   };
 
@@ -256,15 +265,10 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
     : null;
 
   const priorLeadId = parsed.data.leadId ?? workflowRecord?.lead_id ?? null;
-  let previousRecordingNotes: string | null = null;
-  if (priorLeadId) {
-    const { data: priorLead } = await supabase
-      .from("leads")
-      .select("recording_notes")
-      .eq("id", priorLeadId)
-      .maybeSingle();
-    previousRecordingNotes = priorLead?.recording_notes ?? null;
-  }
+  const nextProspectNotes = parsed.data.prospect.notes?.trim() ?? "";
+  const previousSyncedProspectNotes = workflowRecord
+    ? extractSyncedProspectNotesFromSimulationJson(workflowRecord.simulation_input_json)
+    : "";
 
   const leadId = await upsertAgentLead(supabase, {
     leadId: priorLeadId ?? undefined,
@@ -273,12 +277,12 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
     prospect: parsed.data.prospect,
   });
 
-  await syncAgentQuickNoteToInternalNotes(
+  await insertAgentProspectQuickNoteIfChanged(
     supabase,
     access,
     leadId,
-    previousRecordingNotes,
-    parsed.data.prospect.notes,
+    previousSyncedProspectNotes,
+    nextProspectNotes,
   );
 
   const workflow =
@@ -291,10 +295,15 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
       assignmentPatch: { assignedAgentUserId: access.userId },
     }));
 
+  const mergedSimulationInput = mergeProspectNotesSyncIntoSimulationJson(
+    parsed.data.simulationInputJson as Json | undefined,
+    nextProspectNotes,
+  );
+
   const { error } = await supabase
     .from("lead_sheet_workflows")
     .update({
-      simulation_input_json: ensureJsonObject(parsed.data.simulationInputJson as Json | undefined),
+      simulation_input_json: ensureJsonObject(mergedSimulationInput),
       simulation_result_json: ensureJsonObject(parsed.data.simulationResultJson as Json | undefined),
       workflow_status: "draft",
     })
@@ -364,6 +373,110 @@ export async function validateAgentWorkflowSimulation(input: unknown): Promise<A
 
     revalidatePath("/agent");
     revalidatePath(`/leads/${saved.leadId}`);
+
+    return { ok: true, ...saved };
+  } catch (error) {
+    const e = error as Error & { duplicateLeadId?: string; duplicateReason?: "company" | "email" | "phone" };
+    return {
+      ok: false,
+      message: e.message,
+      duplicateLeadId: e.duplicateLeadId,
+      duplicateReason: e.duplicateReason,
+    };
+  }
+}
+
+/**
+ * Conversion rappel → lead : création du lead, validation simulation, puis clôture du rappel.
+ * Si la simulation échoue, le lead provisoire est supprimé et le rappel reste actif.
+ */
+export async function finalizeCommercialCallbackWithSimulation(input: unknown): Promise<AgentActionResult> {
+  try {
+    const parsed = FinalizeCommercialCallbackSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message ?? "Données invalides.");
+    }
+    if (!parsed.data.simulationInputJson || !parsed.data.simulationResultJson) {
+      throw new Error("La simulation doit être calculée avant conversion.");
+    }
+
+    const access = await getAccessContext();
+    if (access.kind !== "authenticated" || !canAccessCommercialCallbacks(access)) {
+      throw new Error("Accès refusé.");
+    }
+
+    await ensureAgentAccessToSheet(access, parsed.data.ceeSheetId);
+
+    const { callbackId, ...workflowPayload } = parsed.data;
+
+    const supabase = await createClient();
+    const { data: cb, error: cbErr } = await supabase
+      .from("commercial_callbacks")
+      .select("id, status, converted_lead_id")
+      .eq("id", callbackId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (cbErr || !cb) {
+      throw new Error(cbErr?.message ?? "Rappel introuvable.");
+    }
+    if (cb.status === "converted_to_lead" && cb.converted_lead_id) {
+      throw new Error("Ce rappel est déjà converti.");
+    }
+
+    const leadStep = await createCommercialCallbackLeadForSimulation({ callbackId });
+    if (!leadStep.ok) {
+      throw new Error(leadStep.error);
+    }
+    if (leadStep.callbackWasAlreadyConverted) {
+      throw new Error("Ce rappel est déjà converti.");
+    }
+
+    const leadId = leadStep.leadId;
+
+    let saved: { workflowId: string; leadId: string };
+    try {
+      saved = await saveDraftInternal({
+        ...workflowPayload,
+        leadId,
+        workflowId: undefined,
+      });
+      await completeSimulationInService(supabase, {
+        workflowId: saved.workflowId,
+        actorUserId: access.userId,
+        workflowStatus: "simulation_done",
+        simulation: {
+          simulationInputJson: parsed.data.simulationInputJson as Json,
+          simulationResultJson: parsed.data.simulationResultJson as Json,
+        },
+      });
+    } catch (inner) {
+      await supabase.from("leads").delete().eq("id", leadId);
+      throw inner;
+    }
+
+    const now = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from("commercial_callbacks")
+      .update({
+        status: "converted_to_lead",
+        converted_lead_id: leadId,
+        last_call_at: now,
+        completed_at: now,
+        call_started_at: null,
+        in_progress_by_user_id: null,
+      })
+      .eq("id", callbackId);
+
+    if (updErr) {
+      throw new Error(`Simulation enregistrée mais rappel non clôturé : ${updErr.message}`);
+    }
+
+    revalidatePath("/agent");
+    revalidatePath("/leads");
+    revalidatePath("/cockpit");
+    revalidatePath("/commercial-callbacks");
+    revalidatePath(`/leads/${leadId}`);
 
     return { ok: true, ...saved };
   } catch (error) {

@@ -33,7 +33,7 @@ const DUPLICATE_REASON_LABEL: Record<"company" | "email" | "phone", string> = {
 
 export async function createLead(
   input: unknown,
-  options?: { skipPremierContactEmail?: boolean },
+  options?: { skipPremierContactEmail?: boolean; createdByAgentId?: string | null },
 ): Promise<CreateLeadResult> {
   const parsed = LeadInsertSchema.safeParse(input);
   if (!parsed.success) {
@@ -81,8 +81,10 @@ export async function createLead(
   } = await supabase.auth.getUser();
 
   const row = insertFromLeadForm(parsed.data);
-  if (user?.id) {
-    row.created_by_agent_id = user.id;
+  const creatorId =
+    options?.createdByAgentId !== undefined ? options.createdByAgentId : user?.id ?? null;
+  if (creatorId) {
+    row.created_by_agent_id = creatorId;
   }
 
   let { data, error } = await supabase.from("leads").insert(row).select().single();

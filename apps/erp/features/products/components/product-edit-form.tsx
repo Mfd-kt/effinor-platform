@@ -7,15 +7,30 @@ import { Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { updateProductAction } from "@/features/products/actions/product-admin-actions";
-import type { Database } from "@/types/database.types";
+import {
+  CEE_CATEGORY_OPTIONS,
+  CEE_PRODUCT_CATEGORY,
+  PRODUCT_FAMILY_OPTIONS,
+  type CeeProductCategoryValue,
+} from "@/features/products/lib/product-taxonomy";
+import type { Database, ProductFamily } from "@/types/database.types";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 
 type Props = {
   product: ProductRow;
 };
+
+const EMPTY_FAMILY = "__none__";
 
 export function ProductEditForm({ product }: Props) {
   const router = useRouter();
@@ -32,6 +47,28 @@ export function ProductEditForm({ product }: Props) {
   );
   const [sortOrder, setSortOrder] = useState(String(product.sort_order));
   const [isActive, setIsActive] = useState(product.is_active);
+  const initialCategory: CeeProductCategoryValue =
+    product.category === CEE_PRODUCT_CATEGORY.pac
+      ? CEE_PRODUCT_CATEGORY.pac
+      : CEE_PRODUCT_CATEGORY.destrat;
+  const [category, setCategory] = useState<CeeProductCategoryValue>(initialCategory);
+  const [family, setFamily] = useState<string>(
+    product.product_family ?? EMPTY_FAMILY,
+  );
+
+  function onCategoryChange(next: CeeProductCategoryValue) {
+    setCategory(next);
+    if (next === CEE_PRODUCT_CATEGORY.pac) setFamily("heat_pump");
+    if (next === CEE_PRODUCT_CATEGORY.destrat) setFamily("destratification");
+  }
+
+  function onFamilyChange(next: string) {
+    setFamily(next);
+    if (next === EMPTY_FAMILY) return;
+    const f = next as ProductFamily;
+    if (f === "heat_pump") setCategory(CEE_PRODUCT_CATEGORY.pac);
+    if (f === "destratification") setCategory(CEE_PRODUCT_CATEGORY.destrat);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +79,8 @@ export function ProductEditForm({ product }: Props) {
       const res = await updateProductAction(product.id, {
         name,
         brand,
+        category,
+        product_family: family === EMPTY_FAMILY ? null : (family as ProductFamily),
         description_short: descShort || undefined,
         description_long: descLong || undefined,
         default_price_ht: priceHt ? Number(priceHt) : null,
@@ -82,6 +121,40 @@ export function ProductEditForm({ product }: Props) {
         </div>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Catégorie (ligne CEE)</Label>
+          <Select value={category} onValueChange={(v) => onCategoryChange(v as CeeProductCategoryValue)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CEE_CATEGORY_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Famille produit</Label>
+          <Select value={family} onValueChange={onFamilyChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Choisir…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={EMPTY_FAMILY}>Non renseigné</SelectItem>
+              {PRODUCT_FAMILY_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="desc_short">Description courte</Label>
         <Textarea
@@ -114,7 +187,7 @@ export function ProductEditForm({ product }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="sort_order">Ordre d'affichage</Label>
+          <Label htmlFor="sort_order">Ordre d&apos;affichage</Label>
           <Input
             id="sort_order"
             type="number"

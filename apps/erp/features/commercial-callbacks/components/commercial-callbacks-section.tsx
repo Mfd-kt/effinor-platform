@@ -17,7 +17,10 @@ import type {
   CallbackPerformanceStats,
   CommercialCallbackKpis,
 } from "@/features/commercial-callbacks/queries/get-commercial-callbacks-for-agent";
+import { CommercialCallbackConvertSimulatorDialog } from "@/features/commercial-callbacks/components/commercial-callback-convert-simulator-dialog";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
+import type { AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
+import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 import { cn } from "@/lib/utils";
 
 type CommercialCallbacksSectionProps = {
@@ -28,11 +31,16 @@ type CommercialCallbacksSectionProps = {
   onEdit: (row: CommercialCallbackRow) => void;
   /** id utilisateur → nom affiché (vue direction). */
   assignedAgentLabels?: Record<string, string>;
-  /** Affiche libellé agent + bouton supprimer (direction). */
+  /** Affiche libellé agent (vue équipe). */
   directorTeamMode?: boolean;
+  /** Fiches CEE + produits destrat pour le simulateur de conversion (même bundle que le poste agent). */
+  agentSimulator?: {
+    sheets: AgentAvailableSheet[];
+    destratProducts: SimulatorProductCardViewModel[];
+  };
 };
 
-const PRIMARY_TABS: { key: AgentCallbackTabKey; label: string; description?: string }[] = [
+const TABS: { key: AgentCallbackTabKey; label: string; description?: string }[] = [
   {
     key: "due_now",
     label: "À faire maintenant",
@@ -52,6 +60,11 @@ const PRIMARY_TABS: { key: AgentCallbackTabKey; label: string; description?: str
     key: "upcoming",
     label: "À venir",
     description: "Échéances futures.",
+  },
+  {
+    key: "lost",
+    label: "Perdu",
+    description: "Prospects classés sans suite — consultation seule.",
   },
 ];
 
@@ -92,20 +105,20 @@ export function CommercialCallbacksSection({
   onEdit,
   assignedAgentLabels,
   directorTeamMode = false,
+  agentSimulator,
 }: CommercialCallbacksSectionProps) {
   const router = useRouter();
   const [callRow, setCallRow] = useState<CommercialCallbackRow | null>(null);
+  const [convertSimRow, setConvertSimRow] = useState<CommercialCallbackRow | null>(null);
   const [tab, setTab] = useState<AgentCallbackTabKey>("due_now");
   const views = partitionAgentCallbackViews(rows);
+  const canRunSimulator = (agentSimulator?.sheets.length ?? 0) > 0;
 
   function refresh() {
     router.refresh();
   }
 
-  const activeRows =
-    tab === "archive"
-      ? views.archive
-      : views[tab as Exclude<AgentCallbackTabKey, "archive">];
+  const activeRows = views[tab];
 
   const emptyMessage =
     tab === "due_now"
@@ -116,7 +129,7 @@ export function CommercialCallbacksSection({
           ? "Aucun rappel en retard sur des jours passés."
           : tab === "upcoming"
             ? "Aucune échéance future."
-            : "Aucun rappel terminé ou clôturé dans cette liste.";
+            : "Aucun rappel marqué comme perdu.";
 
   return (
     <div className="space-y-4">
@@ -124,7 +137,7 @@ export function CommercialCallbacksSection({
         <h2 className="text-lg font-semibold tracking-tight text-foreground">Rappels commerciaux</h2>
         <p className="text-sm text-muted-foreground">
           {directorTeamMode
-            ? "Vue équipe : tous les agents avec rappels actifs — vous pouvez retirer un rappel de la liste (suppression logique)."
+            ? "Vue équipe : rappels actifs par onglet ; les perdus sont sous « Perdu ». Les rappels convertis en lead ou clôturés autrement ne sont plus listés ici."
             : "Exécution priorisée (score) — onglets pour cadrer la journée sans oublier le retard."}
         </p>
       </div>
@@ -145,7 +158,7 @@ export function CommercialCallbacksSection({
         <div className="space-y-4">
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap gap-1.5">
-              {PRIMARY_TABS.map((t) => (
+              {TABS.map((t) => (
                 <Button
                   key={t.key}
                   type="button"
@@ -160,28 +173,8 @@ export function CommercialCallbacksSection({
                   </span>
                 </Button>
               ))}
-              <Button
-                type="button"
-                size="sm"
-                variant={tab === "archive" ? "secondary" : "ghost"}
-                className={cn("h-8 rounded-full", tab === "archive" && "ring-1 ring-border")}
-                onClick={() => setTab("archive")}
-              >
-                Terminés / archivés
-                <span className="ml-1.5 tabular-nums text-muted-foreground">
-                  ({views.archive.length})
-                </span>
-              </Button>
             </div>
-            {tab !== "archive" ? (
-              <p className="text-xs text-muted-foreground">
-                {PRIMARY_TABS.find((x) => x.key === tab)?.description}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Effectués, annulés, convertis en lead — consultation seule.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">{TABS.find((x) => x.key === tab)?.description}</p>
           </div>
 
           <SectionBlock
@@ -194,7 +187,7 @@ export function CommercialCallbacksSection({
                     ? "En retard"
                     : tab === "upcoming"
                       ? "À venir"
-                      : "Terminés / archivés"
+                      : "Perdu"
             }
             variant={
               tab === "overdue" || tab === "due_now"
@@ -213,6 +206,8 @@ export function CommercialCallbacksSection({
                   row={row}
                   onEdit={onEdit}
                   onOpenCall={(r) => setCallRow(r)}
+                  onOpenConvertSimulator={() => setConvertSimRow(row)}
+                  canRunSimulator={canRunSimulator}
                   assignedAgentLabel={
                     directorTeamMode
                       ? row.assigned_agent_user_id
@@ -220,7 +215,6 @@ export function CommercialCallbacksSection({
                         : "Non assigné"
                       : null
                   }
-                  allowDirectorDelete={directorTeamMode}
                 />
               ))
             )}
@@ -235,6 +229,22 @@ export function CommercialCallbacksSection({
           if (!o) setCallRow(null);
         }}
         onDone={refresh}
+        canRunSimulator={canRunSimulator}
+        onRequestConvertSimulator={(r) => {
+          setCallRow(null);
+          setConvertSimRow(r);
+        }}
+      />
+
+      <CommercialCallbackConvertSimulatorDialog
+        open={convertSimRow != null}
+        onOpenChange={(o) => {
+          if (!o) setConvertSimRow(null);
+        }}
+        row={convertSimRow}
+        sheets={agentSimulator?.sheets ?? []}
+        destratProducts={agentSimulator?.destratProducts ?? []}
+        onConverted={() => setConvertSimRow(null)}
       />
     </div>
   );

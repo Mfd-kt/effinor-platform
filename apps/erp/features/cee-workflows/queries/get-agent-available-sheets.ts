@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AccessContext } from "@/lib/auth/access-context";
+import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import type { AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
+
+const FULL_ACCESS_SHEET_ROLES = ["agent", "confirmateur", "closer", "manager"] as const;
 
 export async function getAgentAvailableSheets(
   access: AccessContext,
@@ -10,6 +13,55 @@ export async function getAgentAvailableSheets(
   }
 
   const supabase = await createClient();
+
+  if (hasFullCeeWorkflowAccess(access)) {
+    const { data, error } = await supabase
+      .from("cee_sheets")
+      .select(
+        `
+        id,
+        code,
+        label,
+        description,
+        calculation_profile,
+        simulator_key,
+        presentation_template_key,
+        agreement_template_key,
+        requires_technical_visit,
+        requires_quote,
+        workflow_key,
+        is_commercial_active,
+        control_points,
+        sort_order
+      `,
+      )
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true })
+      .order("code", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((sheet) => ({
+      id: sheet.id,
+      code: sheet.code,
+      label: sheet.label,
+      simulatorKey: sheet.simulator_key,
+      calculationProfile: sheet.calculation_profile ?? null,
+      workflowKey: sheet.workflow_key,
+      presentationTemplateKey: sheet.presentation_template_key,
+      agreementTemplateKey: sheet.agreement_template_key,
+      requiresTechnicalVisit: sheet.requires_technical_visit,
+      requiresQuote: sheet.requires_quote,
+      isCommercialActive: sheet.is_commercial_active,
+      description: sheet.description,
+      controlPoints: sheet.control_points,
+      teamName: "Pilotage global",
+      roles: [...FULL_ACCESS_SHEET_ROLES],
+    }));
+  }
+
   const { data, error } = await supabase
     .from("cee_sheet_team_members")
     .select(

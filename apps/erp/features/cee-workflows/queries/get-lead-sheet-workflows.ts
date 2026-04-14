@@ -8,6 +8,11 @@ export type WorkflowListParams = {
   ceeSheetId?: string;
   workflowStatus?: string;
   includeArchived?: boolean;
+  /**
+   * Inclut les workflows / leads « perdus » (statut workflow `lost` ou lead `lost`).
+   * Par défaut : exclus des listes opérationnelles ; à activer pour le cockpit (funnel) et les accès par ID.
+   */
+  includeLostWorkflows?: boolean;
   /** Limite aux workflows dont le lead a été créé par cet agent (`leads.created_by_agent_id`). */
   leadCreatedByAgentUserId?: string;
 };
@@ -46,6 +51,32 @@ function dropWorkflowsForDeletedLeads(rows: WorkflowScopedListRow[]): WorkflowSc
     if (!lead) return false;
     return lead.deleted_at == null;
   });
+}
+
+/** Masque les dossiers perdus des vues opérationnelles (files agent / closer / etc.), pas du cockpit. */
+function hideOperationalLostWorkflows(
+  rows: WorkflowScopedListRow[],
+  params: WorkflowListParams,
+): WorkflowScopedListRow[] {
+  if (
+    params.includeLostWorkflows === true ||
+    params.leadId ||
+    params.workflowStatus === "lost"
+  ) {
+    return rows;
+  }
+  return rows.filter((row) => {
+    if (row.workflow_status === "lost") return false;
+    if (row.lead?.lead_status === "lost") return false;
+    return true;
+  });
+}
+
+function finalizeWorkflowRows(
+  rows: WorkflowScopedListRow[],
+  params: WorkflowListParams,
+): WorkflowScopedListRow[] {
+  return hideOperationalLostWorkflows(dropWorkflowsForDeletedLeads(rows), params);
 }
 
 async function resolveLeadIdsCreatedByAgent(
@@ -113,7 +144,17 @@ export async function getLeadSheetWorkflowsForAccess(
     cee_sheet:cee_sheets!cee_sheet_id(id, code, label, simulator_key, workflow_key, is_commercial_active),
     assigned_agent:profiles!assigned_agent_user_id(id, full_name, email),
     assigned_confirmateur:profiles!assigned_confirmateur_user_id(id, full_name, email),
-    assigned_closer:profiles!assigned_closer_user_id(id, full_name, email)
+    assigned_closer:profiles!assigned_closer_user_id(id, full_name, email),
+    cee_sheet_team:cee_sheet_teams!cee_sheet_team_id(
+      id,
+      name,
+      cee_sheet_team_members(
+        role_in_team,
+        is_active,
+        user_id,
+        profile:profiles!user_id(id, full_name, email)
+      )
+    )
   `;
 
   if (hasFullCeeWorkflowAccess(access)) {
@@ -128,7 +169,7 @@ export async function getLeadSheetWorkflowsForAccess(
     if (error) {
       throw new Error(error.message);
     }
-    return dropWorkflowsForDeletedLeads((data ?? []) as unknown as WorkflowScopedListRow[]);
+    return finalizeWorkflowRows((data ?? []) as unknown as WorkflowScopedListRow[], params);
   }
 
   const allowedSheetIds = await resolveAllowedCeeSheetIdsForAccess(supabase, access);
@@ -151,7 +192,7 @@ export async function getLeadSheetWorkflowsForAccess(
       throw new Error(error.message);
     }
     scopedRows.push(
-      dropWorkflowsForDeletedLeads((data ?? []) as unknown as WorkflowScopedListRow[]),
+      finalizeWorkflowRows((data ?? []) as unknown as WorkflowScopedListRow[], params),
     );
   }
 
@@ -173,7 +214,7 @@ export async function getLeadSheetWorkflowsForAccess(
     throw new Error(assignedError.message);
   }
   scopedRows.push(
-    dropWorkflowsForDeletedLeads((assignedData ?? []) as unknown as WorkflowScopedListRow[]),
+    finalizeWorkflowRows((assignedData ?? []) as unknown as WorkflowScopedListRow[], params),
   );
 
   return mergeUniqueRows(scopedRows);

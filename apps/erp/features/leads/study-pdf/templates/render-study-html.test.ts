@@ -76,6 +76,27 @@ function sampleVm(): StudyPdfViewModel {
   };
 }
 
+function samplePacVm(): StudyPdfViewModel {
+  const vm = sampleVm();
+  return {
+    ...vm,
+    ceeSolutionKind: "pac",
+    equipmentQuantity: 2,
+    products: [
+      {
+        id: "bosch-pac",
+        displayName: "Bosch PAC air / eau",
+        description: "PAC test.",
+        imageUrlResolved: null,
+        galleryUrls: [],
+        specsForDisplay: [{ label: "Puissance", value: "12 kW" }],
+        keyMetricsForDisplay: [],
+        rationaleText: "Justification PAC.",
+      },
+    ] satisfies StudyProductViewModel[],
+  };
+}
+
 describe("renderLeadStudyHtml (legacy)", () => {
   it("renders core sections", () => {
     const html = renderLeadStudyHtml(sampleVm());
@@ -184,6 +205,19 @@ describe("renderPresentationHtml", () => {
     const html = renderPresentationHtml(vm);
     expect(html).not.toContain("Équipement préconisé");
     expect(html).not.toContain("Generfeu Haute Performance");
+  });
+
+  it("renders PAC-specific brochure copy when ceeSolutionKind is pac", () => {
+    const html = renderPresentationHtml(samplePacVm());
+    expect(html).toContain("Pompe à chaleur air / eau");
+    expect(html).toContain("bâtiments tertiaires et résidentiels (collectif)");
+    expect(html).toContain("Pré-étude pour chauffage et eau chaude sanitaire en tertiaire ou résidentiel collectif");
+    expect(html).toContain("Chauffage performant pour le tertiaire");
+    expect(html).toContain("les pompes à chaleur air / eau performantes (tertiaire, résidentiel collectif)");
+    expect(html).toContain(
+      "Illustration indicative — gains liés au chauffage en tertiaire et résidentiel collectif selon zone climatique",
+    );
+    expect(html).not.toContain("Vous payez pour chauffer");
   });
 
   it("renders comparables and CEE financing", () => {
@@ -307,5 +341,22 @@ describe("renderAccordHtml", () => {
     const html = renderAccordHtml(vm);
     expect(html).not.toContain("Équipement retenu");
     expect(html).not.toContain("Generfeu Haute Performance");
+  });
+
+  it("renders PAC-specific accord copy when ceeSolutionKind is pac", () => {
+    const html = renderAccordHtml(samplePacVm());
+    expect(html).toContain("Projet pompe à chaleur air / eau (tertiaire et résidentiel collectif)");
+    expect(html).toContain("projet de pompe à chaleur air / eau");
+    expect(html).toContain("tertiaire et résidentiel collectif — économies annuelles indicatives");
+    expect(html).toContain("Bosch PAC air / eau");
+    expect(html).not.toContain("déstratification");
+  });
+
+  it("escapes product name in accord synth once (no double-encoding)", () => {
+    const vm = samplePacVm();
+    vm.products[0] = { ...vm.products[0], displayName: "PAC A & B <test>" };
+    const html = renderAccordHtml(vm);
+    expect(html).toContain("PAC A &amp; B &lt;test&gt;");
+    expect(html).not.toContain("&amp;amp;");
   });
 });

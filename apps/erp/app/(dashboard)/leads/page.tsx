@@ -6,14 +6,17 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadsTable } from "@/features/leads/components/leads-table";
 import { getLeads } from "@/features/leads/queries/get-leads";
 import { getAccessContext } from "@/lib/auth/access-context";
+import { canAccessLostLeadsInbox } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 import { FolderKanban } from "lucide-react";
 
 export default async function LeadsPage() {
   const access = await getAccessContext();
+  const auth = access.kind === "authenticated" ? access : undefined;
+  const showLostInbox = auth ? await canAccessLostLeadsInbox(auth) : false;
   let leads;
   try {
-    leads = await getLeads(access.kind === "authenticated" ? access : undefined);
+    leads = await getLeads(auth);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur lors du chargement des leads.";
     return (
@@ -35,9 +38,16 @@ export default async function LeadsPage() {
         title="Fiches prospects"
         description="Acquisition et qualification des opportunités avant conversion en dossier."
         actions={
-          <Link href="/leads/new" className={cn(buttonVariants())}>
-            Nouveau lead
-          </Link>
+          <>
+            {showLostInbox ? (
+              <Link href="/leads/lost" className={cn(buttonVariants({ variant: "outline" }))}>
+                Prospects perdus
+              </Link>
+            ) : null}
+            <Link href="/leads/new" className={cn(buttonVariants())}>
+              Nouveau lead
+            </Link>
+          </>
         }
       />
 

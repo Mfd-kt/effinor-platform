@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Phone, Trash2 } from "lucide-react";
+import { Phone, UserX } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +22,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CallbackRowActions } from "@/features/commercial-callbacks/components/callback-row-actions";
-import { convertCommercialCallbackToLead } from "@/features/commercial-callbacks/actions/convert-callback-to-lead";
-import { deleteCommercialCallback } from "@/features/commercial-callbacks/actions/delete-commercial-callback";
+import { markCommercialCallbackLost } from "@/features/commercial-callbacks/actions/mark-commercial-callback-lost";
 import { quickRescheduleCommercialCallback } from "@/features/commercial-callbacks/actions/quick-reschedule-commercial-callback";
 import { getCallbackVisualTier } from "@/features/commercial-callbacks/domain/callback-buckets";
+import { isTerminalCallbackStatus } from "@/features/commercial-callbacks/domain/callback-dates";
 import { computeCallbackPriorityScore } from "@/features/commercial-callbacks/domain/priority-score";
 import {
   CALLBACK_PRIORITY_LABELS,
@@ -65,20 +65,22 @@ export function CommercialCallbackAgentRow({
   row,
   onEdit,
   onOpenCall,
+  onOpenConvertSimulator,
+  canRunSimulator,
   assignedAgentLabel = null,
-  allowDirectorDelete = false,
 }: {
   row: CommercialCallbackRow;
   onEdit: (row: CommercialCallbackRow) => void;
   onOpenCall: (row: CommercialCallbackRow) => void;
+  onOpenConvertSimulator: () => void;
+  /** Fiches CEE disponibles pour ouvrir le simulateur de conversion. */
+  canRunSimulator: boolean;
   /** Libellé agent assigné (vue direction). */
   assignedAgentLabel?: string | null;
-  /** Affiche la suppression logique (direction / admin CEE). */
-  allowDirectorDelete?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [lostOpen, setLostOpen] = useState(false);
 
   const tier = getCallbackVisualTier(row);
   const borderClass =
@@ -89,6 +91,7 @@ export function CommercialCallbackAgentRow({
         : "border-l-4 border-l-emerald-600/70";
 
   const score = computeCallbackPriorityScore(row);
+  const terminal = isTerminalCallbackStatus(row.status);
 
   function refresh() {
     router.refresh();
@@ -107,15 +110,13 @@ export function CommercialCallbackAgentRow({
   }
 
   function convert() {
-    startTransition(async () => {
-      const res = await convertCommercialCallbackToLead({ callbackId: row.id });
-      if (!res.ok) {
-        toast.error("Conversion impossible", { description: res.error });
-        return;
-      }
-      toast.success("Lead créé.");
-      refresh();
-    });
+    if (!canRunSimulator) {
+      toast.error("Conversion impossible", {
+        description: "Aucune fiche CEE n’est disponible pour lancer le simulateur.",
+      });
+      return;
+    }
+    onOpenConvertSimulator();
   }
 
   const tempLabel =
@@ -161,55 +162,61 @@ export function CommercialCallbackAgentRow({
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:max-w-[min(100%,28rem)] sm:justify-end">
-        <Button type="button" size="sm" className="gap-1" onClick={() => onOpenCall(row)}>
-          <Phone className="size-3.5" />
-          Appeler
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-xs hover:bg-accent disabled:opacity-50"
-            disabled={pending}
-          >
-            Reporter
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {QUICK_RESCHEDULE_PRESETS.map((preset) => (
-              <DropdownMenuItem key={preset} onClick={() => quickPreset(preset)}>
-                {QUICK_RESCHEDULE_LABELS[preset]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={convert}>
-          Convertir
-        </Button>
-        <CallbackRowActions row={row} onEdit={onEdit} />
-        {allowDirectorDelete ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="border-destructive/50 text-destructive hover:bg-destructive/10"
-            disabled={pending}
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 className="size-3.5" />
-            Supprimer
-          </Button>
+        {!terminal ? (
+          <>
+            <Button type="button" size="sm" className="gap-1" onClick={() => onOpenCall(row)}>
+              <Phone className="size-3.5" />
+              Appeler
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-xs hover:bg-accent disabled:opacity-50"
+                disabled={pending}
+              >
+                Reporter
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {QUICK_RESCHEDULE_PRESETS.map((preset) => (
+                  <DropdownMenuItem key={preset} onClick={() => quickPreset(preset)}>
+                    {QUICK_RESCHEDULE_LABELS[preset]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={convert}>
+              Convertir
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-destructive/50 text-destructive hover:bg-destructive/10"
+              disabled={pending}
+              onClick={() => setLostOpen(true)}
+            >
+              <UserX className="size-3.5" />
+              Perdu
+            </Button>
+          </>
         ) : null}
+        <CallbackRowActions
+          row={row}
+          onEdit={onEdit}
+          onOpenConvertSimulator={canRunSimulator ? onOpenConvertSimulator : undefined}
+        />
       </div>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <Dialog open={lostOpen} onOpenChange={setLostOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Supprimer ce rappel ?</DialogTitle>
+            <DialogTitle>Marquer ce rappel comme perdu ?</DialogTitle>
             <DialogDescription>
-              Le rappel pour <strong>{row.company_name}</strong> sera retiré des listes (suppression
-              logique). Cette action est réservée à la direction.
+              <strong>{row.company_name}</strong> disparaîtra des listes actives et sera rangé sous l’onglet
+              « Perdu ».
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setLostOpen(false)}>
               Annuler
             </Button>
             <Button
@@ -218,18 +225,18 @@ export function CommercialCallbackAgentRow({
               disabled={pending}
               onClick={() => {
                 startTransition(async () => {
-                  const res = await deleteCommercialCallback(row.id);
+                  const res = await markCommercialCallbackLost({ callbackId: row.id });
                   if (!res.ok) {
-                    toast.error("Suppression impossible", { description: res.error });
+                    toast.error("Action impossible", { description: res.error });
                     return;
                   }
-                  toast.success("Rappel supprimé.");
-                  setDeleteOpen(false);
+                  toast.success("Rappel marqué comme perdu.");
+                  setLostOpen(false);
                   refresh();
                 });
               }}
             >
-              Supprimer
+              Confirmer
             </Button>
           </DialogFooter>
         </DialogContent>

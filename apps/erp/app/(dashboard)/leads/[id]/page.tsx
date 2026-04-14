@@ -10,11 +10,9 @@ import { LeadDetailVtActions } from "@/features/leads/components/lead-detail-vt-
 import { LeadSimulationResults } from "@/features/leads/components/lead-simulation-results";
 import { DeleteLeadButton } from "@/features/leads/components/delete-lead-button";
 import { LeadForm } from "@/features/leads/components/lead-form";
-import { LeadInternalNotesSection } from "@/features/leads/components/lead-internal-notes-section";
+import { LeadCrmRightRail } from "@/features/leads/components/lead-crm-right-rail";
 import { LeadStatusBadge } from "@/features/leads/components/lead-status-badge";
 import { LeadStudyPdfCard } from "@/features/leads/study-pdf/components/lead-study-pdf-card";
-import { LeadActivityTimeline } from "@/features/leads/components/lead-activity-timeline";
-import { LeadEmailHistory } from "@/features/leads/components/lead-email-history";
 import { LeadRealtimeListener } from "@/features/leads/components/lead-realtime-listener";
 import { getLeadStudyDocuments } from "@/features/leads/study-pdf/queries/get-lead-study-documents";
 import { getEmailTrackingForLead } from "@/features/leads/study-pdf/queries/get-email-tracking";
@@ -23,10 +21,12 @@ import { getLeadWorkflowActivityEvents } from "@/features/leads/queries/get-lead
 import { contactSalutationLine } from "@/features/leads/lib/contact-map";
 import { leadAddressesComplete } from "@/features/leads/lib/lead-address-validation";
 import { leadRowToFormValues } from "@/features/leads/lib/form-defaults";
+import { resolveLeadCommercialCategoryForUi } from "@/features/leads/lib/resolve-lead-commercial-category";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
+import { canUserSwitchLeadCeeSheetOnLead } from "@/lib/auth/switch-cee-sheet-eligibility";
 import { canAccessCeeWorkflowsModule, canAccessCloserWorkspace, canAccessLeadsDirectoryNav } from "@/lib/auth/module-access";
-import { canDeleteLead, canReassignLeadCreator } from "@/lib/auth/lead-permissions";
+import { canDeleteLead, canReassignLeadCreator, canReassignWorkflowRoles } from "@/lib/auth/lead-permissions";
 import {
   isRestrictedAgentLeadConsultationReadOnly,
   isRestrictedFieldAgent,
@@ -35,7 +35,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getLeadInternalNotes } from "@/features/leads/queries/get-lead-internal-notes";
 import { getActiveTechnicalVisitForLead } from "@/features/leads/queries/get-active-technical-visit-for-lead";
 import { getTechnicalVisitRefsForLead } from "@/features/leads/queries/get-technical-visits-for-lead";
-import { getLeadProfileOptionsForReassign } from "@/features/leads/queries/get-lead-form-options";
+import { getAdminCeeSheets } from "@/features/cee-workflows/queries/get-admin-cee-sheets";
+import { getLeadFormOptions, getLeadProfileOptionsForReassign } from "@/features/leads/queries/get-lead-form-options";
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { formatDateTimeFr } from "@/lib/format";
@@ -78,13 +79,15 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const access = await getAccessContext();
   const canReassign =
     access.kind === "authenticated" && canReassignLeadCreator(access.roleCodes);
+  const canEditWorkflowAssignments =
+    access.kind === "authenticated" && canReassignWorkflowRoles(access.roleCodes);
   const canDelete =
     access.kind === "authenticated" && canDeleteLead(access.roleCodes);
 
   const isAgentLeadExperience =
     access.kind === "authenticated" && isRestrictedFieldAgent(access);
 
-  const [lead, vtRefs, activeVisit, internalNotes, studyDocs, emailTracking, leadEmails, ceeWorkflows] =
+  const [lead, vtRefs, activeVisit, internalNotes, studyDocs, emailTracking, leadEmails, ceeWorkflows, leadFormOpts] =
     await Promise.all([
       getLeadById(id, access.kind === "authenticated" ? access : undefined),
       isAgentLeadExperience
@@ -98,9 +101,11 @@ export default async function LeadDetailPage({ params }: PageProps) {
       isAgentLeadExperience ? Promise.resolve([]) : getEmailTrackingForLead(id),
       isAgentLeadExperience ? Promise.resolve([]) : getLeadEmails(id),
       access.kind === "authenticated" ? getLeadSheetWorkflowsForLead(id, access) : Promise.resolve([]),
+      canEditWorkflowAssignments ? getLeadFormOptions() : Promise.resolve({ profiles: [] }),
     ]);
 
   const agentProfiles = canReassign ? await getLeadProfileOptionsForReassign() : [];
+  const workflowProfileOptions = leadFormOpts.profiles;
 
   if (!lead) {
     notFound();
@@ -108,6 +113,18 @@ export default async function LeadDetailPage({ params }: PageProps) {
 
   const supabase = await createClient();
   const agentConsultationReadOnly = await isRestrictedAgentLeadConsultationReadOnly(supabase, access, lead.id);
+
+  const canSwitchLeadCeeSheet = await canUserSwitchLeadCeeSheetOnLead(supabase, access, {
+    id: lead.id,
+    created_by_agent_id: lead.created_by_agent_id,
+    confirmed_by_user_id: lead.confirmed_by_user_id,
+  });
+
+  const ceeSheetSwitchOptions = canSwitchLeadCeeSheet
+    ? (await getAdminCeeSheets())
+        .filter((s) => s.isCommercialActive)
+        .map((s) => ({ id: s.id, code: s.code, name: s.name }))
+    : [];
 
   const closerToolWorkflows =
     access.kind === "authenticated" &&
@@ -122,13 +139,6 @@ export default async function LeadDetailPage({ params }: PageProps) {
           await Promise.all(closerToolWorkflows.map((w) => getCloserWorkflowDetail(w.id, access)))
         ).filter((d): d is NonNullable<typeof d> => d != null)
       : [];
-
-  const workflowLabelsById = Object.fromEntries(
-    ceeWorkflows.map((w) => [
-      w.id,
-      w.cee_sheet?.code?.trim() || w.cee_sheet?.label?.trim() || "Fiche CEE",
-    ]),
-  );
 
   const workflowActivityEvents =
     !isAgentLeadExperience && ceeWorkflows.length > 0
@@ -162,6 +172,12 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const companyNameOk = Boolean(lead.company_name?.trim());
   const pipelineBlocked = lead.lead_status === "lost" || lead.lead_status === "converted";
 
+  const commercialCategoryLabel = resolveLeadCommercialCategoryForUi(lead, ceeWorkflows);
+  const leadFormDefaultValues = {
+    ...leadRowToFormValues(lead),
+    ...(commercialCategoryLabel.trim() ? { product_interest: commercialCategoryLabel } : {}),
+  };
+
   const canOpenAgentWorkstation =
     access.kind === "authenticated" && canAccessCeeWorkflowsModule(access);
 
@@ -183,11 +199,11 @@ export default async function LeadDetailPage({ params }: PageProps) {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               {contact && <span className="font-medium text-foreground/80">{contact}</span>}
               {contact && <span className="text-muted-foreground/50">·</span>}
-              {lead.product_interest?.trim() && (
+              {commercialCategoryLabel.trim() && (
                 <>
                   <span>
                     <span className="text-muted-foreground">Catégorie · </span>
-                    <span className="font-medium text-foreground">{lead.product_interest.trim()}</span>
+                    <span className="font-medium text-foreground">{commercialCategoryLabel.trim()}</span>
                   </span>
                   <span className="text-muted-foreground/50">·</span>
                 </>
@@ -263,7 +279,16 @@ export default async function LeadDetailPage({ params }: PageProps) {
         >
           {!isAgentLeadExperience ? (
             <CollapsibleSection title="Workflow fiche CEE" defaultOpen>
-              <LeadCurrentWorkflowCard workflows={ceeWorkflows} />
+              <LeadCurrentWorkflowCard
+                workflows={ceeWorkflows}
+                profileOptions={workflowProfileOptions}
+                readOnly={agentConsultationReadOnly}
+                canEditAssignments={canEditWorkflowAssignments}
+                leadId={lead.id}
+                currentCeeSheetId={lead.cee_sheet_id}
+                canSwitchCeeSheet={canSwitchLeadCeeSheet}
+                ceeSheetSwitchOptions={ceeSheetSwitchOptions}
+              />
             </CollapsibleSection>
           ) : null}
 
@@ -276,7 +301,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
               key={lead.id}
               mode="edit"
               leadId={lead.id}
-              defaultValues={leadRowToFormValues(lead)}
+              defaultValues={leadFormDefaultValues}
               className="max-w-4xl"
               canReassignCreator={canReassign}
               agentOptions={agentProfiles}
@@ -363,58 +388,18 @@ export default async function LeadDetailPage({ params }: PageProps) {
         </div>
 
         {!isAgentLeadExperience ? (
-          <aside
-            className={cn(
-              "mt-6 w-full max-w-lg shrink-0 space-y-3 self-stretch sm:max-w-none",
-              "lg:mt-0 lg:fixed lg:z-20 lg:max-w-none lg:space-y-3",
-              "lg:w-[28rem] xl:w-[31rem] 2xl:w-[34rem]",
-              "lg:max-h-[calc(100vh-13.5rem)] lg:overflow-y-auto lg:overscroll-contain",
-              "lg:right-6 lg:bottom-8 xl:right-8 2xl:right-10",
-            )}
-          >
-            <LeadActivityTimeline
-              leadCreatedAt={lead.created_at}
-              leadCreatedByLabel={createdByLabel}
-              workflowLabelsById={workflowLabelsById}
-              events={workflowActivityEvents}
-            />
-            <section className="rounded-xl border border-border/80 bg-card shadow-sm">
-              <div className="border-b border-border/70 px-3 py-2.5">
-                <h2 className="text-sm font-semibold text-foreground">Emails</h2>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Boîte liée au lead : sync, historique, envoi (nouvel email).
-                </p>
-              </div>
-              <div className="p-3">
-                <LeadEmailHistory
-                  leadId={lead.id}
-                  clientEmail={lead.email ?? undefined}
-                  clientName={lead.contact_name ?? undefined}
-                  companyName={lead.company_name ?? undefined}
-                  siteName={
-                    [lead.worksite_address, lead.worksite_postal_code, lead.worksite_city]
-                      .filter(Boolean)
-                      .join(", ") ||
-                    [lead.head_office_address, lead.head_office_postal_code, lead.head_office_city]
-                      .filter(Boolean)
-                      .join(", ") ||
-                    undefined
-                  }
-                  presentationUrl={studyDocs.find((d) => d.document_type === "study_pdf")?.file_url}
-                  accordUrl={studyDocs.find((d) => d.document_type === "accord_commercial")?.file_url}
-                  initialTracking={emailTracking}
-                  initialEmails={leadEmails}
-                />
-              </div>
-            </section>
-            <LeadInternalNotesSection
-              leadId={lead.id}
-              initialNotes={internalNotes}
-              variant="sidebar"
-              readOnly={agentConsultationReadOnly}
-              className="!flex-none"
-            />
-          </aside>
+          <LeadCrmRightRail
+            lead={lead}
+            workflows={ceeWorkflows.map((w) => ({ id: w.id, cee_sheet: w.cee_sheet }))}
+            readOnly={agentConsultationReadOnly}
+            preloaded={{
+              internalNotes,
+              studyDocs,
+              emailTracking,
+              leadEmails,
+              workflowActivityEvents,
+            }}
+          />
         ) : null}
       </div>
     </div>

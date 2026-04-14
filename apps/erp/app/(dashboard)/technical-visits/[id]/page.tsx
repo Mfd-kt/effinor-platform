@@ -11,7 +11,7 @@ import { getTechnicalVisitById } from "@/features/technical-visits/queries/get-t
 import { getAccessContext } from "@/lib/auth/access-context";
 import { getTechnicalVisitFormOptions } from "@/features/technical-visits/queries/get-technical-visit-form-options";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { canAccessTechnicalVisitsModule } from "@/lib/auth/module-access";
+import { canAccessTechnicalVisitsDirectoryNav } from "@/lib/auth/module-access";
 import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,7 @@ type PageProps = {
 export default async function TechnicalVisitDetailPage({ params }: PageProps) {
   const { id } = await params;
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessTechnicalVisitsModule(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessTechnicalVisitsDirectoryNav(access))) {
     notFound();
   }
   const row = await getTechnicalVisitById(id, access);

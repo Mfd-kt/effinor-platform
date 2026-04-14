@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
+import { getManagedTeamsContext, isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
 import type { AccessContext } from "@/lib/auth/access-context";
 import { getLeadIdsForAccess, shouldRestrictTechnicalVisitsToCreatorOnly } from "@/lib/auth/data-scope";
 
@@ -37,6 +38,24 @@ export async function getTechnicalVisits(
   let scopedLeadIds: string[] | "all" | undefined;
   if (access?.kind === "authenticated") {
     scopedLeadIds = await getLeadIdsForAccess(supabase, access);
+    if (scopedLeadIds !== "all" && (await isCeeTeamManager(access.userId))) {
+      const ctx = await getManagedTeamsContext(access.userId);
+      if (ctx?.sheetIds.length) {
+        const { data: wfRows, error: wfErr } = await supabase
+          .from("lead_sheet_workflows")
+          .select("lead_id")
+          .in("cee_sheet_id", ctx.sheetIds)
+          .eq("is_archived", false);
+        if (wfErr) {
+          throw new Error(`Périmètre visites techniques : ${wfErr.message}`);
+        }
+        const merged = new Set<string>(scopedLeadIds);
+        for (const r of wfRows ?? []) {
+          merged.add(r.lead_id);
+        }
+        scopedLeadIds = [...merged];
+      }
+    }
     if (scopedLeadIds !== "all" && scopedLeadIds.length === 0) {
       return [];
     }

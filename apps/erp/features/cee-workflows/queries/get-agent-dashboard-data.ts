@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AccessContext } from "@/lib/auth/access-context";
+import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import {
   classifyAgentActivity,
   classifyAgentActivityInRange,
@@ -14,6 +15,7 @@ import {
   getLeadSheetWorkflowsForAccess,
   type WorkflowListParams,
 } from "@/features/cee-workflows/queries/get-lead-sheet-workflows";
+import { resolveAgentActivityNotesPreview } from "@/features/cee-workflows/lib/sync-agent-quick-note-to-internal-notes";
 
 export type AgentDashboardData = {
   sheets: AgentAvailableSheet[];
@@ -49,7 +51,10 @@ export async function getAgentDraftWorkflows(access: AccessContext) {
       address: workflow.lead?.worksite_address ?? null,
       city: workflow.lead?.worksite_city ?? null,
       postalCode: workflow.lead?.worksite_postal_code ?? null,
-      notes: workflow.lead?.recording_notes ?? null,
+      notes: resolveAgentActivityNotesPreview(
+        workflow.simulation_input_json,
+        workflow.lead?.recording_notes,
+      ),
     }),
   );
 }
@@ -74,7 +79,10 @@ export async function getAgentRecentValidatedWorkflows(access: AccessContext) {
         address: workflow.lead?.worksite_address ?? null,
         city: workflow.lead?.worksite_city ?? null,
         postalCode: workflow.lead?.worksite_postal_code ?? null,
-        notes: workflow.lead?.recording_notes ?? null,
+        notes: resolveAgentActivityNotesPreview(
+          workflow.simulation_input_json,
+          workflow.lead?.recording_notes,
+        ),
       }),
     );
 }
@@ -113,7 +121,10 @@ export async function getAgentDashboardData(
       address: workflow.lead?.worksite_address ?? null,
       city: workflow.lead?.worksite_city ?? null,
       postalCode: workflow.lead?.worksite_postal_code ?? null,
-      notes: workflow.lead?.recording_notes ?? null,
+      notes: resolveAgentActivityNotesPreview(
+        workflow.simulation_input_json,
+        workflow.lead?.recording_notes,
+      ),
     }),
   );
 
@@ -140,6 +151,8 @@ export async function getAgentDashboardServerContext(access: AccessContext) {
 
   return {
     userId: user?.id ?? null,
-    dashboard: await getAgentDashboardData(access, undefined, { restrictToLeadsCreatedByCurrentUser: true }),
+    dashboard: await getAgentDashboardData(access, undefined, {
+      restrictToLeadsCreatedByCurrentUser: !hasFullCeeWorkflowAccess(access),
+    }),
   };
 }

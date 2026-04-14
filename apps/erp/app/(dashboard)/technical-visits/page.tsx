@@ -10,7 +10,7 @@ import { TechnicalVisitsViewToggle } from "@/features/technical-visits/component
 import { buildTechnicalVisitsListUrl } from "@/features/technical-visits/lib/build-technical-visits-list-url";
 import { getTechnicalVisits } from "@/features/technical-visits/queries/get-technical-visits";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessTechnicalVisitsModule } from "@/lib/auth/module-access";
+import { canAccessTechnicalVisitsDirectoryNav } from "@/lib/auth/module-access";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import type { TechnicalVisitStatus } from "@/types/database.types";
@@ -35,7 +35,7 @@ type PageProps = {
 
 export default async function TechnicalVisitsPage({ searchParams }: PageProps) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessTechnicalVisitsModule(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessTechnicalVisitsDirectoryNav(access))) {
     notFound();
   }
   const sp = await searchParams;

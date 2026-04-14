@@ -79,9 +79,20 @@ export async function updateCeeSheet(input: unknown): Promise<AdminActionResult<
     internal_notes: parsed.data.internal_notes?.trim() || null,
   };
 
-  const { error } = await supabase.from("cee_sheets").update(payload).eq("id", parsed.data.id);
+  const { data: updated, error } = await supabase
+    .from("cee_sheets")
+    .update(payload)
+    .eq("id", parsed.data.id)
+    .select("id")
+    .maybeSingle();
   if (error) {
     return { ok: false, message: error.message };
+  }
+  if (!updated) {
+    return {
+      ok: false,
+      message: "Aucune ligne mise à jour (fiche introuvable ou droits insuffisants).",
+    };
   }
   revalidateAdminCee();
   return { ok: true, data: parsed.data.id };

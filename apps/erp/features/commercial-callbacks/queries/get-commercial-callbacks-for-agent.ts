@@ -16,9 +16,9 @@ export {
 export type { CallbackListFilter } from "@/features/commercial-callbacks/domain/callback-dates";
 
 /**
- * Poste agent : uniquement les rappels où l’utilisateur est assigné ou créateur.
- * Les profils « direction » (sales_director, admin…) voient la vue équipe sur `/commercial-callbacks` ;
- * ici on limite l’onglet Agent à leur propre file.
+ * Poste agent : par défaut les rappels où l’utilisateur est assigné ou créateur (RLS).
+ * Admin / direction (`hasFullCeeWorkflowAccess`) : pas de filtre applicatif — la RLS (`current_user_can_manage_cee_workflows`)
+ * autorise la vue de tous les rappels, comme sur `/commercial-callbacks`.
  */
 export async function fetchCommercialCallbacksForAgentWorkstation(
   access: AccessContext,
@@ -34,10 +34,8 @@ export async function fetchCommercialCallbacksForAgentWorkstation(
     .order("callback_date", { ascending: true })
     .order("callback_time", { ascending: true, nullsFirst: false });
 
-  if (hasFullCeeWorkflowAccess(access)) {
-    q = q.or(
-      `assigned_agent_user_id.eq.${access.userId},created_by_user_id.eq.${access.userId}`,
-    );
+  if (!hasFullCeeWorkflowAccess(access)) {
+    q = q.or(`assigned_agent_user_id.eq.${access.userId},created_by_user_id.eq.${access.userId}`);
   }
 
   const { data, error } = await q;
