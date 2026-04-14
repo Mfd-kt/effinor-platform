@@ -1,4 +1,6 @@
-FROM node:20-alpine
+# Debian bookworm-slim (glibc) : Playwright/Chromium pour les PDF (présentation + accord).
+# Éviter Alpine ici : binaire Chromium / libs système souvent incompatibles ou absents.
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
@@ -11,9 +13,15 @@ ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 
-COPY . .
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Même binaire que la dépendance `playwright` du projet + paquets OS (apt).
+RUN npx playwright install --with-deps chromium
+
+COPY . .
 
 RUN npm run build
 
