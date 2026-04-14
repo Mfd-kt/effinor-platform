@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack -p ${PORT:-3001}",
     "build": "next build",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
     "lint": "eslint",
     "generate:types": "supabase gen types typescript --local > types/database.types.ts",
     "test": "vitest run"

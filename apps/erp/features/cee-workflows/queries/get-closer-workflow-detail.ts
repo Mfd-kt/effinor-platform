@@ -42,7 +42,7 @@ export async function getCloserWorkflowDetail(
   const supabase = await createClient();
   const selectClause = `
     *,
-    lead:leads!lead_id(id, company_name, lead_status, cee_sheet_id, current_workflow_id, contact_name, phone, email, worksite_address, worksite_city, worksite_postal_code, recording_notes),
+    lead:leads!lead_id(id, company_name, lead_status, cee_sheet_id, current_workflow_id, contact_name, phone, email, worksite_address, worksite_city, worksite_postal_code, heating_type, recording_notes),
     cee_sheet:cee_sheets!cee_sheet_id(id, code, label, simulator_key, workflow_key, is_commercial_active),
     assigned_agent:profiles!assigned_agent_user_id(id, full_name, email),
     assigned_confirmateur:profiles!assigned_confirmateur_user_id(id, full_name, email),

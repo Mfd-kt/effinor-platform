@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Poppins, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { RuntimeSupabaseScript } from "@/components/runtime-supabase-script";
@@ -9,9 +9,16 @@ import "./globals.css";
 /** Lit les variables Supabase au runtime du conteneur (PUBLIC_* / NEXT_PUBLIC_*). Sans cela, le layout serait figé au build sans script d’injection. */
 export const dynamic = "force-dynamic";
 
-const geistSans = Geist({
+/** Même duo que le site vitrine Effinor (Inter corps, Poppins titres). */
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
+});
+
+const poppins = Poppins({
+  variable: "--font-heading",
+  subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -36,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <RuntimeSupabaseScript />

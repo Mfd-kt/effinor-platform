@@ -1,5 +1,5 @@
 # Debian bookworm-slim : Playwright/Chromium (PDF) + build Next.js `output: "standalone"`.
-# Avec standalone, `next start` n’est pas supporté : exécuter `node server.js` (voir sortie `.next/standalone`).
+# Standalone : ne pas utiliser `next start` ni `npm run start` — exécuter `server.js` du bundle tracé.
 FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
@@ -36,13 +36,13 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY --from=builder /ms-playwright /ms-playwright
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# Structure explicite : le serveur résout `.next/static` et `public` depuis ce répertoire.
+COPY --from=builder /app/.next/standalone ./.next/standalone
+COPY --from=builder /app/.next/static ./.next/standalone/.next/static
+COPY --from=builder /app/public ./.next/standalone/public
 
-# Paquets OS Chromium (le bundle standalone inclut `playwright` tracé ; pas de `npm ci` ici).
-RUN node node_modules/playwright/cli.js install-deps chromium
+RUN node ./.next/standalone/node_modules/playwright/cli.js install-deps chromium
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", ".next/standalone/server.js"]

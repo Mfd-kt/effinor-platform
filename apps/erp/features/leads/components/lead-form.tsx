@@ -25,8 +25,10 @@ import { LeadMediaFilesField } from "@/features/leads/components/lead-media-file
 import { RecordingNotesMarkdownPreview } from "@/features/leads/components/recording-notes-markdown-preview";
 import { RecordingNotesAiButton } from "@/features/leads/components/recording-notes-ai-button";
 import { BUILDING_TYPE_LABELS, BUILDING_TYPE_VALUES } from "@/features/leads/lib/building-types";
-import { EMPTY_LEAD_FORM, leadInsertToFormInput } from "@/features/leads/lib/form-defaults";
+import { EMPTY_LEAD_FORM, leadInsertToFormInput, leadRowToFormValues } from "@/features/leads/lib/form-defaults";
 import { mergeAiLeadFillIntoForm } from "@/features/leads/lib/merge-ai-lead-fill";
+import { normalizeHeatingModesFromDb } from "@/features/leads/lib/heating-modes";
+import { mergeLeadPayloadPreservingUntouchedHeating } from "@/features/leads/lib/lead-form-heating-preserve";
 import { stringArrayFromLeadJson } from "@/features/leads/lib/lead-media-json";
 import {
   LeadInsertSchema,
@@ -81,6 +83,8 @@ export function LeadForm({
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved">("idle");
   /** Snapshot JSON des valeurs déjà persistées (évite boucles et sauvegardes inutiles). */
   const lastSavedSerializedRef = useRef<string | null>(null);
+  /** Derniers modes de chauffage connus en base — évite d’écraser la colonne si le champ n’a pas été modifié (autosave sur le reste du formulaire). */
+  const lastCommittedHeatingModesRef = useRef<LeadInsertInput["heating_type"]>(undefined);
   const [duplicateDialog, setDuplicateDialog] = useState<
     | { open: false }
     | {
@@ -104,6 +108,7 @@ export function LeadForm({
     getValues,
     reset,
     setValue,
+    getFieldState,
   } = form;
 
   const watchedValues = useWatch({ control });
@@ -123,12 +128,19 @@ export function LeadForm({
   useEffect(() => {
     if (mode !== "edit") {
       lastSavedSerializedRef.current = null;
+      lastCommittedHeatingModesRef.current = undefined;
       return;
     }
     if (serverSnapshotKey !== null) {
       lastSavedSerializedRef.current = serverSnapshotKey;
+      const parsedDefaults = LeadInsertSchema.safeParse(defaultValues ?? EMPTY_LEAD_FORM);
+      if (parsedDefaults.success) {
+        lastCommittedHeatingModesRef.current = parsedDefaults.data.heating_type?.length
+          ? [...parsedDefaults.data.heating_type]
+          : undefined;
+      }
     }
-  }, [mode, leadId, serverSnapshotKey]);
+  }, [mode, leadId, serverSnapshotKey, defaultValues]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -138,16 +150,29 @@ export function LeadForm({
     const timer = window.setTimeout(() => {
       const parsed = LeadInsertSchema.safeParse(getValues());
       if (!parsed.success) return;
-      const nextSerialized = JSON.stringify(parsed.data);
+      const heatingDirty = getFieldState("heating_type", form.formState).isDirty;
+      const payload = mergeLeadPayloadPreservingUntouchedHeating(parsed.data, {
+        heatingFieldDirty: heatingDirty,
+        lastCommittedHeating: lastCommittedHeatingModesRef.current,
+      });
+      const nextSerialized = JSON.stringify(payload);
       if (nextSerialized === lastSavedSerializedRef.current) return;
 
       void (async () => {
         setAutoSaveState("saving");
         setFormError(null);
-        const result = await updateLead({ id: leadId, ...parsed.data });
+        const result = await updateLead({ id: leadId, ...payload });
         if (result.ok) {
-          lastSavedSerializedRef.current = nextSerialized;
-          reset(leadInsertToFormInput(parsed.data));
+          const modes = normalizeHeatingModesFromDb(result.data.heating_type);
+          lastCommittedHeatingModesRef.current = modes.length ? modes : undefined;
+          const canonical = LeadInsertSchema.safeParse(leadRowToFormValues(result.data));
+          if (canonical.success) {
+            lastSavedSerializedRef.current = JSON.stringify(canonical.data);
+            reset(leadRowToFormValues(result.data));
+          } else {
+            lastSavedSerializedRef.current = nextSerialized;
+            reset(leadInsertToFormInput(payload));
+          }
           setAutoSaveState("saved");
           router.refresh();
           window.setTimeout(() => setAutoSaveState("idle"), 2500);
@@ -159,7 +184,7 @@ export function LeadForm({
     }, 1200);
 
     return () => window.clearTimeout(timer);
-   }, [readOnly, watchedValues, mode, leadId, getValues, reset, router]);
+   }, [readOnly, watchedValues, mode, leadId, getValues, getFieldState, reset, router, form]);
 
   async function onSubmit(values: LeadInsertInput) {
     setFormError(null);
@@ -190,13 +215,27 @@ export function LeadForm({
       return;
     }
 
-    const result = await updateLead({ id: leadId, ...values });
+    const heatingDirty = getFieldState("heating_type", form.formState).isDirty;
+    const payload = mergeLeadPayloadPreservingUntouchedHeating(values, {
+      heatingFieldDirty: heatingDirty,
+      lastCommittedHeating: lastCommittedHeatingModesRef.current,
+    });
+
+    const result = await updateLead({ id: leadId, ...payload });
     if (!result.ok) {
       setFormError(result.message);
       return;
     }
-    lastSavedSerializedRef.current = JSON.stringify(values);
-    reset(leadInsertToFormInput(values));
+    const modes = normalizeHeatingModesFromDb(result.data.heating_type);
+    lastCommittedHeatingModesRef.current = modes.length ? modes : undefined;
+    const canonical = LeadInsertSchema.safeParse(leadRowToFormValues(result.data));
+    if (canonical.success) {
+      lastSavedSerializedRef.current = JSON.stringify(canonical.data);
+      reset(leadRowToFormValues(result.data));
+    } else {
+      lastSavedSerializedRef.current = JSON.stringify(payload);
+      reset(leadInsertToFormInput(payload));
+    }
     setAutoSaveState("saved");
     window.setTimeout(() => setAutoSaveState("idle"), 2500);
     router.refresh();

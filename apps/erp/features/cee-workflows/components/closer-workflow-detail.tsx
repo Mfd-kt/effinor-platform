@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { AgentSimulationResultCard } from "@/features/cee-workflows/components/agent-simulation-result-card";
 import { CloserLeadFullDetailPanel } from "@/features/cee-workflows/components/closer-lead-full-detail";
 import type { CloserWorkflowDetail as CloserWorkflowDetailData } from "@/features/cee-workflows/queries/get-closer-workflow-detail";
+import { missingInformationForCloserDisplay } from "@/features/cee-workflows/lib/missing-information-for-closer-display";
+import { formatHeatingModesDisplay } from "@/features/leads/lib/heating-modes";
 import { mergeLeadDetailWithWorkflowSimulationResult } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
 import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 
@@ -36,6 +38,7 @@ export function CloserWorkflowDetail({
     !Array.isArray(workflow.qualification_data_json)
       ? (workflow.qualification_data_json as Record<string, unknown>)
       : {};
+  const missingInformationText = missingInformationForCloserDisplay(workflow.qualification_data_json);
 
   return (
     <div className="space-y-5">
@@ -53,6 +56,10 @@ export function CloserWorkflowDetail({
             <div><strong>Téléphone :</strong> {lead?.phone || "Non renseigné"}</div>
             <div><strong>Email :</strong> {lead?.email || "Non renseigné"}</div>
             <div><strong>Adresse :</strong> {[lead?.worksite_address, lead?.worksite_postal_code, lead?.worksite_city].filter(Boolean).join(", ") || "Non renseignée"}</div>
+            <div>
+              <strong>Mode(s) de chauffage (fiche lead) :</strong>{" "}
+              {formatHeatingModesDisplay(lead?.heating_type ?? leadForFullPanel?.heating_type)}
+            </div>
           </div>
           <div className="space-y-2">
             <div><strong>Fiche CEE :</strong> {workflow.cee_sheet?.label ?? "Inconnue"}</div>
@@ -93,12 +100,26 @@ export function CloserWorkflowDetail({
             <div className="text-muted-foreground">{lead?.recording_notes?.trim() || "Aucune note agent."}</div>
           </div>
           <div>
+            <div className="font-medium">Informations manquantes (confirmateur)</div>
+            <div className="text-muted-foreground whitespace-pre-wrap">
+              {missingInformationText ?? "Aucune information manquante signalée."}
+            </div>
+          </div>
+          <div>
             <div className="font-medium">Notes confirmateur</div>
-            <div className="text-muted-foreground">{typeof q.confirmateur_notes === "string" ? q.confirmateur_notes : "Aucune note confirmateur."}</div>
+            <div className="text-muted-foreground whitespace-pre-wrap">
+              {typeof q.confirmateur_notes === "string" && q.confirmateur_notes.trim()
+                ? q.confirmateur_notes
+                : "Aucune note confirmateur."}
+            </div>
           </div>
           <div>
             <div className="font-medium">Transmission closer</div>
-            <div className="text-muted-foreground">{typeof q.closer_handover_notes === "string" ? q.closer_handover_notes : "Aucune note de transmission."}</div>
+            <div className="text-muted-foreground whitespace-pre-wrap">
+              {typeof q.closer_handover_notes === "string" && q.closer_handover_notes.trim()
+                ? q.closer_handover_notes
+                : "Aucune note de transmission."}
+            </div>
           </div>
         </CardContent>
       </Card>

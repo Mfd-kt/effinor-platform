@@ -71,6 +71,7 @@ export type WorkflowScopedListRow = CeeSheetWorkflowRow & {
     | "worksite_address"
     | "worksite_city"
     | "worksite_postal_code"
+    | "heating_type"
     | "recording_notes"
     | "lead_channel"
     | "lead_origin"

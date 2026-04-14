@@ -25,7 +25,7 @@ type Supabase = SupabaseClient<Database>;
 
 const WORKFLOW_SELECT = `
   *,
-  lead:leads!lead_id(id, created_at, company_name, lead_status, cee_sheet_id, current_workflow_id, contact_name, phone, email, worksite_address, worksite_city, worksite_postal_code, recording_notes, lead_channel, lead_origin, callback_at),
+  lead:leads!lead_id(id, created_at, company_name, lead_status, cee_sheet_id, current_workflow_id, contact_name, phone, email, worksite_address, worksite_city, worksite_postal_code, heating_type, recording_notes, lead_channel, lead_origin, callback_at),
   cee_sheet:cee_sheets!cee_sheet_id(id, code, label, simulator_key, workflow_key, is_commercial_active),
   assigned_agent:profiles!assigned_agent_user_id(id, full_name, email),
   assigned_confirmateur:profiles!assigned_confirmateur_user_id(id, full_name, email),
