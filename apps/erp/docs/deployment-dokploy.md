@@ -1,8 +1,8 @@
 # Déploiement Effinor ERP sur VPS (Dokploy / Hostinger)
 
-Le **Dockerfile** utilise **Node 20 Alpine**, `npm run build` et la sortie **standalone** (`output: "standalone"` dans `next.config.ts`).
+Le **Dockerfile** (`apps/erp/Dockerfile`) utilise **Node 20 bookworm-slim**, **Playwright/Chromium**, `npm run build -w @effinor/erp` et la sortie **standalone** (`output: "standalone"` dans `next.config.ts`).
 
-> **PDF études (Playwright)** : cette image **ne contient pas** Chromium. Si la génération PDF échoue en prod, il faudra une image avec navigateur (ex. `mcr.microsoft.com/playwright/node:20-noble`) ou un worker dédié.
+> **Contexte Docker obligatoire** : la racine du dépôt **`effinor-platform`** (lockfile `package-lock.json` monorepo). Un contexte limité à `apps/erp` fait échouer `npm ci` (mauvais lockfile).
 
 ## Prérequis
 
@@ -56,7 +56,7 @@ Ne commitez jamais de secrets ; saisissez-les uniquement dans Dokploy.
 1. Ouvrir le **panel Dokploy** (bouton « Gérer le panel » sur Hostinger).
 2. **New application** (ou équivalent) → type **Docker** ou **Git + Dockerfile**.
 3. **Repository** : URL Git + branche (ex. `main`).
-4. **Build** : laisser Dokploy détecter le `Dockerfile` à la racine du repo.
+4. **Build** : **Dockerfile** = chemin `apps/erp/Dockerfile` ; **contexte de build** = racine du repo (dossier qui contient `package-lock.json` à la racine), pas le sous-dossier `apps/erp`.
 5. **Port du conteneur** : **3000** (Next écoute sur `PORT`, défaut 3000).
 6. Coller les variables d’environnement (section ci-dessus). Pour **`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** et les `ARG` du `Dockerfile`, vérifier que Dokploy les transmet aussi à l’étape **build** (pas seulement au conteneur final).
 7. **Domaine** : attacher un domaine (ex. `erp.votredomaine.fr`) avec HTTPS (Let’s Encrypt intégré à Dokploy selon version).
