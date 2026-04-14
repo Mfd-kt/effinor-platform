@@ -21,6 +21,40 @@ import { leadRowToFormValues } from "@/features/leads/lib/form-defaults";
 import type { LeadFormInput } from "@/features/leads/schemas/lead.schema";
 import type { LeadDetailRow } from "@/features/leads/types";
 
+/**
+ * Le dialogue n’édite qu’un sous-ensemble de champs. En envoyer tout le `LeadFormInput`
+ * depuis le state React réécrivait aussi `heating_type`, médias, etc. avec des valeurs
+ * parfois désynchronisées du serveur (ex. après saisie confirmateur) → écrasement des
+ * modes de chauffage multi-sélection.
+ */
+function buildCloserQuickEditPayload(lead: LeadDetailRow, leadId: string, form: LeadFormInput) {
+  const baseline = leadRowToFormValues(lead);
+  const siretLine = (form.siret ?? "").trim() || (form.head_office_siret ?? "").trim();
+  return {
+    id: leadId,
+    ...baseline,
+    company_name: form.company_name,
+    product_interest: form.product_interest,
+    siret: siretLine,
+    head_office_siret: siretLine,
+    worksite_siret: form.worksite_siret,
+    first_name: form.first_name,
+    last_name: form.last_name,
+    email: form.email,
+    phone: form.phone,
+    contact_role: form.contact_role,
+    head_office_address: form.head_office_address,
+    head_office_postal_code: form.head_office_postal_code,
+    head_office_city: form.head_office_city,
+    worksite_address: form.worksite_address,
+    worksite_postal_code: form.worksite_postal_code,
+    worksite_city: form.worksite_city,
+    surface_m2: form.surface_m2,
+    ceiling_height_m: form.ceiling_height_m,
+    recording_notes: form.recording_notes,
+  };
+}
+
 function Field({
   id,
   label,
@@ -69,7 +103,7 @@ export function CloserLeadQuickEditDialog({
   function submit() {
     setFeedback(null);
     startTransition(async () => {
-      const result = await updateLead({ id: leadId, ...form });
+      const result = await updateLead(buildCloserQuickEditPayload(lead, leadId, form));
       if (!result.ok) {
         setFeedback({ type: "err", text: result.message });
         return;
