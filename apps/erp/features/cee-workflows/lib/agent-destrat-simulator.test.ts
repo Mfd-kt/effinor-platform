@@ -60,6 +60,19 @@ describe("computeAgentDestratPreview", () => {
 
     expect(preview.ok).toBe(false);
   });
+
+  it("usage orienté PAC + chauffage électrique direct → NONE (aperçu cohérent)", () => {
+    const preview = computeAgentDestratPreview({
+      ...validDestratForm,
+      localUsage: "bureau",
+      currentHeatingMode: "electrique_direct",
+    });
+    expect(preview.ok).toBe(true);
+    if (preview.ok) {
+      expect(preview.result.ceeSolution.solution).toBe("NONE");
+      expect(preview.result.ceeSolution.eligible).toBe(false);
+    }
+  });
 });
 
 describe("extractAgentDestratStateFromJson", () => {

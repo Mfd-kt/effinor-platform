@@ -73,6 +73,7 @@ export async function insertMiniFormLeadFromSanitized(sanitizedData) {
 
   const simPayload = {
     mini_form: true,
+    type_projet: sanitizedData.type_projet || null,
     besoin_principal: fd.besoin_principal ?? null,
     besoin_principal_label: fd.besoin_principal_label ?? null,
     contexte_pac: fd.contexte_pac ?? null,
@@ -96,7 +97,7 @@ export async function insertMiniFormLeadFromSanitized(sanitizedData) {
     source: leadSource,
     campaign: attribution.cta || null,
     landing: attribution.page || null,
-    product_interest: sanitizedData.type_projet || null,
+    product_interest: null,
     company_name: societe || 'Non renseigné',
     first_name: first_name || null,
     last_name: last_name || null,
@@ -177,6 +178,7 @@ export async function insertContactPageLeadFromSanitized(payload) {
     contact_form: true,
     sujet,
     sujet_label: sujetLabel,
+    contact_sujet_label: sujetLabel,
     effinor_attr: {
       source: attr.source || null,
       project: attr.project || null,
@@ -194,7 +196,7 @@ export async function insertContactPageLeadFromSanitized(payload) {
     source: leadSource,
     campaign: attr.cta || null,
     landing: attr.page || null,
-    product_interest: sujetLabel,
+    product_interest: null,
     company_name: societe || 'Non renseigné',
     first_name: first_name || null,
     last_name: last_name || null,

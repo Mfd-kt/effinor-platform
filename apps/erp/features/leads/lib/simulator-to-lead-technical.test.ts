@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   leadBuildingTypeFromSimulatorCee,
+  leadHeatingTypesFromSimulationPayloads,
   leadHeatingTypesFromSimulator,
   parseWorkflowSimulationSnapshotJson,
 } from "@/features/leads/lib/simulator-to-lead-technical";
@@ -20,15 +21,35 @@ describe("leadBuildingTypeFromSimulatorCee", () => {
 
 describe("leadHeatingTypesFromSimulator", () => {
   it("priorise le mode détaillé agent", () => {
-    expect(leadHeatingTypesFromSimulator("electrique_direct", "gaz")).toEqual(["electricite"]);
-    expect(leadHeatingTypesFromSimulator("rayonnement", "elec")).toEqual(["gaz"]);
+    expect(leadHeatingTypesFromSimulator("electrique_direct", "gaz")).toEqual(["electrique_direct"]);
+    expect(leadHeatingTypesFromSimulator("rayonnement", "elec")).toEqual(["rayonnement"]);
     expect(leadHeatingTypesFromSimulator("pac_air_air", "gaz")).toEqual(["pac_air_air"]);
     expect(leadHeatingTypesFromSimulator("pac_air_eau", "elec")).toEqual(["pac_air_eau"]);
   });
 
   it("retombe sur le mode calculé", () => {
-    expect(leadHeatingTypesFromSimulator(null, "fioul")).toEqual(["fioul"]);
-    expect(leadHeatingTypesFromSimulator(undefined, "bois")).toEqual(["autres"]);
+    expect(leadHeatingTypesFromSimulator(null, "fioul")).toEqual(["chaudiere_eau"]);
+    expect(leadHeatingTypesFromSimulator(undefined, "bois")).toEqual(["autre_inconnu"]);
+  });
+});
+
+describe("leadHeatingTypesFromSimulationPayloads", () => {
+  it("lit currentHeatingMode à la racine (payload poste agent)", () => {
+    expect(
+      leadHeatingTypesFromSimulationPayloads(
+        {
+          currentHeatingMode: "rayonnement",
+          input: { surfaceM2: 100, heightM: 5 },
+        },
+        { heatingMode: "gaz" },
+      ),
+    ).toEqual(["rayonnement"]);
+  });
+
+  it("retombe sur heatingMode du résultat si pas de mode détaillé", () => {
+    expect(
+      leadHeatingTypesFromSimulationPayloads({ input: {} }, { heatingMode: "elec" }),
+    ).toEqual(["electrique_direct"]);
   });
 });
 

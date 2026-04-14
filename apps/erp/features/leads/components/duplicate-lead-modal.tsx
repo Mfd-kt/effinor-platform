@@ -162,7 +162,6 @@ export function DuplicateLeadModal({
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Detail label="Campagne" value={str(lead.campaign)} />
                     <Detail label="Landing" value={str(lead.landing)} />
-                    <Detail label="Intérêt produit" value={str(lead.product_interest)} className="sm:col-span-2" />
                     <Detail label="Rappel téléphone" value={formatDate(lead.callback_at)} />
                   </div>
                 </section>

@@ -24,17 +24,19 @@ import {
 
 export type AgentSimulatorLeadSession = { leadId: string } & AgentProspectFormValue;
 import { AgentSheetSelector } from "@/features/cee-workflows/components/agent-sheet-selector";
+import { AgentSimulatorContextCard } from "@/features/cee-workflows/components/agent-simulator-context-card";
 import { AgentSheetSimulatorPanel } from "@/features/cee-workflows/components/agent-sheet-simulator-panel";
 import { AgentWorkflowActivityPanel } from "@/features/cee-workflows/components/agent-workflow-activity-panel";
 import { saveAgentWorkflowDraft, sendAgentWorkflowToConfirmateur, validateAgentWorkflowSimulation } from "@/features/cee-workflows/actions/agent-actions";
 import { DEFAULT_AGENT_DESTRAT_STATE, computeAgentDestratPreview, extractAgentDestratStateFromJson, type AgentDestratFormState } from "@/features/cee-workflows/lib/agent-destrat-simulator";
 import type { AgentActivityBuckets, AgentActivityItem, AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
 import { resolveAgentInitialSheetId } from "@/features/cee-workflows/lib/agent-workflow-activity";
+import { resolveAgentSimulatorHeadlines } from "@/features/cee-workflows/lib/agent-simulator-headlines";
 import {
   resolveAgentSimulatorDefinition,
   type AgentSimulatorDefinition,
 } from "@/features/cee-workflows/lib/agent-simulator-registry";
-import { getRecommendedProductCodes } from "@/features/products/domain/recommend";
+import { AGENT_PAC_CATALOG_PRODUCT_CODE, getRecommendedProductCodes } from "@/features/products/domain/recommend";
 import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 import { formatHeatingModeLabelFr } from "@/features/leads/simulator/schemas/simulator.schema";
 import { CommercialCallbackSheet } from "@/features/commercial-callbacks/components/commercial-callback-sheet";
@@ -81,38 +83,6 @@ function prospectFromActivity(item: AgentActivityItem): AgentProspectFormValue {
     postalCode: item.postalCode ?? "",
     notes: item.notes ?? "",
   };
-}
-
-function ContextCard({ sheet }: { sheet: AgentAvailableSheet }) {
-  return (
-    <Card className="border-border/80 shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-          <span>{sheet.label}</span>
-          <Badge variant="secondary">{sheet.code}</Badge>
-        </CardTitle>
-        <CardDescription>Fiche active pour ce simulateur.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm">
-        <div className="flex flex-wrap gap-1.5">
-          {sheet.simulatorKey ? <Badge variant="outline">Simulateur {sheet.simulatorKey}</Badge> : null}
-          {sheet.teamName ? <Badge variant="outline">{sheet.teamName}</Badge> : null}
-          {sheet.roles.map((role) => (
-            <Badge key={role} variant="outline">
-              {role}
-            </Badge>
-          ))}
-        </div>
-        {sheet.description ? <p className="text-muted-foreground">{sheet.description}</p> : null}
-        {sheet.controlPoints ? (
-          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-muted-foreground">
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-foreground/70">Rappel / angle commercial</div>
-            <div className="line-clamp-4 whitespace-pre-wrap text-xs">{sheet.controlPoints}</div>
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
 }
 
 export function AgentWorkstation({
@@ -243,8 +213,17 @@ export function AgentWorkstation({
     [destratState, simulatorDefinition.kind],
   );
   const previewResult = destratPreview?.ok ? destratPreview.result : null;
+  const simulatorUiHeadlines = useMemo(() => {
+    if (!activeSheet) {
+      return { dialogTitle: "Simulateur", contextTitle: "", contextBadge: "", contextDescription: "" };
+    }
+    return resolveAgentSimulatorHeadlines(activeSheet.label, activeSheet.code, previewResult);
+  }, [activeSheet, previewResult]);
   const recommendedProduct = useMemo(() => {
     if (!previewResult || simulatorDefinition.kind !== "destrat") return null;
+    if (previewResult.ceeSolution.solution === "PAC") {
+      return destratProducts.find((product) => product.code === AGENT_PAC_CATALOG_PRODUCT_CODE) ?? null;
+    }
     const recommendation = getRecommendedProductCodes(previewResult.model);
     return destratProducts.find((product) => product.code === recommendation.primary) ?? null;
   }, [destratProducts, previewResult, simulatorDefinition.kind]);
@@ -403,7 +382,7 @@ export function AgentWorkstation({
       <Dialog open={simulatorOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="flex max-h-[92vh] w-[min(96vw,1440px)] max-w-[min(96vw,1440px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,1440px)]">
           <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 pr-14 text-left">
-            <DialogTitle>Simulateur — {activeSheet.label}</DialogTitle>
+            <DialogTitle>{simulatorUiHeadlines.dialogTitle}</DialogTitle>
             <DialogDescription>
               Étape de simulation et coordonnées prospect ; enregistrez le brouillon, validez ou envoyez au confirmateur.
             </DialogDescription>
@@ -411,7 +390,7 @@ export function AgentWorkstation({
 
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-5">
-              <ContextCard sheet={activeSheet} />
+              <AgentSimulatorContextCard sheet={activeSheet} previewResult={previewResult} />
 
               {simulatorDefinition.kind === "destrat" ? (
                 <>

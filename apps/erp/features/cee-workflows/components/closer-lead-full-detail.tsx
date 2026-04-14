@@ -10,6 +10,7 @@ import { CloserLeadQuickEditDialog } from "@/features/cee-workflows/components/c
 import { LeadDetailMediaLinks } from "@/features/leads/components/lead-detail-media-links";
 import { formatHeatingModesDisplay } from "@/features/leads/lib/heating-modes";
 import { stringArrayFromLeadJson } from "@/features/leads/lib/lead-media-json";
+import { commercialCategoryFromCeeSheet } from "@/features/leads/lib/resolve-lead-commercial-category";
 import type { LeadDetailRow } from "@/features/leads/types";
 
 function firstUrlFromJson(json: unknown): string | null {
@@ -118,7 +119,19 @@ export function CloserLeadFullDetailPanel({
           <Item label="Source" value={lead.source} />
           <Item label="Campagne" value={lead.campaign} />
           <Item label="Landing" value={lead.landing} />
-          <Item label="Intérêt produit" value={lead.product_interest} />
+          <Item
+            label="Catégorie (fiche CEE)"
+            value={
+              lead.cee_sheet
+                ? (commercialCategoryFromCeeSheet({
+                    code: lead.cee_sheet.code,
+                    label: lead.cee_sheet.label,
+                    simulator_key: lead.cee_sheet.simulator_key,
+                    workflow_key: lead.cee_sheet.workflow_key,
+                  }) ?? "—")
+                : "—"
+            }
+          />
           <Item label="Canal" value={lead.lead_channel} />
           <Item label="Origine" value={lead.lead_origin} />
           <Item label="SIRET" value={lead.siret} />

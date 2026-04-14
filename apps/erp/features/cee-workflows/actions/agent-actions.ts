@@ -11,9 +11,14 @@ import {
   completeSimulation as completeSimulationInService,
   createLeadSheetWorkflow as createLeadSheetWorkflowInService,
   sendToConfirmateur as sendToConfirmateurInService,
+  switchLeadToCeeSheetWorkflow as switchLeadToCeeSheetWorkflowInService,
 } from "@/features/cee-workflows/services/workflow-service";
+import { resolveEffectiveAgentCeeSheetId } from "@/features/cee-workflows/lib/pick-commercial-pac-cee-sheet";
+import { assertAgentSimulationResultHealthy } from "@/features/cee-workflows/lib/assert-simulation-result-healthy";
 import { AgentSendToConfirmateurSchema, AgentWorkflowPayloadSchema } from "@/features/cee-workflows/schemas/agent-workspace.schema";
 import { findDuplicateLead } from "@/features/leads/lib/find-duplicate-lead";
+import { heatingModesToDb } from "@/features/leads/lib/heating-modes";
+import { leadHeatingTypesFromSimulationPayloads } from "@/features/leads/lib/simulator-to-lead-technical";
 import { sendStudyEmail } from "@/features/leads/study-pdf/actions/send-study-email";
 import { resolveAllowedCeeSheetIdsForAccess } from "@/lib/auth/cee-workflows-scope";
 import { getAccessContext } from "@/lib/auth/access-context";
@@ -24,6 +29,7 @@ import {
 } from "@/features/cee-workflows/lib/sync-agent-quick-note-to-internal-notes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { CeeSheetWorkflowRow } from "@/features/cee-workflows/types";
 import type { Json, Database } from "@/types/database.types";
 
 type AgentActionResult = {
@@ -257,12 +263,19 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
   if (access.kind !== "authenticated") {
     throw new Error("Non authentifié.");
   }
-  await ensureAgentAccessToSheet(access, parsed.data.ceeSheetId);
 
   const supabase = await createClient();
   const workflowRecord = parsed.data.workflowId
     ? await ensureEditableWorkflow(supabase, parsed.data.workflowId)
     : null;
+
+  const effectiveCeeSheetId = await resolveEffectiveAgentCeeSheetId(
+    supabase,
+    parsed.data.ceeSheetId,
+    parsed.data.simulationResultJson as Json | undefined,
+  );
+
+  await ensureAgentAccessToSheet(access, effectiveCeeSheetId);
 
   const priorLeadId = parsed.data.leadId ?? workflowRecord?.lead_id ?? null;
   const nextProspectNotes = parsed.data.prospect.notes?.trim() ?? "";
@@ -273,7 +286,7 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
   const leadId = await upsertAgentLead(supabase, {
     leadId: priorLeadId ?? undefined,
     userId: access.userId,
-    ceeSheetId: parsed.data.ceeSheetId,
+    ceeSheetId: effectiveCeeSheetId,
     prospect: parsed.data.prospect,
   });
 
@@ -285,15 +298,58 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
     nextProspectNotes,
   );
 
-  const workflow =
-    workflowRecord ??
-    (await createLeadSheetWorkflowInService(supabase, {
+  let workflow: CeeSheetWorkflowRow | null = workflowRecord;
+
+  if (!workflow) {
+    const { data: leadRef } = await supabase
+      .from("leads")
+      .select("current_workflow_id")
+      .eq("id", leadId)
+      .maybeSingle();
+    const { data: activeDrafts } = await supabase
+      .from("lead_sheet_workflows")
+      .select("*")
+      .eq("lead_id", leadId)
+      .eq("is_archived", false)
+      .in("workflow_status", ["draft", "simulation_done"]);
+
+    const candidates = activeDrafts ?? [];
+    if (candidates.length > 0) {
+      workflow =
+        candidates.find((w) => w.id === leadRef?.current_workflow_id) ?? candidates[0] ?? null;
+    }
+  }
+
+  if (workflow && workflow.cee_sheet_id !== effectiveCeeSheetId) {
+    let cleanupClient = supabase;
+    try {
+      cleanupClient = createAdminClient();
+    } catch {
+      cleanupClient = supabase;
+    }
+    workflow = await switchLeadToCeeSheetWorkflowInService(
+      supabase,
+      {
+        leadId,
+        newCeeSheetId: effectiveCeeSheetId,
+        actorUserId: access.userId,
+        copyRoleAssignments: true,
+      },
+      { workflowCleanupClient: cleanupClient },
+    );
+  } else if (!workflow) {
+    workflow = await createLeadSheetWorkflowInService(supabase, {
       leadId,
-      ceeSheetId: parsed.data.ceeSheetId,
+      ceeSheetId: effectiveCeeSheetId,
       actorUserId: access.userId,
       workflowStatus: "draft",
       assignmentPatch: { assignedAgentUserId: access.userId },
-    }));
+    });
+  }
+
+  if (!workflow) {
+    throw new Error("Impossible de résoudre le workflow fiche CEE.");
+  }
 
   const mergedSimulationInput = mergeProspectNotesSyncIntoSimulationJson(
     parsed.data.simulationInputJson as Json | undefined,
@@ -313,12 +369,27 @@ async function saveDraftInternal(input: unknown): Promise<{ workflowId: string; 
     throw new Error(error.message);
   }
 
+  const heatingFromSim = leadHeatingTypesFromSimulationPayloads(
+    mergedSimulationInput,
+    parsed.data.simulationResultJson,
+  );
+  if (heatingFromSim.length) {
+    const { error: heatErr } = await supabase
+      .from("leads")
+      .update({ heating_type: heatingModesToDb(heatingFromSim) })
+      .eq("id", leadId);
+    if (heatErr) {
+      throw new Error(heatErr.message);
+    }
+  }
+
   await appendWorkflowEventInService(supabase, {
     workflowId: workflow.id,
     eventType: "agent_draft_saved",
     eventLabel: "Brouillon agent enregistré",
     payloadJson: {
-      cee_sheet_id: parsed.data.ceeSheetId,
+      cee_sheet_id: effectiveCeeSheetId,
+      requested_cee_sheet_id: parsed.data.ceeSheetId,
     },
     createdByUserId: access.userId,
   });
@@ -353,6 +424,7 @@ export async function validateAgentWorkflowSimulation(input: unknown): Promise<A
     if (!parsed.data.simulationInputJson || !parsed.data.simulationResultJson) {
       throw new Error("La simulation doit être calculée avant validation.");
     }
+    assertAgentSimulationResultHealthy(parsed.data.simulationResultJson);
 
     const access = await getAccessContext();
     if (access.kind !== "authenticated") {
@@ -399,13 +471,12 @@ export async function finalizeCommercialCallbackWithSimulation(input: unknown): 
     if (!parsed.data.simulationInputJson || !parsed.data.simulationResultJson) {
       throw new Error("La simulation doit être calculée avant conversion.");
     }
+    assertAgentSimulationResultHealthy(parsed.data.simulationResultJson);
 
     const access = await getAccessContext();
     if (access.kind !== "authenticated" || !canAccessCommercialCallbacks(access)) {
       throw new Error("Accès refusé.");
     }
-
-    await ensureAgentAccessToSheet(access, parsed.data.ceeSheetId);
 
     const { callbackId, ...workflowPayload } = parsed.data;
 
@@ -499,6 +570,7 @@ export async function sendAgentWorkflowToConfirmateur(input: unknown): Promise<A
     if (!parsed.data.simulationInputJson || !parsed.data.simulationResultJson) {
       throw new Error("La simulation doit être calculée avant envoi.");
     }
+    assertAgentSimulationResultHealthy(parsed.data.simulationResultJson);
 
     const access = await getAccessContext();
     if (access.kind !== "authenticated") {

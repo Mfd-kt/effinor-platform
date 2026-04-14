@@ -29,7 +29,7 @@ function mapCommon(data: LeadInsertInput): Omit<
     source: data.source,
     campaign: trimOrNull(data.campaign),
     landing: trimOrNull(data.landing),
-    product_interest: trimOrNull(data.product_interest),
+    product_interest: null,
     company_name: data.company_name.trim(),
     siret: headOfficeSiret,
     head_office_siret: headOfficeSiret,

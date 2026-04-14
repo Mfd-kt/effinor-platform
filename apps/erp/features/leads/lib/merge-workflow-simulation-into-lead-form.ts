@@ -1,12 +1,9 @@
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type { LeadFormInput } from "@/features/leads/schemas/lead.schema";
-import {
-  buildingTypeFromSimulatorClientType,
-  heatingTypeFromSimulator,
-} from "@/features/leads/lib/form-defaults";
+import { buildingTypeFromSimulatorClientType } from "@/features/leads/lib/form-defaults";
 import {
   leadBuildingTypeFromSimulatorCee,
-  leadHeatingTypesFromSimulator,
+  leadHeatingTypesFromSimulationPayloads,
   parseWorkflowSimulationSnapshotJson,
 } from "@/features/leads/lib/simulator-to-lead-technical";
 import { isPacPreferredLocalUsage } from "@/features/leads/simulator/domain/cee-solution-decision";
@@ -62,7 +59,11 @@ export function mergeLeadFormDefaultsFromWorkflowSimulation(
   }
   const snap = parseWorkflowSimulationSnapshotJson(workflow.simulation_input_json);
   const hasResult = simulationResultHasData(workflow.simulation_result_json);
-  if (!hasResult && !snap) {
+  const heatingFromWf = leadHeatingTypesFromSimulationPayloads(
+    workflow.simulation_input_json,
+    workflow.simulation_result_json,
+  );
+  if (!hasResult && !snap && !heatingFromWf.length) {
     return base;
   }
   const r = hasResult ? (workflow.simulation_result_json as Record<string, unknown>) : null;
@@ -87,19 +88,8 @@ export function mergeLeadFormDefaultsFromWorkflowSimulation(
     out.ceiling_height_m = heightFromSnap;
   }
 
-  if (!out.heating_type?.length) {
-    if (snap) {
-      const fromSnap = leadHeatingTypesFromSimulator(snap.currentHeatingMode, snap.computedHeatingMode);
-      if (fromSnap.length) {
-        out.heating_type = [...fromSnap];
-      }
-    }
-    if (!out.heating_type?.length && r && typeof r.heatingMode === "string") {
-      const ht = heatingTypeFromSimulator(r.heatingMode);
-      if (ht.length) {
-        out.heating_type = [...ht];
-      }
-    }
+  if (!out.heating_type?.length && heatingFromWf.length) {
+    out.heating_type = [...heatingFromWf];
   }
 
   if (!String(out.building_type ?? "").trim()) {

@@ -40,15 +40,14 @@ function isSimHeatingMode(v: unknown): v is SimHeatingMode {
 function heatingModesFromSimComputed(mode: SimHeatingMode): HeatingMode[] {
   switch (mode) {
     case "gaz":
-      return ["gaz"];
     case "fioul":
-      return ["fioul"];
+      return ["chaudiere_eau"];
     case "pac":
-      return ["pac"];
+      return ["pac_air_eau"];
     case "elec":
-      return ["electricite"];
+      return ["electrique_direct"];
     case "bois":
-      return ["autres"];
+      return ["autre_inconnu"];
     default:
       return [];
   }
@@ -113,29 +112,74 @@ export function leadHeatingTypesFromSimulator(
   computedHeatingMode: SimHeatingMode | null | undefined,
 ): HeatingMode[] {
   if (currentHeatingMode) {
-    switch (currentHeatingMode) {
-      case "electrique_direct":
-        return ["electricite"];
-      case "pac_air_air":
-        return ["pac_air_air"];
-      case "pac_air_eau":
-        return ["pac_air_eau"];
-      case "chaudiere_eau":
-      case "air_chaud_soufflage":
-      case "rayonnement":
-      case "mix_air_rayonnement":
-        return ["gaz"];
-      case "autre_inconnu":
-        return ["autres"];
-      default:
-        break;
-    }
+    return [currentHeatingMode];
   }
   if (computedHeatingMode) {
-    const legacy = heatingModesFromSimComputed(computedHeatingMode);
-    return legacy.length ? [...legacy] : [];
+    const mapped = heatingModesFromSimComputed(computedHeatingMode);
+    return mapped.length ? [...mapped] : [];
   }
   return [];
+}
+
+/**
+ * Poste agent : `currentHeatingMode` est souvent à la racine du JSON (spread `destratState`),
+ * sans `buildingType` / `localUsage` CEE dans `input` — `parseWorkflowSimulationSnapshotJson` ne suffit pas.
+ */
+export function extractCurrentHeatingModeFromSimulationInputJson(raw: unknown): DestratCurrentHeatingModeId | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const root = raw as Record<string, unknown>;
+  const input = root.input && typeof root.input === "object" && !Array.isArray(root.input)
+    ? (root.input as Record<string, unknown>)
+    : null;
+  const normalizedInput =
+    root.normalizedInput && typeof root.normalizedInput === "object" && !Array.isArray(root.normalizedInput)
+      ? (root.normalizedInput as Record<string, unknown>)
+      : null;
+  const currentRaw =
+    root.currentHeatingMode ?? input?.currentHeatingMode ?? normalizedInput?.currentHeatingMode;
+  return typeof currentRaw === "string" && isDestratCurrentHeatingModeId(currentRaw) ? currentRaw : null;
+}
+
+function extractComputedHeatingModeFromSimulationContext(
+  simulationInputJson: unknown,
+  simulationResultJson: unknown,
+): SimHeatingMode | null {
+  if (simulationResultJson && typeof simulationResultJson === "object" && !Array.isArray(simulationResultJson)) {
+    const ro = simulationResultJson as Record<string, unknown>;
+    const nested =
+      ro.result && typeof ro.result === "object" && !Array.isArray(ro.result)
+        ? (ro.result as Record<string, unknown>)
+        : ro;
+    const hm = nested.heatingMode;
+    if (isSimHeatingMode(hm)) return hm;
+  }
+  if (!simulationInputJson || typeof simulationInputJson !== "object" || Array.isArray(simulationInputJson)) {
+    return null;
+  }
+  const root = simulationInputJson as Record<string, unknown>;
+  const inputInner = root.input && typeof root.input === "object" && !Array.isArray(root.input)
+    ? (root.input as Record<string, unknown>)
+    : null;
+  const norm =
+    root.normalizedInput && typeof root.normalizedInput === "object" && !Array.isArray(root.normalizedInput)
+      ? (root.normalizedInput as Record<string, unknown>)
+      : null;
+  const hm2 = inputInner?.heatingMode ?? norm?.heatingMode ?? root.heatingMode;
+  return isSimHeatingMode(hm2) ? hm2 : null;
+}
+
+/** Déduit `heating_type` lead à partir des JSON simulation (workflow ou `sim_payload_json`). */
+export function leadHeatingTypesFromSimulationPayloads(
+  simulationInputJson: unknown,
+  simulationResultJson: unknown,
+): HeatingMode[] {
+  const full = parseWorkflowSimulationSnapshotJson(simulationInputJson);
+  const current =
+    full?.currentHeatingMode ?? extractCurrentHeatingModeFromSimulationInputJson(simulationInputJson);
+  const computed =
+    full?.computedHeatingMode ??
+    extractComputedHeatingModeFromSimulationContext(simulationInputJson, simulationResultJson);
+  return leadHeatingTypesFromSimulator(current, computed);
 }
 
 /**

@@ -13,25 +13,25 @@ describe("mergeLeadPayloadPreservingUntouchedHeating", () => {
   it("réinjecte les modes connus si le chauffage n’est pas dirty et le payload est vide", () => {
     const out = mergeLeadPayloadPreservingUntouchedHeating(
       { ...basePayload, heating_type: [] },
-      { heatingFieldDirty: false, lastCommittedHeating: ["gaz", "fioul"] },
+      { heatingFieldDirty: false, lastCommittedHeating: ["chaudiere_eau", "rayonnement"] },
     );
-    expect(out.heating_type).toEqual(["gaz", "fioul"]);
+    expect(out.heating_type).toEqual(["chaudiere_eau", "rayonnement"]);
   });
 
   it("ne modifie pas le payload si le chauffage a été modifié", () => {
     const out = mergeLeadPayloadPreservingUntouchedHeating(
       { ...basePayload, heating_type: [] },
-      { heatingFieldDirty: true, lastCommittedHeating: ["gaz"] },
+      { heatingFieldDirty: true, lastCommittedHeating: ["chaudiere_eau"] },
     );
     expect(out.heating_type).toEqual([]);
   });
 
   it("laisse passer une saisie explicite même sans dirty (ref ne s’applique pas si le payload a des modes)", () => {
     const out = mergeLeadPayloadPreservingUntouchedHeating(
-      { ...basePayload, heating_type: ["pac"] },
-      { heatingFieldDirty: false, lastCommittedHeating: ["gaz"] },
+      { ...basePayload, heating_type: ["pac_air_eau"] },
+      { heatingFieldDirty: false, lastCommittedHeating: ["chaudiere_eau"] },
     );
-    expect(out.heating_type).toEqual(["pac"]);
+    expect(out.heating_type).toEqual(["pac_air_eau"]);
   });
 
   it("ne réinjecte pas s’il n’y a pas de dernier état connu", () => {

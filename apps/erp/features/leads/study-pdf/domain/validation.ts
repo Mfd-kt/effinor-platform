@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import type { LeadDetailRow } from "@/features/leads/types";
-import { readStudyCeeSolutionKindFromInputs } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
+import type { StudyCeeSheetForPdf } from "@/features/leads/study-pdf/domain/types";
+import { resolveStudyTemplatesFromCeeSheet } from "@/features/leads/study-pdf/domain/resolve-study-templates";
 import type { StudyPdfValidationIssue } from "@/features/leads/study-pdf/domain/types";
 
 export const StudyPdfViewModelSchema = z.object({
@@ -24,7 +25,7 @@ export const StudyPdfViewModelSchema = z.object({
     city: z.string(),
     type: z.string(),
     surfaceM2: z.number().positive(),
-    heightM: z.number().positive(),
+    heightM: z.number().nonnegative(),
     volumeM3: z.number().nonnegative(),
     heatingMode: z.string().min(1),
   }),
@@ -56,6 +57,9 @@ export const StudyPdfViewModelSchema = z.object({
     studyMediaUrls: z.array(z.string().url()),
   }),
   ceeSolutionKind: z.enum(["destrat", "pac", "none"]),
+  presentationTemplateKey: z.string().min(1),
+  agreementTemplateKey: z.string().min(1),
+  simulationVersusSheetMismatch: z.boolean(),
   equipmentQuantity: z.number().int().nonnegative(),
   pacCommercialMessage: z.string().nullable(),
   comparables: z.array(
@@ -90,14 +94,15 @@ export const StudyPdfViewModelSchema = z.object({
 
 export function validateLeadForStudyPdf(
   lead: LeadDetailRow,
-  opts?: { mergedSimulationJson?: unknown },
+  opts?: { mergedSimulationJson?: unknown; ceeSheet?: StudyCeeSheetForPdf | null },
 ): StudyPdfValidationIssue[] {
   const issues: StudyPdfValidationIssue[] = [];
 
-  const ceeKind = readStudyCeeSolutionKindFromInputs({
+  const { ceeSolutionKind: ceeKind } = resolveStudyTemplatesFromCeeSheet(
+    opts?.ceeSheet ?? null,
     lead,
-    mergedSimulationJson: opts?.mergedSimulationJson ?? lead.sim_payload_json,
-  });
+    opts?.mergedSimulationJson,
+  );
 
   if (!lead.company_name.trim()) {
     issues.push({ code: "missing_company", label: "Société manquante" });
@@ -105,7 +110,7 @@ export function validateLeadForStudyPdf(
   if (lead.sim_surface_m2 === null && lead.surface_m2 === null) {
     issues.push({ code: "missing_surface", label: "Surface manquante" });
   }
-  if (lead.sim_height_m === null && lead.ceiling_height_m === null) {
+  if (ceeKind !== "pac" && lead.sim_height_m === null && lead.ceiling_height_m === null) {
     issues.push({ code: "missing_height", label: "Hauteur manquante" });
   }
   if (!lead.sim_heating_mode && (!lead.heating_type || lead.heating_type.length === 0)) {

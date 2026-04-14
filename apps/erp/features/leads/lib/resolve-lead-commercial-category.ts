@@ -1,7 +1,8 @@
-import { normalizeProductInterestLabel } from "@/features/leads/lib/normalize-product-interest";
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
+import { normalizeProductInterestLabel } from "@/features/leads/lib/normalize-product-interest";
+import { extractWorkflowSimulationMetrics } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
 
-type CeeSheetPick = {
+export type CeeSheetPick = {
   simulator_key: string | null;
   workflow_key: string | null;
   label: string | null;
@@ -24,8 +25,8 @@ function isExplicitDestratSimulatorKey(simulatorKey: string | null | undefined):
 }
 
 /**
- * Libellé « catégorie commerciale » aligné sur `product_interest` / analyse IA,
- * déduit de la fiche CEE rattachée au workflow.
+ * Libellé « catégorie commerciale » déduit **uniquement** des métadonnées fiche CEE
+ * (`simulator_key`, libellés, code) — pas de champ lead racine.
  */
 export function commercialCategoryFromCeeSheet(sheet: CeeSheetPick | null | undefined): string | null {
   if (!sheet) return null;
@@ -39,6 +40,102 @@ export function commercialCategoryFromCeeSheet(sheet: CeeSheetPick | null | unde
 
   const fromLabel = normalizeProductInterestLabel(sheet.label ?? "");
   return fromLabel || null;
+}
+
+/**
+ * Catégorie d’affichage issue de la **recommandation simulateur** (`ceeSolution.solution`),
+ * pas seulement de la fiche CEE rattachée (ex. fiche déstrat sur le lead mais orientation PAC BAT-TH-163).
+ */
+export function simulationRecommendedCategoryLabel(
+  simPayloadOrResult: unknown,
+): "PAC" | "Destratificateur" | null {
+  const m = extractWorkflowSimulationMetrics(simPayloadOrResult);
+  if (!m) return null;
+  const cee = m.ceeSolution;
+  if (typeof cee !== "object" || cee === null || Array.isArray(cee)) return null;
+  const sol = (cee as { solution?: string }).solution;
+  if (sol === "PAC") return "PAC";
+  if (sol === "DESTRAT") return "Destratificateur";
+  return null;
+}
+
+/**
+ * Catégorie simulateur pour un workflow fiche CEE : résultat stocké sur le workflow si exploitable,
+ * sinon repli sur le payload simulation du lead (même logique que l’en-tête « Catégorie »).
+ */
+export function simulationCategoryForLeadWorkflow(
+  workflow: { simulation_result_json: unknown },
+  leadSimPayloadJson: unknown,
+): "PAC" | "Destratificateur" | null {
+  const fromWorkflow = simulationRecommendedCategoryLabel(workflow.simulation_result_json);
+  if (fromWorkflow) return fromWorkflow;
+  return simulationRecommendedCategoryLabel(leadSimPayloadJson);
+}
+
+export function formatCeeSheetCodeLabel(sheet: CeeSheetPick | null | undefined): string {
+  if (!sheet) return "";
+  const code = (sheet.code ?? "").trim();
+  const label = (sheet.label ?? "").trim();
+  if (!code && !label) return "";
+  if (code && label && code !== label) return `${code} — ${label}`;
+  return code || label;
+}
+
+/** Liste prospects : libellé colonne « catégorie fiche CEE » (simulation → fiche → code/libellé). */
+export function leadListFicheCeeCategoryLabel(lead: {
+  sim_payload_json: unknown;
+  cee_sheet?: CeeSheetPick | null;
+}): string {
+  const fromSim = simulationRecommendedCategoryLabel(lead.sim_payload_json);
+  if (fromSim) return fromSim;
+
+  const fromSheet = commercialCategoryFromCeeSheet(lead.cee_sheet ?? null);
+  if (fromSheet) return fromSheet;
+
+  return formatCeeSheetCodeLabel(lead.cee_sheet) || "—";
+}
+
+export function leadListFicheCeeCellTitle(lead: {
+  sim_payload_json: unknown;
+  cee_sheet?: CeeSheetPick | null;
+}): string | undefined {
+  const cat = leadListFicheCeeCategoryLabel(lead);
+  const sheetStr = formatCeeSheetCodeLabel(lead.cee_sheet ?? null);
+  const m = extractWorkflowSimulationMetrics(lead.sim_payload_json);
+  const cee = m?.ceeSolution;
+  const hints: string[] = [];
+  if (typeof cee === "object" && cee !== null && !Array.isArray(cee)) {
+    const o = cee as Record<string, unknown>;
+    if (o.solution === "DESTRAT" && typeof o.destratCeeSheetCode === "string") {
+      hints.push(o.destratCeeSheetCode);
+    }
+    if (o.solution === "PAC") {
+      hints.push("BAT-TH-163");
+    }
+  }
+  const parts = [...new Set([cat !== "—" ? cat : "", ...hints, sheetStr].filter(Boolean))] as string[];
+  return parts.length ? parts.join(" · ") : undefined;
+}
+
+export function leadListFicheCeeSearchHay(lead: {
+  sim_payload_json: unknown;
+  cee_sheet?: CeeSheetPick | null;
+}): string {
+  const m = extractWorkflowSimulationMetrics(lead.sim_payload_json);
+  let extra = "";
+  if (m) {
+    const cee = m.ceeSolution;
+    if (typeof cee === "object" && cee !== null && !Array.isArray(cee)) {
+      const o = cee as Record<string, unknown>;
+      const bits: string[] = [];
+      if (typeof o.destratCeeSheetCode === "string") bits.push(o.destratCeeSheetCode);
+      if (typeof o.commercialMessage === "string") bits.push(o.commercialMessage);
+      extra = bits.join(" ");
+    }
+  }
+  return [leadListFicheCeeCategoryLabel(lead), formatCeeSheetCodeLabel(lead.cee_sheet ?? null), extra]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function pickPrimaryWorkflowForLead(
@@ -56,25 +153,28 @@ export function pickPrimaryWorkflowForLead(
 }
 
 /**
- * Catégorie affichée en tête de fiche et dans le formulaire.
- *
- * Priorité au **lead** (`product_interest`, souvent IA ou saisie) : c’est la vérité commerciale (ex. PAC).
- * Si vide ou non renseigné, on retombe sur la fiche CEE du workflow (carte « Workflow fiche CEE »).
- * Ainsi un workflow encore rattaché à la mauvaise fiche ne force pas « déstrat » si le lead est déjà en PAC.
+ * Catégorie affichée en tête de fiche : **recommandation simulateur** si présente,
+ * sinon fiche CEE du workflow courant, sinon fiche rattachée au lead.
  */
 export function resolveLeadCommercialCategoryForUi(
-  lead: { product_interest: string | null; current_workflow_id: string | null },
+  lead: { current_workflow_id: string | null; sim_payload_json?: unknown },
   workflows: WorkflowScopedListRow[],
+  leadRootCeeSheet?: CeeSheetPick | null,
 ): string {
-  const normalizedLead = normalizeProductInterestLabel(lead.product_interest ?? "");
-  if (normalizedLead) return normalizedLead;
-
-  const rawTrim = (lead.product_interest ?? "").trim();
-  if (rawTrim) return rawTrim;
+  const fromLeadPayload = simulationRecommendedCategoryLabel(lead.sim_payload_json);
+  if (fromLeadPayload) return fromLeadPayload;
 
   const wf = pickPrimaryWorkflowForLead(lead, workflows);
-  const fromSheet = wf?.cee_sheet ? commercialCategoryFromCeeSheet(wf.cee_sheet) : null;
-  if (fromSheet) return fromSheet;
+  const fromWfSim = wf?.simulation_result_json
+    ? simulationRecommendedCategoryLabel(wf.simulation_result_json)
+    : null;
+  if (fromWfSim) return fromWfSim;
+
+  const fromWorkflowSheet = wf?.cee_sheet ? commercialCategoryFromCeeSheet(wf.cee_sheet) : null;
+  if (fromWorkflowSheet) return fromWorkflowSheet;
+
+  const fromLeadRoot = leadRootCeeSheet ? commercialCategoryFromCeeSheet(leadRootCeeSheet) : null;
+  if (fromLeadRoot) return fromLeadRoot;
 
   return "";
 }

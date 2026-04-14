@@ -35,11 +35,16 @@ function patchNum<K extends keyof LeadDetailRow>(
   patch: Partial<LeadDetailRow>,
   key: K,
   jsonVal: unknown,
+  opts?: { treatCurrentZeroAsEmpty?: boolean },
 ) {
   const v = toNum(jsonVal);
   if (v == null) return;
   const cur = lead[key];
-  if (cur !== null && cur !== undefined) return;
+  if (cur !== null && cur !== undefined) {
+    if (!(opts?.treatCurrentZeroAsEmpty && typeof cur === "number" && cur === 0)) {
+      return;
+    }
+  }
   (patch as Record<string, number>)[key as string] = v;
 }
 
@@ -47,7 +52,7 @@ function patchNum<K extends keyof LeadDetailRow>(
  * À plat : `SimulatorComputedResult` enregistré par l’agent.
  * Snapshot : `{ result, normalizedInput?, simulatedAtIso?, version? }` (cf. `LeadSimulationSnapshot`).
  */
-function resolveSimulationFieldSource(simulationResultJson: unknown): {
+export function resolveSimulationFieldSource(simulationResultJson: unknown): {
   metrics: Record<string, unknown>;
   inputFallback: Record<string, unknown> | null;
   simulatedAtIso: string | null;
@@ -81,7 +86,8 @@ export function extractWorkflowSimulationMetrics(simulationJson: unknown): Recor
   return resolved?.metrics ?? null;
 }
 
-export function readStudyCeeSolutionKindFromInputs(input: {
+/** Détection du type de solution uniquement depuis les JSON de simulation (sans fiche CEE). */
+export function readStudyCeeSolutionKindFromSimulation(input: {
   lead: LeadDetailRow;
   mergedSimulationJson?: unknown;
 }): StudyCeeSolutionKind {
@@ -96,6 +102,14 @@ export function readStudyCeeSolutionKindFromInputs(input: {
     if (s === "NONE") return "none";
   }
   return "destrat";
+}
+
+/** @deprecated Préférer `resolveStudyTemplatesFromCeeSheet` côté génération PDF. */
+export function readStudyCeeSolutionKindFromInputs(input: {
+  lead: LeadDetailRow;
+  mergedSimulationJson?: unknown;
+}): StudyCeeSolutionKind {
+  return readStudyCeeSolutionKindFromSimulation(input);
 }
 
 function roundMoney(n: number): number {
@@ -201,27 +215,28 @@ export function mergeLeadDetailWithWorkflowSimulationResult(
     patch.sim_consigne = cons;
   }
 
-  patchNum(lead, patch, "sim_volume_m3", r.volumeM3);
-  patchNum(lead, patch, "sim_air_change_rate", r.airChangeRate);
-  patchNum(lead, patch, "sim_model_capacity_m3h", r.modelCapacityM3h);
-  patchNum(lead, patch, "sim_needed_destrat", r.neededDestrat);
-  patchNum(lead, patch, "sim_power_kw", r.powerKw);
-  patchNum(lead, patch, "sim_consumption_kwh_year", r.consumptionKwhYear);
-  patchNum(lead, patch, "sim_cost_year_min", r.costYearMin);
-  patchNum(lead, patch, "sim_cost_year_max", r.costYearMax);
-  patchNum(lead, patch, "sim_cost_year_selected", r.costYearSelected);
-  patchNum(lead, patch, "sim_saving_kwh_30", r.savingKwh30);
-  patchNum(lead, patch, "sim_saving_eur_30_min", r.savingEur30Min);
-  patchNum(lead, patch, "sim_saving_eur_30_max", r.savingEur30Max);
-  patchNum(lead, patch, "sim_saving_eur_30_selected", r.savingEur30Selected);
-  patchNum(lead, patch, "sim_co2_saved_tons", r.co2SavedTons);
-  patchNum(lead, patch, "sim_cee_prime_estimated", r.ceePrimeEstimated);
-  patchNum(lead, patch, "sim_install_unit_price", r.installUnitPrice);
-  patchNum(lead, patch, "sim_install_total_price", r.installTotalPrice);
-  patchNum(lead, patch, "sim_rest_to_charge", r.restToCharge);
+  const zeroPatch = { treatCurrentZeroAsEmpty: true } as const;
+  patchNum(lead, patch, "sim_volume_m3", r.volumeM3, zeroPatch);
+  patchNum(lead, patch, "sim_air_change_rate", r.airChangeRate, zeroPatch);
+  patchNum(lead, patch, "sim_model_capacity_m3h", r.modelCapacityM3h, zeroPatch);
+  patchNum(lead, patch, "sim_needed_destrat", r.neededDestrat, zeroPatch);
+  patchNum(lead, patch, "sim_power_kw", r.powerKw, zeroPatch);
+  patchNum(lead, patch, "sim_consumption_kwh_year", r.consumptionKwhYear, zeroPatch);
+  patchNum(lead, patch, "sim_cost_year_min", r.costYearMin, zeroPatch);
+  patchNum(lead, patch, "sim_cost_year_max", r.costYearMax, zeroPatch);
+  patchNum(lead, patch, "sim_cost_year_selected", r.costYearSelected, zeroPatch);
+  patchNum(lead, patch, "sim_saving_kwh_30", r.savingKwh30, zeroPatch);
+  patchNum(lead, patch, "sim_saving_eur_30_min", r.savingEur30Min, zeroPatch);
+  patchNum(lead, patch, "sim_saving_eur_30_max", r.savingEur30Max, zeroPatch);
+  patchNum(lead, patch, "sim_saving_eur_30_selected", r.savingEur30Selected, zeroPatch);
+  patchNum(lead, patch, "sim_co2_saved_tons", r.co2SavedTons, zeroPatch);
+  patchNum(lead, patch, "sim_cee_prime_estimated", r.ceePrimeEstimated, zeroPatch);
+  patchNum(lead, patch, "sim_install_unit_price", r.installUnitPrice, zeroPatch);
+  patchNum(lead, patch, "sim_install_total_price", r.installTotalPrice, zeroPatch);
+  patchNum(lead, patch, "sim_rest_to_charge", r.restToCharge, zeroPatch);
 
   const score = toNum(r.leadScore);
-  if (score != null && lead.sim_lead_score == null) {
+  if (score != null && (lead.sim_lead_score == null || lead.sim_lead_score === 0)) {
     patch.sim_lead_score = Math.round(score);
   }
 

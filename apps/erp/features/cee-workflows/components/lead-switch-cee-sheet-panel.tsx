@@ -58,7 +58,6 @@ export function LeadSwitchCeeSheetPanel({
         leadId,
         newCeeSheetId: selectedId,
         copyRoleAssignments: true,
-        syncProductInterest: true,
       });
       if (!res.ok) {
         toast.error(res.message);

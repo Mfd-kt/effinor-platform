@@ -24,8 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { contactSalutationLine } from "@/features/leads/lib/contact-map";
-import { normalizeProductInterestLabel } from "@/features/leads/lib/normalize-product-interest";
-import type { LeadRow } from "@/features/leads/types";
+import {
+  leadListFicheCeeCategoryLabel,
+  leadListFicheCeeCellTitle,
+  leadListFicheCeeSearchHay,
+} from "@/features/leads/lib/resolve-lead-commercial-category";
+import type { LeadListRow } from "@/features/leads/types";
 import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS } from "@/features/leads/constants";
 import { LEAD_SOURCE_VALUES, LEAD_STATUS_VALUES } from "@/features/leads/schemas/lead.schema";
 import { formatDateFr } from "@/lib/format";
@@ -34,18 +38,8 @@ import { cn } from "@/lib/utils";
 import { LeadStatusBadge } from "./lead-status-badge";
 
 type LeadsTableProps = {
-  data: LeadRow[];
+  data: LeadListRow[];
 };
-
-/** Même normalisation que l’IA / enregistrement (PAC, Destratificateur, Luminaire LED, …). */
-function normalizedProductCategory(lead: LeadRow): string {
-  return normalizeProductInterestLabel(lead.product_interest ?? "");
-}
-
-function formatNormalizedCategoryCell(lead: LeadRow): string {
-  const s = normalizedProductCategory(lead).trim();
-  return s || "—";
-}
 
 function LeadNotationCell({ score }: { score: number | null }) {
   if (score == null || !Number.isFinite(score)) {
@@ -73,7 +67,7 @@ function LeadNotationCell({ score }: { score: number | null }) {
 
 const FILTER_ALL = "__all__";
 
-function leadMatchesSearch(lead: LeadRow, needle: string): boolean {
+function leadMatchesSearch(lead: LeadListRow, needle: string): boolean {
   if (!needle) return true;
   const q = needle.toLowerCase();
   const hay = [
@@ -83,8 +77,7 @@ function leadMatchesSearch(lead: LeadRow, needle: string): boolean {
     lead.last_name,
     lead.email,
     lead.phone,
-    lead.product_interest,
-    normalizedProductCategory(lead),
+    leadListFicheCeeSearchHay(lead),
   ]
     .filter(Boolean)
     .join(" ")
@@ -116,7 +109,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
     });
   }, [data, statusFilter, sourceFilter, search]);
 
-  const columns = useMemo<ColumnDef<LeadRow>[]>(
+  const columns = useMemo<ColumnDef<LeadListRow>[]>(
     () => [
       {
         accessorKey: "company_name",
@@ -169,9 +162,9 @@ export function LeadsTable({ data }: LeadsTableProps) {
         ),
       },
       {
-        id: "normalized_category",
-        header: "Catégorie normalisée",
-        accessorFn: (row) => normalizedProductCategory(row),
+        id: "cee_category",
+        header: "Catégorie fiche CEE",
+        accessorFn: (row) => leadListFicheCeeCategoryLabel(row),
         sortUndefined: "last",
         sortingFn: (rowA, rowB, columnId) => {
           const a = String(rowA.getValue(columnId) ?? "");
@@ -181,9 +174,9 @@ export function LeadsTable({ data }: LeadsTableProps) {
         cell: ({ row }) => (
           <span
             className="max-w-[14rem] truncate text-muted-foreground"
-            title={formatNormalizedCategoryCell(row.original)}
+            title={leadListFicheCeeCellTitle(row.original)}
           >
-            {formatNormalizedCategoryCell(row.original)}
+            {leadListFicheCeeCategoryLabel(row.original)}
           </span>
         ),
       },
@@ -254,7 +247,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
               id="leads-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Société, contact, e-mail, téléphone, catégorie…"
+              placeholder="Société, contact, e-mail, téléphone, catégorie fiche CEE…"
               className="h-9 pl-9"
               aria-label="Filtrer les leads"
             />

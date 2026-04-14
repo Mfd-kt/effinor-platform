@@ -8,7 +8,12 @@ import {
 } from "@/features/cee-workflows/services/workflow-service";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getLeadInternalNotes } from "@/features/leads/queries/get-lead-internal-notes";
+import { fetchCeeSheetForStudyPdf } from "@/features/leads/study-pdf/queries/fetch-cee-sheet-for-study-pdf";
 import { buildLeadStudyPdfViewModel } from "@/features/leads/study-pdf/domain/build-study-view-model";
+import { STUDY_PAC_PRODUCT_RATIONALE } from "@/features/leads/study-pdf/domain/resolve-study-products";
+import { resolveStudyTemplatesFromCeeSheet } from "@/features/leads/study-pdf/domain/resolve-study-templates";
+import { toStudyProductViewModelFromDetails } from "@/features/leads/study-pdf/domain/study-product-from-db";
+import type { StudyProductViewModel } from "@/features/leads/study-pdf/domain/types";
 import { buildLeadStudyDocumentInsert } from "@/features/leads/study-pdf/domain/build-document-record";
 import type { LeadStudyDocumentRow } from "@/features/leads/study-pdf/domain/types";
 import { mergeLeadDetailWithWorkflowSimulationResult } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
@@ -19,6 +24,7 @@ import { renderHtmlToPdfBuffer } from "@/features/leads/study-pdf/utils/render-h
 import { getAccessContext } from "@/lib/auth/access-context";
 import { createClient } from "@/lib/supabase/server";
 import { notifyLeadStudyPdfsGenerated } from "@/features/notifications/services/notification-service";
+import { getDefaultHeatPumpProductForStudy } from "@/features/products/domain/repository";
 
 const LEAD_STUDY_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_LEAD_STUDY_BUCKET?.trim() || "lead-studies";
 const LEAD_STUDY_BUCKET_FALLBACK = "Lads_fichiers";
@@ -104,7 +110,16 @@ export async function generateLeadStudyPdf(
     lead = mergeLeadDetailWithWorkflowSimulationResult(lead, lead.sim_payload_json);
   }
 
-  const validationIssues = validateLeadForStudyPdf(lead, { mergedSimulationJson });
+  const supabaseForSheet = await createClient();
+  const ceeSheetForStudy = await fetchCeeSheetForStudyPdf(supabaseForSheet, {
+    workflowId: options?.workflowId,
+    leadCeeSheetId: lead.cee_sheet_id,
+  });
+
+  const validationIssues = validateLeadForStudyPdf(lead, {
+    mergedSimulationJson,
+    ceeSheet: ceeSheetForStudy,
+  });
   if (validationIssues.length) {
     return {
       ok: false,
@@ -114,11 +129,29 @@ export async function generateLeadStudyPdf(
   }
 
   const notes = await getLeadInternalNotes(leadId);
+
+  const supabaseForPacProduct = await createClient();
+  const templatesPreview = resolveStudyTemplatesFromCeeSheet(
+    ceeSheetForStudy ?? null,
+    lead,
+    mergedSimulationJson,
+  );
+
+  let pacStudyProducts: StudyProductViewModel[] | undefined;
+  if (templatesPreview.ceeSolutionKind === "pac") {
+    const dbPac = await getDefaultHeatPumpProductForStudy(supabaseForPacProduct);
+    if (dbPac) {
+      pacStudyProducts = [toStudyProductViewModelFromDetails(dbPac, STUDY_PAC_PRODUCT_RATIONALE)];
+    }
+  }
+
   const viewModel = buildLeadStudyPdfViewModel({
     lead,
     qualificationNotes: notes.map((n) => n.body),
     generatedByLabel: access.fullName?.trim() || access.email || "Chargé d'étude",
     mergedSimulationJson,
+    ceeSheetForStudy: ceeSheetForStudy ?? undefined,
+    pacStudyProducts,
   });
 
   // ── Enrich product images + gallery from Supabase ──

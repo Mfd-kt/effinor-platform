@@ -352,7 +352,9 @@ function buildNonDestratEconomics(input: SimulatorInput): Omit<SimulatorComputed
  * Simulateur complet : décision CEE unique (DESTRAT / PAC / NONE) + chiffres déstrat uniquement si DESTRAT.
  */
 export function computeSimulator(input: SimulatorInput): SimulatorComputedResult {
-  const ceeSolution = decideCeeSolution(toCeeDecisionInput(input));
+  const ceeSolution = decideCeeSolution(toCeeDecisionInput(input), {
+    currentHeatingMode: input.currentHeatingMode ?? null,
+  });
 
   if (ceeSolution.solution === "DESTRAT") {
     const economics = computeDestratEconomics(toDestratEconomicsInput(input));

@@ -11,44 +11,33 @@ type HeatingModeFieldProps = {
   className?: string;
 };
 
+/**
+ * Liste unique alignée sur le simulateur (`currentHeatingMode`) — une valeur dans `heating_type`.
+ */
 export function HeatingModeField({ id = "heating_type", value, onChange, className }: HeatingModeFieldProps) {
-  function toggle(mode: HeatingMode) {
-    const next = new Set(value);
-    if (next.has(mode)) {
-      next.delete(mode);
-    } else {
-      next.add(mode);
-    }
-    onChange([...next]);
-  }
+  const selected = value[0] ?? "";
 
   return (
-    <fieldset className={cn("space-y-2", className)}>
-      <legend className="sr-only" id={`${id}-legend`}>
-        Modes de chauffage
-      </legend>
-      <div
-        className="flex flex-wrap gap-x-4 gap-y-2"
-        role="group"
-        aria-labelledby={`${id}-legend`}
+    <div className={cn("space-y-2", className)}>
+      <label htmlFor={id} className="sr-only">
+        Mode de chauffage actuel
+      </label>
+      <select
+        id={id}
+        className="flex h-10 w-full max-w-xl rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        value={selected}
+        onChange={(e) => {
+          const v = e.target.value;
+          onChange(v ? [v as HeatingMode] : []);
+        }}
       >
+        <option value="">Sélectionner…</option>
         {HEATING_MODE_OPTIONS.map(({ value: mode, label }) => (
-          <label
-            key={mode}
-            htmlFor={`${id}-${mode}`}
-            className="flex cursor-pointer items-center gap-2 text-sm leading-none"
-          >
-            <input
-              id={`${id}-${mode}`}
-              type="checkbox"
-              checked={value.includes(mode)}
-              onChange={() => toggle(mode)}
-              className="size-4 rounded border-input accent-primary"
-            />
-            <span>{label}</span>
-          </label>
+          <option key={mode} value={mode}>
+            {label}
+          </option>
         ))}
-      </div>
-    </fieldset>
+      </select>
+    </div>
   );
 }

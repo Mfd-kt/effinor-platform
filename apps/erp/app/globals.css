@@ -51,6 +51,7 @@
 /*
  * Thème aligné sur apps/website (global-design-system.css) :
  * primaire = bleu marine slate, CTA / marque = vert émeraude #10B981, accent = ambre #F59E0B.
+ * PDF étude / présentation / accord : `features/leads/study-pdf/study-pdf-theme.ts` (hex + Inter/Poppins).
  */
 :root {
   --background: oklch(0.985 0.002 247.86);

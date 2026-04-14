@@ -4,6 +4,7 @@ import { normalizeHeatingModesFromDb } from "@/features/leads/lib/heating-modes"
 import {
   leadBuildingTypeFromSimulatorCee,
   leadHeatingTypesFromSimulator,
+  leadHeatingTypesFromSimulationPayloads,
   parseWorkflowSimulationSnapshotJson,
 } from "@/features/leads/lib/simulator-to-lead-technical";
 import { isPacPreferredLocalUsage } from "@/features/leads/simulator/domain/cee-solution-decision";
@@ -16,7 +17,6 @@ export const EMPTY_LEAD_FORM: LeadFormInput = {
   source: "cold_call",
   campaign: "",
   landing: "",
-  product_interest: "",
   company_name: "",
   siret: "",
   head_office_siret: "",
@@ -73,15 +73,14 @@ function splitContactName(fullName: string | null | undefined): {
 export function heatingTypeFromSimulator(raw: string | null | undefined) {
   switch ((raw ?? "").trim().toLowerCase()) {
     case "gaz":
-      return ["gaz"] as const;
     case "fioul":
-      return ["fioul"] as const;
+      return ["chaudiere_eau"] as const;
     case "pac":
-      return ["pac"] as const;
+      return ["pac_air_eau"] as const;
     case "elec":
-      return ["electricite"] as const;
+      return ["electrique_direct"] as const;
     case "bois":
-      return ["autres"] as const;
+      return ["autre_inconnu"] as const;
     default:
       return [] as const;
   }
@@ -140,7 +139,7 @@ export function leadRowToFormValues(row: LeadRow | LeadDetailRow): LeadFormInput
           simPayloadParsed.currentHeatingMode,
           simPayloadParsed.computedHeatingMode,
         )
-      : [];
+      : leadHeatingTypesFromSimulationPayloads(row.sim_payload_json, row.sim_payload_json);
   const resolvedHeatingType = fallbackHeatingType.length
     ? fallbackHeatingType
     : heatingFromPayload.length
@@ -151,7 +150,6 @@ export function leadRowToFormValues(row: LeadRow | LeadDetailRow): LeadFormInput
     source: row.source,
     campaign: strOrEmpty(row.campaign),
     landing: strOrEmpty(row.landing),
-    product_interest: strOrEmpty(row.product_interest),
     company_name: row.company_name,
     siret: fallbackHeadOfficeSiret,
     head_office_siret: fallbackHeadOfficeSiret,

@@ -11,6 +11,9 @@ function sampleVm(): StudyPdfViewModel {
     generatedAtIso: new Date().toISOString(),
     generatedByLabel: "Expert",
     ceeSolutionKind: "destrat",
+    presentationTemplateKey: "destrat_v1",
+    agreementTemplateKey: "destrat_v1",
+    simulationVersusSheetMismatch: false,
     equipmentQuantity: 6,
     pacCommercialMessage: null,
     client: {
@@ -81,6 +84,8 @@ function samplePacVm(): StudyPdfViewModel {
   return {
     ...vm,
     ceeSolutionKind: "pac",
+    presentationTemplateKey: "pac_v1",
+    agreementTemplateKey: "pac_v1",
     equipmentQuantity: 2,
     products: [
       {
@@ -208,7 +213,24 @@ describe("renderPresentationHtml", () => {
   });
 
   it("renders PAC-specific brochure copy when ceeSolutionKind is pac", () => {
-    const html = renderPresentationHtml(samplePacVm());
+    const vm = samplePacVm();
+    vm.comparables = [
+      {
+        id: "c-pac",
+        title: "Référence test",
+        siteType: "Tertiaire",
+        surfaceM2: 2000,
+        heightM: 11,
+        heatingMode: "Gaz",
+        measuredResult: "Résultat",
+        savingEuroYear: 1000,
+        invoiceDropPercent: 20,
+        installationDurationDays: 2,
+        photoUrl: null,
+        badge: "Réf.",
+      },
+    ];
+    const html = renderPresentationHtml(vm);
     expect(html).toContain("Pompe à chaleur air / eau");
     expect(html).toContain("bâtiments tertiaires et résidentiels (collectif)");
     expect(html).toContain("Pré-étude pour chauffage et eau chaude sanitaire en tertiaire ou résidentiel collectif");
@@ -218,6 +240,15 @@ describe("renderPresentationHtml", () => {
       "Illustration indicative — gains liés au chauffage en tertiaire et résidentiel collectif selon zone climatique",
     );
     expect(html).not.toContain("Vous payez pour chauffer");
+    expect(html).not.toContain("Volume / hauteur");
+    expect(html).not.toContain("Hauteur <strong>");
+    expect(html).not.toContain("11 m");
+  });
+
+  it("embeds ERP charte primary color in presentation CSS", () => {
+    const html = renderPresentationHtml(sampleVm());
+    expect(html).toContain("#10B981");
+    expect(html).toContain("#059669");
   });
 
   it("renders comparables and CEE financing", () => {
@@ -350,6 +381,7 @@ describe("renderAccordHtml", () => {
     expect(html).toContain("tertiaire et résidentiel collectif — économies annuelles indicatives");
     expect(html).toContain("Bosch PAC air / eau");
     expect(html).not.toContain("déstratification");
+    expect(html).not.toContain("<dt>Hauteur</dt>");
   });
 
   it("escapes product name in accord synth once (no double-encoding)", () => {

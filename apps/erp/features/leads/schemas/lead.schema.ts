@@ -107,7 +107,6 @@ export const LeadInsertSchema = z.object({
   source: z.enum(LEAD_SOURCE_VALUES),
   campaign: z.string().max(200).optional(),
   landing: z.string().max(200).optional(),
-  product_interest: z.string().max(200).optional(),
   company_name: z.string().min(1, "La société est obligatoire.").max(500),
   siret: z.string().max(20).optional(),
   head_office_siret: z.string().max(20).optional(),

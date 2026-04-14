@@ -3,6 +3,22 @@ import type {
   StudyPdfViewModel,
   StudyProductViewModel,
 } from "../domain/types";
+import {
+  EFFINOR_BRAND_AMBER_DARK,
+  EFFINOR_BRAND_AMBER_LIGHT,
+  EFFINOR_BRAND_BG_SOFT,
+  EFFINOR_BRAND_GREEN,
+  EFFINOR_BRAND_INK,
+  EFFINOR_BRAND_INK_SOFT,
+  EFFINOR_BRAND_LINE,
+  EFFINOR_BRAND_MUTED,
+  EFFINOR_BRAND_MUTED_LIGHT,
+  EFFINOR_BRAND_NAVY,
+  EFFINOR_BRAND_NOTICE_BORDER,
+  EFFINOR_BRAND_PRIMARY_MUTED,
+  EFFINOR_BRAND_WHITE,
+} from "@/lib/effinor-brand";
+import { STUDY_PDF_FONT_HEADING, STUDY_PDF_FONT_LINKS, STUDY_PDF_FONT_SANS } from "../study-pdf-theme";
 import { dateFr, esc, euro, num } from "../utils/format";
 
 function imageOrFallback(url: string | null, caption: string): string {
@@ -37,13 +53,20 @@ function sheet(content: string, opts?: { breakBefore?: boolean }): string {
   return `<section class="${cls}">${content}${footerNote()}</section>`;
 }
 
-function comparableCard(item: StudyComparableInstallation, index: number): string {
+function comparableCard(
+  item: StudyComparableInstallation,
+  index: number,
+  showCeilingHeight: boolean,
+): string {
   const variant = index % 2 === 0 ? "comparable--a" : "comparable--b";
+  const metaMid = showCeilingHeight
+    ? ` · ${num(item.surfaceM2)} m² · ${num(item.heightM, 1)} m sous plafond · ${esc(item.heatingMode)}`
+    : ` · ${num(item.surfaceM2)} m² · ${esc(item.heatingMode)}`;
   return `
     <article class="comparable ${variant}">
       <header class="comparable__head">
         <h3 class="comparable__title">${esc(item.title)}</h3>
-        <p class="comparable__meta">${esc(item.siteType)} · ${num(item.surfaceM2)} m² · ${num(item.heightM, 1)} m sous plafond · ${esc(item.heatingMode)}</p>
+        <p class="comparable__meta">${esc(item.siteType)}${metaMid}</p>
       </header>
       <p class="comparable__outcome">${esc(item.measuredResult)}</p>
       <dl class="comparable__metrics">
@@ -122,10 +145,11 @@ function renderEquipmentSheet(products: StudyProductViewModel[]): string {
 export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
   const beforeAfterSchemaUrl =
     "https://groupe-effinor.fr/images/destrat-schema-stratification.png";
+  const showCeilingHeight = vm.ceeSolutionKind !== "pac";
 
   const comparablesHtml =
     vm.comparables.length > 0
-      ? vm.comparables.map((item, i) => comparableCard(item, i)).join("")
+      ? vm.comparables.map((item, i) => comparableCard(item, i, showCeilingHeight)).join("")
       : `<p class="muted" style="margin:0;font-size:11px;">Aucun cas comparable n'a été joint à ce document ; les références sectorielles peuvent être communiquées sur demande lors de l'échange technique.</p>`;
 
   const qualNotes = vm.qualification.notes.slice(0, 10);
@@ -140,33 +164,36 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
+    ${STUDY_PDF_FONT_LINKS}
     <title>Étude d'opportunité — ${esc(vm.client.companyName)}</title>
     <style>
       @page { size: A4; margin: 13mm 14mm 16mm 14mm; }
       :root {
-        --ink: #0f172a;
-        --ink-soft: #334155;
-        --muted: #64748b;
-        --line: #e4edf4;
-        --line-strong: #94a3b8;
-        --fill: #f1f5f9;
-        --fill-warm: #fffbeb;
-        --p: #116bad;
-        --p-deep: #0d5280;
-        --accent: #e8a317;
-        --paper: #ffffff;
+        --ink: ${EFFINOR_BRAND_INK};
+        --ink-soft: ${EFFINOR_BRAND_INK_SOFT};
+        --muted: ${EFFINOR_BRAND_MUTED};
+        --line: ${EFFINOR_BRAND_LINE};
+        --line-strong: ${EFFINOR_BRAND_MUTED_LIGHT};
+        --fill: ${EFFINOR_BRAND_BG_SOFT};
+        --fill-warm: ${EFFINOR_BRAND_AMBER_LIGHT};
+        --p: ${EFFINOR_BRAND_GREEN};
+        --p-deep: ${EFFINOR_BRAND_NAVY};
+        --accent: ${EFFINOR_BRAND_NOTICE_BORDER};
+        --paper: ${EFFINOR_BRAND_WHITE};
+        --font-sans: ${STUDY_PDF_FONT_SANS};
+        --font-heading: ${STUDY_PDF_FONT_HEADING};
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Helvetica Neue", Helvetica, "Segoe UI", Arial, sans-serif;
+        font-family: var(--font-sans);
         font-size: 11.2px;
         line-height: 1.48;
         color: var(--ink);
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      h1, h2, h3 { margin: 0; font-weight: 600; }
+      h1, h2, h3 { margin: 0; font-weight: 600; font-family: var(--font-heading); }
       .sheet {
         display: flex;
         flex-direction: column;
@@ -195,7 +222,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         font-weight: 700;
       }
       .sheet-head__title {
-        font-family: Georgia, "Times New Roman", serif;
+        font-family: var(--font-heading);
         font-size: 17.5px;
         line-height: 1.22;
         color: var(--p-deep);
@@ -214,10 +241,10 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         .cover-hero { grid-template-columns: 1.1fr 0.9fr; }
       }
       .cover-title-block h1 {
-        font-family: Georgia, "Times New Roman", serif;
+        font-family: var(--font-heading);
         font-size: 28px;
         line-height: 1.12;
-        color: var(--p);
+        color: var(--p-deep);
         letter-spacing: -0.02em;
       }
       .cover-title-block .cover-kicker {
@@ -336,7 +363,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
       .kpi-hero__hint-extra { font-size: 9.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.35; font-weight: 600; }
 
       .impact-line {
-        background: #f0f7fc;
+        background: #f8fafc;
         border-left: 4px solid var(--p);
         padding: 12px 16px;
         margin: 4px 0 0;
@@ -381,7 +408,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         background: #f7fafd;
       }
       .exec-summary h2 {
-        font-family: Georgia, serif;
+        font-family: var(--font-heading);
         font-size: 14px;
         color: var(--p);
         margin-bottom: 10px;
@@ -526,9 +553,9 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         position: relative;
         break-inside: avoid;
       }
-      .comparable--a { border-left-color: var(--p); background: #fafdff; }
+      .comparable--a { border-left-color: var(--p); background: #f8fafc; }
       .comparable--b { border-left-color: var(--accent); background: #fffcf5; }
-      .comparable__title { font-family: Georgia, serif; font-size: 12.5px; color: var(--p-deep); }
+      .comparable__title { font-family: var(--font-heading); font-size: 12.5px; color: var(--p-deep); }
       .comparable__meta { font-size: 10px; color: var(--muted); margin: 4px 0 8px; }
       .comparable__outcome { font-size: 11px; margin: 0 0 10px; line-height: 1.45; color: var(--ink-soft); }
       .comparable__metrics {
@@ -546,8 +573,8 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         right: 10px;
         font-size: 9px;
         color: var(--p-deep);
-        background: rgba(17, 107, 173, 0.08);
-        border: 1px solid rgba(17, 107, 173, 0.25);
+        background: ${EFFINOR_BRAND_PRIMARY_MUTED};
+        border: 1px solid rgba(16, 185, 129, 0.25);
         padding: 2px 7px;
         border-radius: 2px;
       }
@@ -559,7 +586,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         background: #f7fafd;
         margin-bottom: 12px;
       }
-      .financing-hero h2 { font-family: Georgia, serif; font-size: 15px; color: var(--p); margin-bottom: 8px; }
+      .financing-hero h2 { font-family: var(--font-heading); font-size: 15px; color: var(--p-deep); margin-bottom: 8px; }
       .financing-hero p { margin: 0; font-size: 11.2px; line-height: 1.5; color: var(--ink-soft); }
 
       .steps-bar {
@@ -717,7 +744,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         margin-bottom: 6px;
       }
       .product-card__title {
-        font-family: Georgia, serif;
+        font-family: var(--font-heading);
         font-size: 14px;
         color: var(--p-deep);
         margin: 0 0 8px;
@@ -794,7 +821,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
       .accord-kpi dd { margin: 4px 0 0; font-weight: 700; font-size: 13px; color: var(--p); }
 
       .legal-notice {
-        border: 1px solid #c9a227;
+        border: 1px solid ${EFFINOR_BRAND_NOTICE_BORDER};
         background: var(--fill-warm);
         padding: 10px 12px;
         border-radius: 4px;
@@ -802,7 +829,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         line-height: 1.45;
         color: var(--ink-soft);
       }
-      .legal-notice strong { color: #92400e; }
+      .legal-notice strong { color: ${EFFINOR_BRAND_AMBER_DARK}; }
 
       .sign-grid {
         display: grid;
@@ -874,10 +901,15 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
           <span>·</span>
           <span>Chauffage <strong>${esc(vm.site.heatingMode)}</strong></span>
           <span>·</span>
-          <span>Surface / hauteur <strong>${num(vm.site.surfaceM2)} m² — ${num(vm.site.heightM, 1)} m</strong></span>
+          ${
+            showCeilingHeight
+              ? `<span>Surface / hauteur <strong>${num(vm.site.surfaceM2)} m² — ${num(vm.site.heightM, 1)} m</strong></span>
           <span>·</span>
           <span>Volume <strong>${num(vm.site.volumeM3)} m³</strong></span>
-          <span>·</span>
+          <span>·</span>`
+              : `<span>Surface <strong>${num(vm.site.surfaceM2)} m²</strong></span>
+          <span>·</span>`
+          }
           <span>Solution <strong>${esc(vm.simulation.model)}</strong> · <strong>${num(vm.simulation.neededDestrat)}</strong> appareil(s)</span>
         </div>
 
@@ -955,8 +987,13 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
         <span>·</span>
         <span>Bâtiment <strong>${esc(vm.site.type)}</strong></span>
         <span>·</span>
-        <span>Volume traité <strong>${num(vm.site.volumeM3)} m³</strong></span>
-        <span>·</span>
+        ${
+          showCeilingHeight
+            ? `<span>Volume traité <strong>${num(vm.site.volumeM3)} m³</strong></span>
+        <span>·</span>`
+            : `<span>Surface <strong>${num(vm.site.surfaceM2)} m²</strong></span>
+        <span>·</span>`
+        }
         <span>Analyse au <strong>${esc(dateFr(vm.generatedAtIso))}</strong></span>
       </div>
 
@@ -998,7 +1035,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
       </div>
 
       <div class="financing-hero" style="margin-top:4px;">
-        <h2 style="font-size:15px;font-family:Georgia,serif;color:var(--p);">Hypothèses de calcul</h2>
+        <h2 style="font-size:15px;font-family:var(--font-heading);color:var(--p-deep);">Hypothèses de calcul</h2>
         <ul class="hyp-list">
           <li>Volume calculé à partir des données déclarées</li>
           <li>Modélisation thermique basée sur le mode de chauffage</li>
@@ -1020,7 +1057,7 @@ export function renderLeadStudyHtml(vm: StudyPdfViewModel): string {
       </header>
 
       <div class="econ-hero">
-        <div class="econ-hero__big" style="background:#f0f7fc;border-top:3px solid var(--p);">
+        <div class="econ-hero__big" style="background:#f8fafc;border-top:3px solid var(--p);">
           <div class="lbl">Économie annuelle estimée</div>
           <div class="val">${euro(vm.simulation.annualSavingEuro)}</div>
         </div>

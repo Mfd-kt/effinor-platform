@@ -3,20 +3,25 @@ import { createClient } from "@/lib/supabase/server";
 import type { AccessContext } from "@/lib/auth/access-context";
 import { getLeadIdsForAccess } from "@/lib/auth/data-scope";
 
-import type { LeadRow } from "@/features/leads/types";
+import type { LeadListRow } from "@/features/leads/types";
 
 export type LeadListVisibility = "active" | "lost_only";
+
+const LEADS_LIST_SELECT = `
+  *,
+  cee_sheet:cee_sheets!cee_sheet_id(code, label, simulator_key, workflow_key)
+`;
 
 export async function getLeads(
   access?: AccessContext,
   opts?: { visibility?: LeadListVisibility },
-): Promise<LeadRow[]> {
+): Promise<LeadListRow[]> {
   const supabase = await createClient();
   const visibility = opts?.visibility ?? "active";
 
   let query = supabase
     .from("leads")
-    .select("*")
+    .select(LEADS_LIST_SELECT)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
@@ -42,5 +47,9 @@ export async function getLeads(
     throw new Error(`Impossible de charger les leads : ${error.message}`);
   }
 
-  return (data ?? []) as LeadRow[];
+  /* Types DB : `leads.Relationships` ne liste pas encore `cee_sheet_id` → cee_sheets ; la jointure est valide côté API. */
+  const rows = (data ?? []) as unknown as Array<
+    LeadListRow & { cee_sheet?: LeadListRow["cee_sheet"] | null }
+  >;
+  return rows.map((r) => ({ ...r, cee_sheet: r.cee_sheet ?? null }));
 }

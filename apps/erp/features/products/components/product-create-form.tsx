@@ -44,7 +44,8 @@ export function ProductCreateForm() {
     if (next === CEE_PRODUCT_CATEGORY.destrat) setFamily("destratification");
   }
 
-  function onFamilyChange(next: string) {
+  function onFamilyChange(next: string | null) {
+    if (next == null) return;
     setFamily(next);
     if (next === EMPTY_FAMILY) return;
     const f = next as ProductFamily;

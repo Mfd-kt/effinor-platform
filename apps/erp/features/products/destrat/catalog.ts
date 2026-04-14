@@ -63,7 +63,7 @@ export const DESTRAT_CATALOG: Record<DestratProductId, DestratProduct> = {
     sortOrder: 20,
     isActive: true,
   },
-  /** Fiche PAC des PDF d’étude. Pour afficher photo / galerie depuis l’ERP : créer (ou garder) un produit dont le `product_code` en base est exactement `bosch_pac_air_eau`, puis ajouter la couverture dans Paramètres → Produits. */
+  /** @deprecated pour les PDF PAC — les études lisent désormais `products` (`product_family = heat_pump`). Conservé pour anciens parcours / tests. */
   bosch_pac_air_eau: {
     id: "bosch_pac_air_eau",
     brand: "Bosch",

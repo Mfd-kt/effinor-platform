@@ -283,7 +283,7 @@ export function TechnicalVisitForm({
             <Input id="ceiling_height_m" inputMode="decimal" {...form.register("ceiling_height_m")} />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label id="vt_heating_type-label">Mode de chauffage</Label>
+            <Label id="vt_heating_type-label">Mode de chauffage actuel</Label>
             <Controller
               name="heating_type"
               control={form.control}

@@ -14,6 +14,13 @@ export async function getLeadById(id: string, access?: AccessContext): Promise<L
     .select(
       `
       *,
+      cee_sheet:cee_sheets!cee_sheet_id (
+        id,
+        code,
+        label,
+        simulator_key,
+        workflow_key
+      ),
       created_by_agent:profiles!created_by_agent_id (
         id,
         full_name,
@@ -40,7 +47,8 @@ export async function getLeadById(id: string, access?: AccessContext): Promise<L
     return null;
   }
 
-  const row = data as unknown as LeadDetailRow;
+  const raw = data as unknown as LeadDetailRow & { cee_sheet?: LeadDetailRow["cee_sheet"] | null };
+  const row: LeadDetailRow = { ...raw, cee_sheet: raw.cee_sheet ?? null };
   if (access?.kind === "authenticated" && !canAccessLeadRow(row, access)) {
     if (!(await canAccessLeadForCeeTeamManager(supabase, access, row.id))) {
       return null;

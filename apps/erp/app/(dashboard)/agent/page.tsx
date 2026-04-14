@@ -76,7 +76,6 @@ export default async function AgentPage({ searchParams }: PageProps) {
     leadForSheet != null
       ? resolvePreferredCeeSheetIdForLead(dashboard.sheets, {
           cee_sheet_id: leadForSheet.cee_sheet_id,
-          product_interest: leadForSheet.product_interest,
         })
       : null;
 

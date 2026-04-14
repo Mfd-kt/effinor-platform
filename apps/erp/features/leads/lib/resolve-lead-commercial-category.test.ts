@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   commercialCategoryFromCeeSheet,
+  leadListFicheCeeCategoryLabel,
   pickPrimaryWorkflowForLead,
   resolveLeadCommercialCategoryForUi,
+  simulationCategoryForLeadWorkflow,
+  simulationRecommendedCategoryLabel,
 } from "./resolve-lead-commercial-category";
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 
@@ -21,8 +24,8 @@ function wfStub(
     assigned_agent_user_id: null,
     assigned_confirmateur_user_id: null,
     assigned_closer_user_id: null,
-    simulation_input_json: {},
-    simulation_result_json: {},
+    simulation_input_json: partial.simulation_input_json ?? {},
+    simulation_result_json: partial.simulation_result_json ?? {},
     qualification_data_json: {},
     presentation_document_id: null,
     agreement_document_id: null,
@@ -68,8 +71,86 @@ describe("commercialCategoryFromCeeSheet", () => {
   });
 });
 
+describe("simulationRecommendedCategoryLabel", () => {
+  it("reads PAC from snapshot { result }", () => {
+    expect(
+      simulationRecommendedCategoryLabel({
+        result: {
+          ceeSolution: { solution: "PAC", eligible: true, reason: "", commercialMessage: "" },
+        },
+      }),
+    ).toBe("PAC");
+  });
+
+  it("reads DESTRAT from flat result", () => {
+    expect(
+      simulationRecommendedCategoryLabel({
+        ceeSolution: { solution: "DESTRAT", eligible: true, reason: "", commercialMessage: "", destratCeeSheetCode: "BAT-TH-142" },
+      }),
+    ).toBe("Destratificateur");
+  });
+});
+
+describe("simulationCategoryForLeadWorkflow", () => {
+  it("prefers workflow simulation_result_json over lead payload", () => {
+    const w = wfStub({
+      simulation_result_json: {
+        result: { ceeSolution: { solution: "DESTRAT", eligible: true, reason: "", commercialMessage: "" } },
+      },
+      cee_sheet: {
+        id: "cs1",
+        code: "D",
+        label: "D",
+        simulator_key: "destrat",
+        workflow_key: "w",
+        is_commercial_active: true,
+      },
+    });
+    const leadPayload = {
+      result: { ceeSolution: { solution: "PAC", eligible: true, reason: "", commercialMessage: "" } },
+    };
+    expect(simulationCategoryForLeadWorkflow(w, leadPayload)).toBe("Destratificateur");
+  });
+
+  it("falls back to lead payload when workflow result has no ceeSolution", () => {
+    const w = wfStub({
+      simulation_result_json: {},
+      cee_sheet: {
+        id: "cs1",
+        code: "D",
+        label: "Destratificateur d'air",
+        simulator_key: "destrat",
+        workflow_key: "w",
+        is_commercial_active: true,
+      },
+    });
+    const leadPayload = {
+      result: { ceeSolution: { solution: "PAC", eligible: true, reason: "", commercialMessage: "" } },
+    };
+    expect(simulationCategoryForLeadWorkflow(w, leadPayload)).toBe("PAC");
+  });
+});
+
+describe("leadListFicheCeeCategoryLabel", () => {
+  it("prioritizes simulation PAC over destrat cee_sheet join", () => {
+    expect(
+      leadListFicheCeeCategoryLabel({
+        sim_payload_json: {
+          result: { ceeSolution: { solution: "PAC", eligible: true, reason: "", commercialMessage: "" } },
+        },
+        cee_sheet: {
+          code: "X",
+          label: "Destratificateur d'air",
+          simulator_key: "destrat",
+          workflow_key: "w",
+        },
+      }),
+    ).toBe("PAC");
+  });
+});
+
 describe("resolveLeadCommercialCategoryForUi", () => {
-  it("prefers lead product_interest (e.g. PAC) when workflow sheet is a different fiche", () => {
+  it("prefers lead sim_payload PAC over workflow destrat sheet", () => {
     const w = wfStub({
       id: "wf-destrat",
       cee_sheet: {
@@ -82,19 +163,19 @@ describe("resolveLeadCommercialCategoryForUi", () => {
       },
     });
     const label = resolveLeadCommercialCategoryForUi(
-      { product_interest: "PAC", current_workflow_id: "wf-destrat" },
+      {
+        current_workflow_id: "wf-destrat",
+        sim_payload_json: {
+          result: { ceeSolution: { solution: "PAC", eligible: true, reason: "", commercialMessage: "" } },
+        },
+      },
       [w],
+      null,
     );
     expect(label).toBe("PAC");
   });
 
-  it("falls back to product_interest when no workflow", () => {
-    expect(
-      resolveLeadCommercialCategoryForUi({ product_interest: "PAC", current_workflow_id: null }, []),
-    ).toBe("PAC");
-  });
-
-  it("uses workflow sheet when lead category is empty", () => {
+  it("uses workflow fiche CEE even when lead root fiche would imply another line", () => {
     const w = wfStub({
       id: "wf-destrat",
       cee_sheet: {
@@ -106,9 +187,42 @@ describe("resolveLeadCommercialCategoryForUi", () => {
         is_commercial_active: true,
       },
     });
+    const pacRoot = {
+      code: "PAC",
+      label: "Pompe à chaleur",
+      simulator_key: "pac",
+      workflow_key: "pac_v1",
+    };
+    const label = resolveLeadCommercialCategoryForUi({ current_workflow_id: "wf-destrat" }, [w], pacRoot);
+    expect(label).toBe("Destratificateur");
+  });
+
+  it("uses lead root fiche CEE when there is no workflow", () => {
     expect(
-      resolveLeadCommercialCategoryForUi({ product_interest: "", current_workflow_id: "wf-destrat" }, [w]),
-    ).toBe("Destratificateur");
+      resolveLeadCommercialCategoryForUi({ current_workflow_id: null }, [], {
+        code: "PAC",
+        label: "PAC",
+        simulator_key: "pac",
+        workflow_key: "x",
+      }),
+    ).toBe("PAC");
+  });
+
+  it("uses workflow sheet when set", () => {
+    const w = wfStub({
+      id: "wf-destrat",
+      cee_sheet: {
+        id: "cs1",
+        code: "DESTRAT",
+        label: "Destratificateur d'air",
+        simulator_key: "destrat",
+        workflow_key: "destrat_v1",
+        is_commercial_active: true,
+      },
+    });
+    expect(resolveLeadCommercialCategoryForUi({ current_workflow_id: "wf-destrat" }, [w], null)).toBe(
+      "Destratificateur",
+    );
   });
 });
 

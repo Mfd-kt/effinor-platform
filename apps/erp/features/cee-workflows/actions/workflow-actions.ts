@@ -17,6 +17,7 @@ import {
   sendToCloser as sendToCloserInService,
   sendToConfirmateur as sendToConfirmateurInService,
 } from "@/features/cee-workflows/services/workflow-service";
+import { assertAgentSimulationResultHealthy } from "@/features/cee-workflows/lib/assert-simulation-result-healthy";
 import {
   AssignWorkflowUsersSchema,
   CompleteSimulationSchema,
@@ -129,7 +130,6 @@ export async function switchLeadToCeeSheetWorkflow(
         newCeeSheetId: parsed.data.newCeeSheetId,
         actorUserId: auth.userId,
         copyRoleAssignments: parsed.data.copyRoleAssignments,
-        syncProductInterest: parsed.data.syncProductInterest,
       },
       { workflowCleanupClient },
     );
@@ -182,6 +182,9 @@ export async function completeSimulation(
   const auth = await getAuthenticatedSupabase();
   if (!auth.ok) return auth;
   try {
+    if (parsed.data.simulationResultJson) {
+      assertAgentSimulationResultHealthy(parsed.data.simulationResultJson);
+    }
     const workflow = await completeSimulationInService(auth.supabase, {
       workflowId: parsed.data.workflowId,
       actorUserId: auth.userId,

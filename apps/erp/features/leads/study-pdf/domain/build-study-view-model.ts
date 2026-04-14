@@ -5,14 +5,18 @@ import { STUDY_INSTALLATION_EXAMPLES } from "../content/installation-examples";
 import { filterParasiteNotes } from "./filter-study-notes";
 import {
   extractWorkflowSimulationMetrics,
-  readStudyCeeSolutionKindFromInputs,
 } from "./merge-workflow-simulation-into-lead-for-pdf";
-import { resolveStudyProductsForPdf } from "./resolve-study-products";
+import { resolveStudyTemplatesFromCeeSheet } from "./resolve-study-templates";
+import {
+  genericPacStudyProductPlaceholder,
+  resolveStudyProductsForPdf,
+  STUDY_DESTRAT_PRODUCT_RATIONALE,
+} from "./resolve-study-products";
 import type { StudyPdfGenerationInput, StudyPdfViewModel } from "./types";
 import { StudyPdfViewModelSchema } from "./validation";
 import { contactSalutationLine } from "@/features/leads/lib/contact-map";
 
-const TEMPLATE_VERSION = "v2.1.0";
+const TEMPLATE_VERSION = "v2.2.0";
 
 function joinedAddress(address: string, postalCode: string, city: string): string {
   return [address.trim(), postalCode.trim(), city.trim()].filter(Boolean).join(", ");
@@ -38,9 +42,15 @@ function asRecord(v: unknown): Record<string, unknown> | null {
 }
 
 export function buildLeadStudyPdfViewModel(input: StudyPdfGenerationInput): StudyPdfViewModel {
-  const { lead, qualificationNotes: rawNotes, generatedByLabel, mergedSimulationJson } = input;
+  const { lead, qualificationNotes: rawNotes, generatedByLabel, mergedSimulationJson, ceeSheetForStudy } =
+    input;
   const qualificationNotes = filterParasiteNotes(rawNotes);
-  const ceeSolutionKind = readStudyCeeSolutionKindFromInputs({ lead, mergedSimulationJson });
+  const resolvedTemplates = resolveStudyTemplatesFromCeeSheet(
+    ceeSheetForStudy ?? null,
+    lead,
+    mergedSimulationJson,
+  );
+  const ceeSolutionKind = resolvedTemplates.ceeSolutionKind;
   const metrics = extractWorkflowSimulationMetrics(mergedSimulationJson ?? lead.sim_payload_json);
   const pacRec = metrics ? asRecord(metrics.pacSavings) : null;
   const pacCommercialMessage =
@@ -56,19 +66,25 @@ export function buildLeadStudyPdfViewModel(input: StudyPdfGenerationInput): Stud
     (legacySimHeatingLabel(lead.sim_heating_mode) ??
       (heatingFromLeadTypes !== "—" ? heatingFromLeadTypes : null)) || "Non renseigné";
 
-  const productModelKey = ceeSolutionKind === "pac" ? "bosch_pac_air_eau" : lead.sim_model;
-  const products = resolveStudyProductsForPdf(productModelKey);
-  const equipmentQuantity = ceeSolutionKind === "pac" ? 1 : Math.max(0, lead.sim_needed_destrat ?? 0);
-  const simulationModelLabel =
-    ceeSolutionKind === "pac"
-      ? (products[0]?.displayName ?? "Pompe à chaleur air / eau Bosch")
-      : lead.sim_model?.trim() || "Non renseigné";
+  const isPac = ceeSolutionKind === "pac";
+  const products = isPac
+    ? input.pacStudyProducts != null && input.pacStudyProducts.length > 0
+      ? input.pacStudyProducts
+      : [genericPacStudyProductPlaceholder()]
+    : resolveStudyProductsForPdf(lead.sim_model, { rationaleText: STUDY_DESTRAT_PRODUCT_RATIONALE });
+  const equipmentQuantity = isPac ? 1 : Math.max(0, lead.sim_needed_destrat ?? 0);
+  const simulationModelLabel = isPac
+    ? (products[0]?.displayName ?? "Pompe à chaleur air / eau (étude CEE)")
+    : lead.sim_model?.trim() || "Non renseigné";
 
   const vm: StudyPdfViewModel = {
     templateVersion: TEMPLATE_VERSION,
     generatedAtIso: new Date().toISOString(),
     generatedByLabel,
     ceeSolutionKind,
+    presentationTemplateKey: resolvedTemplates.presentationTemplateKey,
+    agreementTemplateKey: resolvedTemplates.agreementTemplateKey,
+    simulationVersusSheetMismatch: resolvedTemplates.simulationVersusSheetMismatch,
     equipmentQuantity,
     pacCommercialMessage,
     client: {
@@ -91,8 +107,8 @@ export function buildLeadStudyPdfViewModel(input: StudyPdfGenerationInput): Stud
       city: lead.worksite_city?.trim() || lead.head_office_city?.trim() || "Non renseigné",
       type: lead.sim_client_type?.trim() || lead.building_type?.trim() || "Non renseigné",
       surfaceM2: useSurface,
-      heightM: useHeight,
-      volumeM3: useVolume,
+      heightM: ceeSolutionKind === "pac" ? 0 : useHeight,
+      volumeM3: ceeSolutionKind === "pac" ? 0 : useVolume,
       heatingMode: useHeating,
     },
     simulation: {

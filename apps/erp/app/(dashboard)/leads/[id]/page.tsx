@@ -21,7 +21,11 @@ import { getLeadWorkflowActivityEvents } from "@/features/leads/queries/get-lead
 import { contactSalutationLine } from "@/features/leads/lib/contact-map";
 import { leadAddressesComplete } from "@/features/leads/lib/lead-address-validation";
 import { leadRowToFormValues } from "@/features/leads/lib/form-defaults";
-import { resolveLeadCommercialCategoryForUi } from "@/features/leads/lib/resolve-lead-commercial-category";
+import { mergeLeadFormDefaultsFromWorkflowSimulation } from "@/features/leads/lib/merge-workflow-simulation-into-lead-form";
+import {
+  pickPrimaryWorkflowForLead,
+  resolveLeadCommercialCategoryForUi,
+} from "@/features/leads/lib/resolve-lead-commercial-category";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canUserSwitchLeadCeeSheetOnLead } from "@/lib/auth/switch-cee-sheet-eligibility";
@@ -172,11 +176,24 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const companyNameOk = Boolean(lead.company_name?.trim());
   const pipelineBlocked = lead.lead_status === "lost" || lead.lead_status === "converted";
 
-  const commercialCategoryLabel = resolveLeadCommercialCategoryForUi(lead, ceeWorkflows);
-  const leadFormDefaultValues = {
-    ...leadRowToFormValues(lead),
-    ...(commercialCategoryLabel.trim() ? { product_interest: commercialCategoryLabel } : {}),
-  };
+  const leadRootSheetPick = lead.cee_sheet
+    ? {
+        code: lead.cee_sheet.code,
+        label: lead.cee_sheet.label,
+        simulator_key: lead.cee_sheet.simulator_key,
+        workflow_key: lead.cee_sheet.workflow_key,
+      }
+    : null;
+  const commercialCategoryLabel = resolveLeadCommercialCategoryForUi(
+    { current_workflow_id: lead.current_workflow_id, sim_payload_json: lead.sim_payload_json },
+    ceeWorkflows,
+    leadRootSheetPick,
+  );
+  const primaryWorkflow = pickPrimaryWorkflowForLead(lead, ceeWorkflows);
+  const leadFormDefaultValues = mergeLeadFormDefaultsFromWorkflowSimulation(
+    leadRowToFormValues(lead),
+    primaryWorkflow,
+  );
 
   const canOpenAgentWorkstation =
     access.kind === "authenticated" && canAccessCeeWorkflowsModule(access);
@@ -223,7 +240,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
               <Link
                 href={`/agent?lead=${lead.id}`}
                 className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
-                title="Ouvre le poste agent avec la fiche CEE adaptée à la catégorie du lead"
+                title="Ouvre le poste agent avec la fiche CEE du dossier"
               >
                 <Headset className="size-3.5 shrink-0" aria-hidden />
                 Poste agent
@@ -302,6 +319,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
               mode="edit"
               leadId={lead.id}
               defaultValues={leadFormDefaultValues}
+              derivedCommercialCategory={commercialCategoryLabel.trim() || null}
               className="max-w-4xl"
               canReassignCreator={canReassign}
               agentOptions={agentProfiles}

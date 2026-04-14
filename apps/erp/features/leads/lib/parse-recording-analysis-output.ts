@@ -2,11 +2,8 @@ import { z } from "zod";
 
 import { normalizeBuildingTypeForLead } from "@/features/leads/lib/building-types";
 import { normalizeLeadCivilityFromText } from "@/features/leads/lib/civility-options";
-import { HEATING_MODE_VALUES, type HeatingMode } from "@/features/leads/lib/heating-modes";
-import { normalizeProductInterestLabel } from "@/features/leads/lib/normalize-product-interest";
+import { normalizeHeatingModesFromDb, type HeatingMode } from "@/features/leads/lib/heating-modes";
 import type { LeadInsertInput } from "@/features/leads/schemas/lead.schema";
-
-export { normalizeProductInterestLabel };
 
 /** Schéma aligné sur la section 9 du prompt d’analyse d’appel. */
 const ErpJsonBlockSchema = z
@@ -31,8 +28,6 @@ const ErpJsonBlockSchema = z
     heated_building: z.string().optional(),
     heating_type: z.union([z.string(), z.array(z.string())]).optional(),
     warehouse_count: z.union([z.string(), z.number()]).optional(),
-    /** Intérêt produit / thématique CEE (ex. LED, déstratification, étude thermique). */
-    product_interest: z.string().optional(),
     qualification_notes: z.string().optional(),
     ai_lead_summary: z.string().optional(),
     ai_lead_score: z.union([z.string(), z.number()]).optional(),
@@ -66,48 +61,32 @@ function mapHeatedBuilding(raw: string | undefined): boolean | null {
 
 function heatingModesFromFreeText(raw: string): HeatingMode[] | undefined {
   const t = raw.toLowerCase();
-  const found = new Set<HeatingMode>();
-  if (/\bgaz\b|gaz\s| au gaz/i.test(t)) found.add("gaz");
-  if (/fioul|fuel/i.test(t)) found.add("fioul");
-  if (/air\s*[-\/]\s*air|air\s+air|pac\s+air\s*[-\/]\s*air|pompe.*air.*air/i.test(t)) {
-    found.add("pac_air_air");
-  } else if (/air\s*[-\/]\s*eau|air\s+eau|pompe.*air.*eau/i.test(t)) {
-    found.add("pac_air_eau");
-  } else if (/\bpac\b|pompe à chaleur|pompe a chaleur/i.test(t)) {
-    found.add("pac");
-  }
-  if (/électric|electr/i.test(t)) found.add("electricite");
-  if (/autre|mixte|bois|charbon/i.test(t) && found.size === 0) found.add("autres");
-  const arr = [...found].filter((m) => HEATING_MODE_VALUES.includes(m));
-  return arr.length ? arr : undefined;
+  if (/air\s*[-\/]\s*air|air\s+air|pompe.*air.*air/i.test(t)) return ["pac_air_air"];
+  if (/air\s*[-\/]\s*eau|air\s+eau|pompe.*air.*eau/i.test(t)) return ["pac_air_eau"];
+  if (/\bpac\b|pompe à chaleur|pompe a chaleur/i.test(t)) return ["pac_air_eau"];
+  if (/électric|electr|résistance|radiateur\s+élec/i.test(t)) return ["electrique_direct"];
+  if (/mix.*rayonnement|air\s+chaud\s*\+?\s*rayonnement/i.test(t)) return ["mix_air_rayonnement"];
+  if (/rayonnement|radiant|tube/i.test(t)) return ["rayonnement"];
+  if (/soufflage|aérotherme|rooftop|\bcta\b/i.test(t)) return ["air_chaud_soufflage"];
+  if (/chaudière|chaudiere|fioul|fuel|\bgaz\b| au gaz/i.test(t)) return ["chaudiere_eau"];
+  if (/autre|mixte|bois|charbon|je ne sais pas/i.test(t)) return ["autre_inconnu"];
+  return undefined;
 }
 
 function normalizeHeatingType(raw: ParsedRecordingErpFields["heating_type"]): HeatingMode[] | undefined {
   if (raw == null) return undefined;
   if (Array.isArray(raw)) {
-    const modes = raw.filter((s): s is HeatingMode =>
-      typeof s === "string" && (HEATING_MODE_VALUES as readonly string[]).includes(s),
-    );
-    return modes.length ? modes : undefined;
+    const modes = normalizeHeatingModesFromDb(raw);
+    return modes.length ? (modes.length === 1 ? modes : [modes[0]]) : undefined;
   }
   const s = String(raw).trim();
   if (!s) return undefined;
-  const fromCodes = s
+  const tokens = s
     .split(/[,;/]/)
     .map((x) => x.trim().toLowerCase())
-    .filter(Boolean)
-    .map((x) => {
-      if (x === "gaz") return "gaz" as const;
-      if (x === "fioul") return "fioul" as const;
-      if (x === "pac") return "pac" as const;
-      if (x === "pac_air_air") return "pac_air_air" as const;
-      if (x === "pac_air_eau") return "pac_air_eau" as const;
-      if (x === "electricite" || x === "électricité") return "electricite" as const;
-      if (x === "autres") return "autres" as const;
-      return null;
-    })
-    .filter((x): x is HeatingMode => x !== null);
-  if (fromCodes.length) return [...new Set(fromCodes)];
+    .filter(Boolean);
+  const modes = normalizeHeatingModesFromDb(tokens);
+  if (modes.length) return modes.length === 1 ? modes : [modes[0]];
   return heatingModesFromFreeText(s);
 }
 
@@ -224,9 +203,6 @@ export function erpJsonToLeadFill(erp: ParsedRecordingErpFields | null): Partial
   if (heatedBool !== null) out.heated_building = heatedBool;
   if (heating?.length) out.heating_type = heating;
   if (wh !== undefined) out.warehouse_count = wh;
-  if (str(erp.product_interest)) {
-    out.product_interest = normalizeProductInterestLabel(str(erp.product_interest)!);
-  }
   if (summary) out.ai_lead_summary = summary;
   if (score !== undefined) out.ai_lead_score = score;
 

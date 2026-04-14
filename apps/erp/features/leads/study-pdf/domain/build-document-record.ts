@@ -27,6 +27,10 @@ export function buildLeadStudyDocumentInsert(args: {
       generated_at: viewModel.generatedAtIso,
       generated_by: viewModel.generatedByLabel,
       company_name: viewModel.client.companyName,
+      presentation_template_key: viewModel.presentationTemplateKey,
+      agreement_template_key: viewModel.agreementTemplateKey,
+      cee_solution_kind: viewModel.ceeSolutionKind,
+      simulation_versus_sheet_mismatch: viewModel.simulationVersusSheetMismatch,
     },
     created_by: createdBy,
   };

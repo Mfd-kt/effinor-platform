@@ -3,6 +3,16 @@
 import { markAgreementSent as markAgreementSentInService } from "@/features/cee-workflows/services/workflow-service";
 import { resolvePublicAppBaseUrl } from "@/lib/app-public-url";
 import { getFromAddress, getMailTransport } from "@/lib/email/gmail-transport";
+import {
+  EFFINOR_BRAND_GRADIENT_135,
+  EFFINOR_BRAND_GREEN,
+  EFFINOR_BRAND_GREEN_DEEP,
+  EFFINOR_BRAND_GREEN_SHADOW,
+  EFFINOR_BRAND_GREEN_TINT_BG,
+  EFFINOR_BRAND_GREEN_TINT_BORDER,
+  EFFINOR_BRAND_NAVY,
+  EFFINOR_BRAND_NAVY_MID,
+} from "@/lib/effinor-brand";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
 
@@ -258,10 +268,10 @@ function headerBlock(): string {
       <tr>
         <td style="text-align:left;vertical-align:middle">
           <div style="margin-bottom:6px">
-            <span style="display:inline-block;background:linear-gradient(135deg,#35E0A1,#1EC8B0);color:#0F172A;font-size:22px;font-weight:900;letter-spacing:2px;padding:8px 14px;border-radius:10px">E</span>
+            <span style="display:inline-block;background:${EFFINOR_BRAND_GRADIENT_135};color:#0F172A;font-size:22px;font-weight:900;letter-spacing:2px;padding:8px 14px;border-radius:10px">E</span>
           </div>
           <div style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:3px;margin-bottom:3px">EFFINOR</div>
-          <div style="color:#35E0A1;font-size:10px;letter-spacing:3px;font-weight:600">PERFORMANCE ÉNERGÉTIQUE</div>
+          <div style="color:${EFFINOR_BRAND_GREEN};font-size:10px;letter-spacing:3px;font-weight:600">PERFORMANCE ÉNERGÉTIQUE</div>
         </td>
         <td style="text-align:right;vertical-align:middle">
           <div style="background:#ffffff;border-radius:8px;padding:8px 14px;display:inline-block">
@@ -284,12 +294,12 @@ function footerBlock(pixelUrl: string | null): string {
       <tr>
         <td style="padding:0 12px;text-align:center">
           <div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:4px">Téléphone</div>
-          <a href="tel:+33978455063" style="color:#35E0A1;font-size:13px;text-decoration:none;font-weight:600">+33 9 78 45 50 63</a>
+          <a href="tel:+33978455063" style="color:${EFFINOR_BRAND_GREEN};font-size:13px;text-decoration:none;font-weight:600">+33 9 78 45 50 63</a>
         </td>
         <td style="width:1px;background:#1E293B;padding:0"></td>
         <td style="padding:0 12px;text-align:center">
           <div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:4px">Email</div>
-          <a href="mailto:contact@effinor.fr" style="color:#35E0A1;font-size:13px;text-decoration:none;font-weight:600">contact@effinor.fr</a>
+          <a href="mailto:contact@effinor.fr" style="color:${EFFINOR_BRAND_GREEN};font-size:13px;text-decoration:none;font-weight:600">contact@effinor.fr</a>
         </td>
         <td style="width:1px;background:#1E293B;padding:0"></td>
         <td style="padding:0 12px;text-align:center">
@@ -365,7 +375,7 @@ function heroKpis(eco: EconomicData): string {
   return `
 <!-- ═══ HERO KPIs ═══ -->
 <tr>
-  <td style="background:linear-gradient(135deg,#35E0A1,#1EC8B0);padding:28px 40px">
+  <td style="background:${EFFINOR_BRAND_GRADIENT_135};padding:28px 40px">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>${items.join(`<td style="width:1px;background:rgba(15,23,42,0.12);padding:0"></td>`)}</tr>
     </table>
@@ -382,14 +392,14 @@ function reassuranceBlock(): string {
   return `
 <tr>
   <td style="padding:0 40px 28px">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:${EFFINOR_BRAND_GREEN_TINT_BG};border:1px solid ${EFFINOR_BRAND_GREEN_TINT_BORDER};border-radius:10px">
       <tr><td style="padding:18px 22px">
         ${items
           .map(
             ([icon, text]) =>
               `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:6px"><tr>
-              <td style="width:24px;vertical-align:top;color:#16a34a;font-size:16px;font-weight:700">${icon}</td>
-              <td style="font-size:14px;color:#15803d;line-height:1.5;padding-left:6px">${text}</td>
+                           <td style="width:24px;vertical-align:top;color:${EFFINOR_BRAND_GREEN_DEEP};font-size:16px;font-weight:700">${icon}</td>
+              <td style="font-size:14px;color:${EFFINOR_BRAND_GREEN_DEEP};line-height:1.5;padding-left:6px">${text}</td>
             </tr></table>`,
           )
           .join("")}
@@ -474,7 +484,7 @@ function ctaButtons(
   accordUrl: string | null,
 ): string {
   const btnSecondary = `display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;letter-spacing:0.3px;background:#0F172A`;
-  const btnPrimary = `display:inline-block;padding:16px 32px;font-size:15px;font-weight:800;color:#0F172A;text-decoration:none;border-radius:10px;letter-spacing:0.3px;background:linear-gradient(135deg,#35E0A1,#1EC8B0);box-shadow:0 4px 14px rgba(53,224,161,0.3)`;
+  const btnPrimary = `display:inline-block;padding:16px 32px;font-size:15px;font-weight:800;color:#0F172A;text-decoration:none;border-radius:10px;letter-spacing:0.3px;background:${EFFINOR_BRAND_GRADIENT_135};box-shadow:0 4px 14px ${EFFINOR_BRAND_GREEN_SHADOW}`;
 
   const presBtn = presentationUrl
     ? `<a href="${esc(presentationUrl)}" target="_blank" style="${btnSecondary}">&#128269;&nbsp; Voir mon &eacute;tude d&eacute;taill&eacute;e</a>`
@@ -529,7 +539,7 @@ ${heroKpis(p.eco)}
     <p style="font-size:15px;line-height:1.7;color:#374151;margin:0 0 6px">
       Votre &eacute;tude est finalis&eacute;e.${p.eco.economiesAnnuelles != null ? ` Nous avons identifi&eacute; <strong style="color:#0F172A">${eur(p.eco.economiesAnnuelles)} d'&eacute;conomies annuelles</strong> sur votre site.` : " Nous avons identifi&eacute; un potentiel d'&eacute;conomies significatif sur votre site."}
     </p>
-    ${p.eco.ceePrime != null && p.eco.ceePrime > 0 ? `<p style="font-size:14px;line-height:1.6;color:#374151;margin:0 0 20px">&#9889; Projet &eacute;ligible &agrave; un financement via le dispositif CEE${p.eco.resteACharge != null && p.eco.resteACharge <= 0 ? " — <strong style=\"color:#16a34a\">prise en charge &agrave; 100&nbsp;%</strong>" : ""}.</p>` : ""}
+    ${p.eco.ceePrime != null && p.eco.ceePrime > 0 ? `<p style="font-size:14px;line-height:1.6;color:#374151;margin:0 0 20px">&#9889; Projet &eacute;ligible &agrave; un financement via le dispositif CEE${p.eco.resteACharge != null && p.eco.resteACharge <= 0 ? ` — <strong style="color:${EFFINOR_BRAND_GREEN_DEEP}">prise en charge &agrave; 100&nbsp;%</strong>` : ""}.</p>` : ""}
 
     ${clientInfoBlock(p.companyName, p.siteName)}
 
@@ -559,7 +569,7 @@ function buildVersionB(p: TemplateData): string {
   const inner = `
 <!-- ═══ BANDEAU VERT ═══ -->
 <tr>
-  <td style="background:linear-gradient(135deg,#35E0A1,#1EC8B0);padding:18px 40px;text-align:center">
+  <td style="background:${EFFINOR_BRAND_GRADIENT_135};padding:18px 40px;text-align:center">
     <span style="color:#0F172A;font-size:15px;font-weight:700;letter-spacing:0.3px">Votre &eacute;tude d'&eacute;conomies d'&eacute;nergie est pr&ecirc;te</span>
   </td>
 </tr>
@@ -593,7 +603,7 @@ ${heroKpis(p.eco)}
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#0F172A;border-radius:12px;overflow:hidden">
       <tr><td style="padding:22px 26px">
         <p style="font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:0 0 10px">Projection sur 5 ans</p>
-        <p style="font-size:26px;font-weight:900;color:#35E0A1;margin:0 0 6px;line-height:1.1">${eur(p.eco.economiesAnnuelles * 5)}</p>
+        <p style="font-size:26px;font-weight:900;color:${EFFINOR_BRAND_GREEN};margin:0 0 6px;line-height:1.1">${eur(p.eco.economiesAnnuelles * 5)}</p>
         <p style="font-size:13px;color:#94A3B8;margin:0 0 14px">d'&eacute;conomies cumul&eacute;es sur votre site</p>
         <div style="height:1px;background:#1E293B;margin:0 0 14px"></div>
         <p style="font-size:13px;color:#CBD5E1;line-height:1.55;margin:0">
@@ -646,12 +656,12 @@ ${urgencyBlock()}
 // ══════════════════════════════════════════════════════════════════
 
 function buildRelanceSignature(p: TemplateData): string {
-  const btnPrimary = `display:inline-block;padding:16px 32px;font-size:15px;font-weight:800;color:#0F172A;text-decoration:none;border-radius:10px;letter-spacing:0.3px;background:linear-gradient(135deg,#35E0A1,#1EC8B0);box-shadow:0 4px 14px rgba(53,224,161,0.3)`;
+  const btnPrimary = `display:inline-block;padding:16px 32px;font-size:15px;font-weight:800;color:#0F172A;text-decoration:none;border-radius:10px;letter-spacing:0.3px;background:${EFFINOR_BRAND_GRADIENT_135};box-shadow:0 4px 14px ${EFFINOR_BRAND_GREEN_SHADOW}`;
 
   const inner = `
 <!-- ═══ BANDEAU ═══ -->
 <tr>
-  <td style="background:linear-gradient(135deg,#35E0A1,#1EC8B0);padding:18px 40px;text-align:center">
+  <td style="background:${EFFINOR_BRAND_GRADIENT_135};padding:18px 40px;text-align:center">
     <span style="color:#0F172A;font-size:15px;font-weight:700;letter-spacing:0.3px">&#128221; Rappel : votre accord de principe est en attente</span>
   </td>
 </tr>
@@ -679,15 +689,15 @@ function buildRelanceSignature(p: TemplateData): string {
         <p style="font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:0 0 10px">Pour finaliser votre projet</p>
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width:28px;vertical-align:top;color:#35E0A1;font-size:18px;font-weight:700;padding-top:2px">1</td>
+            <td style="width:28px;vertical-align:top;color:${EFFINOR_BRAND_GREEN};font-size:18px;font-weight:700;padding-top:2px">1</td>
             <td style="font-size:14px;color:#CBD5E1;line-height:1.6;padding:0 0 8px 8px">Consultez votre &eacute;tude d&eacute;taill&eacute;e en pi&egrave;ce jointe</td>
           </tr>
           <tr>
-            <td style="width:28px;vertical-align:top;color:#35E0A1;font-size:18px;font-weight:700;padding-top:2px">2</td>
+            <td style="width:28px;vertical-align:top;color:${EFFINOR_BRAND_GREEN};font-size:18px;font-weight:700;padding-top:2px">2</td>
             <td style="font-size:14px;color:#CBD5E1;line-height:1.6;padding:0 0 8px 8px">Signez l'accord de principe (document joint)</td>
           </tr>
           <tr>
-            <td style="width:28px;vertical-align:top;color:#35E0A1;font-size:18px;font-weight:700;padding-top:2px">3</td>
+            <td style="width:28px;vertical-align:top;color:${EFFINOR_BRAND_GREEN};font-size:18px;font-weight:700;padding-top:2px">3</td>
             <td style="font-size:14px;color:#CBD5E1;line-height:1.6;padding:0 0 0 8px">Retournez-le par email ou contactez-nous</td>
           </tr>
         </table>
@@ -753,7 +763,7 @@ ${closingBlock(p.clientName)}`;
 // ══════════════════════════════════════════════════════════════════
 
 function buildPremierContact(p: TemplateData): string {
-  const btnPrimary = `display:inline-block;padding:16px 32px;font-size:15px;font-weight:800;color:#0F172A;text-decoration:none;border-radius:10px;letter-spacing:0.3px;background:linear-gradient(135deg,#35E0A1,#1EC8B0);box-shadow:0 4px 14px rgba(53,224,161,0.3)`;
+  const btnPrimary = `display:inline-block;padding:16px 32px;font-size:15px;font-weight:800;color:#0F172A;text-decoration:none;border-radius:10px;letter-spacing:0.3px;background:${EFFINOR_BRAND_GRADIENT_135};box-shadow:0 4px 14px ${EFFINOR_BRAND_GREEN_SHADOW}`;
   const company = esc(p.companyName);
   const site = p.siteName ? esc(p.siteName) : "";
   const mailSubject = encodeURIComponent(
@@ -763,7 +773,7 @@ function buildPremierContact(p: TemplateData): string {
   const inner = `
 <!-- ═══ HERO ═══ -->
 <tr>
-  <td style="background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);padding:32px 40px;text-align:center">
+  <td style="background:linear-gradient(135deg,${EFFINOR_BRAND_NAVY} 0%,${EFFINOR_BRAND_NAVY_MID} 100%);padding:32px 40px;text-align:center">
     <p style="font-size:24px;font-weight:800;color:#ffffff;margin:0 0 8px;letter-spacing:-0.3px">
       Bienvenue chez Effinor
     </p>

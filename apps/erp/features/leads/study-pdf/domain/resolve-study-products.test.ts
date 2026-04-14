@@ -7,9 +7,11 @@ import {
 } from "../../../products";
 
 import {
+  genericPacStudyProductPlaceholder,
   parseDestratProductId,
   resolveDestratProductIdsForStudy,
   resolveStudyProductsForPdf,
+  STUDY_PAC_PRODUCT_RATIONALE,
 } from "./resolve-study-products";
 
 describe("parseDestratProductId", () => {
@@ -68,5 +70,16 @@ describe("resolveStudyProductsForPdf", () => {
     });
     expect(vms).toHaveLength(2);
     expect(vms.map((v) => v.id).sort()).toEqual(["generfeu", "teddington_ds3"]);
+  });
+
+  it("permet de surcharger le texte de justification", () => {
+    const vms = resolveStudyProductsForPdf("generfeu", { rationaleText: "Texte perso." });
+    expect(vms[0].rationaleText).toBe("Texte perso.");
+  });
+
+  it("placeholder PAC sans marque imposée", () => {
+    const p = genericPacStudyProductPlaceholder();
+    expect(p.displayName).not.toContain("Bosch");
+    expect(p.rationaleText).toBe(STUDY_PAC_PRODUCT_RATIONALE);
   });
 });

@@ -20,7 +20,6 @@ import type {
   WorkflowSimulationPayload,
 } from "@/features/cee-workflows/types";
 import { sendSlackAutomationTypedEvent, buildAbsoluteLeadUrl } from "@/features/notifications/services/slack-automation-event-send";
-import { commercialCategoryFromCeeSheet } from "@/features/leads/lib/resolve-lead-commercial-category";
 import type { Database, Json } from "@/types/database.types";
 
 type Supabase = SupabaseClient<Database>;
@@ -379,7 +378,6 @@ export async function switchLeadToCeeSheetWorkflow(
     newCeeSheetId: string;
     actorUserId?: string | null;
     copyRoleAssignments?: boolean;
-    syncProductInterest?: boolean;
   },
   opts?: {
     workflowCleanupClient?: Supabase;
@@ -453,19 +451,6 @@ export async function switchLeadToCeeSheetWorkflow(
 
   const cleanupClient = opts?.workflowCleanupClient ?? supabase;
   await deleteOtherLeadSheetWorkflowsForLead(cleanupClient, input.leadId, created.id);
-
-  if (input.syncProductInterest !== false) {
-    const cat = commercialCategoryFromCeeSheet(newSheet);
-    if (cat) {
-      const { error: upLeadErr } = await supabase
-        .from("leads")
-        .update({ product_interest: cat })
-        .eq("id", input.leadId);
-      if (upLeadErr) {
-        throw new Error(upLeadErr.message);
-      }
-    }
-  }
 
   return created;
 }

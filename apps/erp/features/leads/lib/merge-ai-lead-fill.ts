@@ -37,10 +37,6 @@ export function mergeAiLeadFillIntoForm(
     setValue("ai_lead_score", fill.ai_lead_score, setOpts);
   }
 
-  if (!isEmptyString(fill.product_interest) && isEmptyString(current.product_interest)) {
-    setValue("product_interest", fill.product_interest!.trim(), setOpts);
-  }
-
   if (!isEmptyString(fill.company_name) && isEmptyString(current.company_name)) {
     setValue("company_name", fill.company_name!.trim(), setOpts);
   }

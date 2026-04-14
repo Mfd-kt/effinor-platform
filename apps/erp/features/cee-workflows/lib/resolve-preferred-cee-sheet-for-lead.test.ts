@@ -32,12 +32,11 @@ describe("resolvePreferredCeeSheetIdForLead", () => {
     expect(
       resolvePreferredCeeSheetIdForLead(sheets, {
         cee_sheet_id: "b",
-        product_interest: "Destratificateur",
       }),
     ).toBe("b");
   });
 
-  it("PAC : choisit la fiche dont simulator_key est pac", () => {
+  it("sans cee_sheet_id : défaut poste agent (déstrat si présent)", () => {
     const sheets = [
       sheet({ id: "d", simulatorKey: "destrat", label: "Destrat" }),
       sheet({ id: "p", simulatorKey: "pac", label: "Pac air eau" }),
@@ -45,21 +44,16 @@ describe("resolvePreferredCeeSheetIdForLead", () => {
     expect(
       resolvePreferredCeeSheetIdForLead(sheets, {
         cee_sheet_id: null,
-        product_interest: "PAC",
       }),
-    ).toBe("p");
+    ).toBe("d");
   });
 
-  it("Destratificateur : évite la clé pac", () => {
-    const sheets = [
-      sheet({ id: "p", simulatorKey: "pac" }),
-      sheet({ id: "d", simulatorKey: "destrat" }),
-    ];
+  it("sans cee_sheet_id et une seule fiche : cette fiche", () => {
+    const sheets = [sheet({ id: "p", simulatorKey: "pac" })];
     expect(
       resolvePreferredCeeSheetIdForLead(sheets, {
         cee_sheet_id: null,
-        product_interest: "Destratificateur",
       }),
-    ).toBe("d");
+    ).toBe("p");
   });
 });

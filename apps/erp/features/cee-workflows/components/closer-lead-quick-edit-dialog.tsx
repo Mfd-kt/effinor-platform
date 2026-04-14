@@ -41,7 +41,6 @@ function buildCloserQuickEditPayload(lead: LeadDetailRow, leadId: string, form: 
     id: leadId,
     ...baseline,
     company_name: form.company_name,
-    product_interest: form.product_interest,
     siret: siretLine,
     head_office_siret: siretLine,
     worksite_siret: form.worksite_siret,
@@ -150,13 +149,6 @@ export function CloserLeadQuickEditDialog({
                     value={form.company_name}
                     onChange={(e) => patch("company_name", e.target.value)}
                     autoComplete="organization"
-                  />
-                </Field>
-                <Field id="cl-product" label="Intérêt produit">
-                  <Input
-                    id="cl-product"
-                    value={form.product_interest}
-                    onChange={(e) => patch("product_interest", e.target.value)}
                   />
                 </Field>
                 <Field id="cl-siret" label="SIRET (siège / principal)">

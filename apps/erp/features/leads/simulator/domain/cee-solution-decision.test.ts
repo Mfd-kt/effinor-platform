@@ -133,4 +133,26 @@ describe("cee-solution-decision", () => {
     const d = decideCeeSolution(base);
     expect(d.destratCeeSheetCode).toBe("BAT-TH-142");
   });
+
+  it("recommandation PAC + chauffage électrique direct ou PAC existante → NONE", () => {
+    const pacCase = { ...base, localUsage: "bureau" as const };
+    expect(evaluateDestratEligibility(pacCase)).toBe(false);
+    expect(evaluatePacEligibility(pacCase)).toBe(true);
+    for (const currentHeatingMode of ["electrique_direct", "pac_air_air", "pac_air_eau"] as const) {
+      const d = decideCeeSolution(pacCase, { currentHeatingMode });
+      expect(d.solution).toBe("NONE");
+      expect(d.eligible).toBe(false);
+    }
+  });
+
+  it("recommandation PAC + chaudière eau : PAC conservée", () => {
+    const pacCase = { ...base, localUsage: "bureau" as const };
+    const d = decideCeeSolution(pacCase, { currentHeatingMode: "chaudiere_eau" });
+    expect(d.solution).toBe("PAC");
+  });
+
+  it("destrat éligible : chauffage électrique ne force pas NONE (branche déstrat prioritaire)", () => {
+    const d = decideCeeSolution(base, { currentHeatingMode: "electrique_direct" });
+    expect(d.solution).toBe("DESTRAT");
+  });
 });

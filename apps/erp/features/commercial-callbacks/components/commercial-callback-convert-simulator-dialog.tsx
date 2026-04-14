@@ -6,7 +6,6 @@ import { Headset, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/empty-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -21,6 +20,7 @@ import {
   DEFAULT_AGENT_PROSPECT_FORM,
   type AgentProspectFormValue,
 } from "@/features/cee-workflows/components/agent-prospect-form";
+import { AgentSimulatorContextCard } from "@/features/cee-workflows/components/agent-simulator-context-card";
 import { AgentSheetSelector } from "@/features/cee-workflows/components/agent-sheet-selector";
 import { AgentSheetSimulatorPanel } from "@/features/cee-workflows/components/agent-sheet-simulator-panel";
 import { finalizeCommercialCallbackWithSimulation } from "@/features/cee-workflows/actions/agent-actions";
@@ -37,7 +37,7 @@ import {
   resolveAgentSimulatorDefinition,
   type AgentSimulatorDefinition,
 } from "@/features/cee-workflows/lib/agent-simulator-registry";
-import { getRecommendedProductCodes } from "@/features/products/domain/recommend";
+import { AGENT_PAC_CATALOG_PRODUCT_CODE, getRecommendedProductCodes } from "@/features/products/domain/recommend";
 import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 import { formatHeatingModeLabelFr } from "@/features/leads/simulator/schemas/simulator.schema";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
@@ -73,40 +73,6 @@ function prospectFromCallback(row: CommercialCallbackRow): AgentProspectFormValu
     postalCode: "",
     notes: noteBlocks.join("\n\n"),
   };
-}
-
-function ContextCard({ sheet }: { sheet: AgentAvailableSheet }) {
-  return (
-    <Card className="border-border/80 shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-          <span>{sheet.label}</span>
-          <Badge variant="secondary">{sheet.code}</Badge>
-        </CardTitle>
-        <CardDescription>Fiche active pour ce simulateur.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm">
-        <div className="flex flex-wrap gap-1.5">
-          {sheet.simulatorKey ? <Badge variant="outline">Simulateur {sheet.simulatorKey}</Badge> : null}
-          {sheet.teamName ? <Badge variant="outline">{sheet.teamName}</Badge> : null}
-          {sheet.roles.map((role) => (
-            <Badge key={role} variant="outline">
-              {role}
-            </Badge>
-          ))}
-        </div>
-        {sheet.description ? <p className="text-muted-foreground">{sheet.description}</p> : null}
-        {sheet.controlPoints ? (
-          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-muted-foreground">
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-foreground/70">
-              Rappel / angle commercial
-            </div>
-            <div className="line-clamp-4 whitespace-pre-wrap text-xs">{sheet.controlPoints}</div>
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
 }
 
 export function CommercialCallbackConvertSimulatorDialog({
@@ -175,6 +141,9 @@ export function CommercialCallbackConvertSimulatorDialog({
   const previewResult = destratPreview?.ok ? destratPreview.result : null;
   const recommendedProduct = useMemo(() => {
     if (!previewResult || simulatorDefinition.kind !== "destrat") return null;
+    if (previewResult.ceeSolution.solution === "PAC") {
+      return destratProducts.find((product) => product.code === AGENT_PAC_CATALOG_PRODUCT_CODE) ?? null;
+    }
     const recommendation = getRecommendedProductCodes(previewResult.model);
     return destratProducts.find((product) => product.code === recommendation.primary) ?? null;
   }, [destratProducts, previewResult, simulatorDefinition.kind]);
@@ -269,7 +238,7 @@ export function CommercialCallbackConvertSimulatorDialog({
                 <AgentSheetSelector sheets={sheets} activeSheetId={activeSheetId} onSelect={setActiveSheetId} />
               </div>
 
-              <ContextCard sheet={activeSheet} />
+              <AgentSimulatorContextCard sheet={activeSheet} previewResult={previewResult} />
 
               {simulatorDefinition.kind === "destrat" ? (
                 <>

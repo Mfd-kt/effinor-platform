@@ -152,19 +152,21 @@ export function LeadSimulationResults({
             <dd>{euro(detail.costYearSelected)}</dd>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Économie énergie 30%</dt>
+            <dt className="text-muted-foreground" title="Hypothèse déstrat : part d’économies selon la hauteur (pas un fixe 30 %).">
+              Économie énergie (déstrat)
+            </dt>
             <dd>{num(detail.savingKwh30)} kWh/an</dd>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Économie € 30% min</dt>
+            <dt className="text-muted-foreground">Économie € (déstrat) min</dt>
             <dd>{euro(detail.savingEur30Min)}</dd>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Économie € 30% max</dt>
+            <dt className="text-muted-foreground">Économie € (déstrat) max</dt>
             <dd>{euro(detail.savingEur30Max)}</dd>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Économie € 30% sélection</dt>
+            <dt className="text-muted-foreground">Économie € (déstrat) retenu</dt>
             <dd>{euro(detail.savingEur30Selected)}</dd>
           </div>
           <div className="flex items-center justify-between gap-3">

@@ -17,4 +17,4 @@ export {
   type LeadInsertInput,
   type LeadUpdatePayload,
 } from "./schemas/lead.schema";
-export type { LeadDetailRow, LeadRow, ProfileMini } from "./types";
+export type { LeadDetailRow, LeadListRow, LeadRow, ProfileMini } from "./types";

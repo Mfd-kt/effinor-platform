@@ -18,12 +18,12 @@ export type LeadStudyDocumentRow = {
   created_by: string;
 };
 
-export type StudyPdfGenerationInput = {
-  lead: LeadDetailRow;
-  qualificationNotes: string[];
-  generatedByLabel: string;
-  /** Résultat simulation workflow fusionné (prioritaire sur `sim_payload_json` pour détecter PAC). */
-  mergedSimulationJson?: unknown;
+/** Fiche CEE résolue pour la génération PDF (clés + simulateur). */
+export type StudyCeeSheetForPdf = {
+  id: string;
+  simulatorKey: string | null;
+  presentationTemplateKey: string | null;
+  agreementTemplateKey: string | null;
 };
 
 export type StudyPdfValidationIssue = {
@@ -66,11 +66,30 @@ export type StudyProductViewModel = {
   rationaleText: string;
 };
 
+export type StudyPdfGenerationInput = {
+  lead: LeadDetailRow;
+  qualificationNotes: string[];
+  generatedByLabel: string;
+  /** Résultat simulation workflow fusionné (prioritaire sur `sim_payload_json` pour détecter PAC). */
+  mergedSimulationJson?: unknown;
+  /** Fiche CEE (workflow ou lead) — pilote gabarits et `ceeSolutionKind` avant la simulation seule. */
+  ceeSheetForStudy?: StudyCeeSheetForPdf | null;
+  /**
+   * PAC : fiche équipement depuis le catalogue ERP (`products.product_family = heat_pump`, premier par `sort_order`).
+   * Sans entrée : libellé et specs génériques (pas de marque imposée).
+   */
+  pacStudyProducts?: StudyProductViewModel[];
+};
+
 export type StudyPdfViewModel = {
   templateVersion: string;
   generatedAtIso: string;
   generatedByLabel: string;
   ceeSolutionKind: StudyCeeSolutionKind;
+  presentationTemplateKey: string;
+  agreementTemplateKey: string;
+  /** Simulation et fiche CEE indiquent des familles de solution différentes (gabarit = fiche). */
+  simulationVersusSheetMismatch: boolean;
   /** Quantité équipement tableau accord (1 pour PAC, sinon déstrats). */
   equipmentQuantity: number;
   /** Texte moteur PAC (si présent). */

@@ -87,6 +87,21 @@ export type CeeDecisionInput = {
   need: CeeNeed;
 };
 
+/** Contexte simulateur : mode de chauffage détaillé (formulaire agent). */
+export type CeeDecisionSimulatorContext = {
+  currentHeatingMode?: string | null;
+};
+
+const PAC_FICHE_EXCLUDED_CURRENT_HEATING = new Set([
+  "electrique_direct",
+  "pac_air_air",
+  "pac_air_eau",
+]);
+
+export function pacFicheDisqualifiesFromCurrentHeating(mode: string | null | undefined): boolean {
+  return Boolean(mode && PAC_FICHE_EXCLUDED_CURRENT_HEATING.has(mode));
+}
+
 const MSG_DESTRAT =
   "Votre bâtiment présente des caractéristiques idéales pour une déstratification, permettant de réduire fortement les pertes de chaleur.";
 
@@ -98,6 +113,9 @@ const MSG_PAC_PRIORITY_USAGE =
 
 const MSG_NONE =
   "Votre configuration ne correspond pas aux dispositifs financés actuellement. Une étude spécifique est recommandée.";
+
+const MSG_PAC_INELIGIBLE_CURRENT_HEATING =
+  "Pour une pompe à chaleur air/eau (BAT-TH-163), les CEE concernent en général le remplacement d’un chauffage autre qu’électrique direct ou qu’une pompe à chaleur déjà en place. Avec le mode de chauffage indiqué, ce dossier n’est pas éligible sous ces hypothèses.";
 
 export function destratRelevanceHint(heightM: number): string | undefined {
   if (heightM > 8) return "Potentiel déstratification élevé (grande hauteur sous plafond).";
@@ -125,7 +143,10 @@ export function evaluatePacEligibility(input: CeeDecisionInput): boolean {
   return true;
 }
 
-export function decideCeeSolution(input: CeeDecisionInput): CeeSolutionDecision {
+export function decideCeeSolution(
+  input: CeeDecisionInput,
+  simulatorContext?: CeeDecisionSimulatorContext,
+): CeeSolutionDecision {
   const destratEligible = evaluateDestratEligibility(input);
 
   if (destratEligible) {
@@ -145,6 +166,14 @@ export function decideCeeSolution(input: CeeDecisionInput): CeeSolutionDecision 
   const pacEligible = evaluatePacEligibility(input);
 
   if (pacEligible) {
+    if (pacFicheDisqualifiesFromCurrentHeating(simulatorContext?.currentHeatingMode ?? null)) {
+      return {
+        solution: "NONE",
+        eligible: false,
+        reason: "Chauffage actuel incompatible avec une PAC CEE (électrique direct ou PAC existante)",
+        commercialMessage: MSG_PAC_INELIGIBLE_CURRENT_HEATING,
+      };
+    }
     const priorityUsage = PAC_PRIORITY_LOCAL_USAGES.has(input.localUsage);
     const lowHeight = input.heightM < DESTRAT_MIN_HEIGHT_M;
     return {

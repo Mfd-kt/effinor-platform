@@ -89,6 +89,27 @@ async function enrichManyWithDetails(
 // Product repository
 // ---------------------------------------------------------------------------
 
+/**
+ * Premier produit PAC actif du catalogue ERP (famille `heat_pump`), par `sort_order` croissant.
+ * Utilisé pour les PDF d’étude lorsque la fiche CEE est en solution PAC.
+ */
+export async function getDefaultHeatPumpProductForStudy(
+  supabase: Supabase,
+): Promise<ProductWithDetails | null> {
+  const { data } = await supabase
+    .from("products")
+    .select("*")
+    .eq("product_family", "heat_pump")
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  return enrichWithDetails(supabase, data);
+}
+
 export async function getProductByCode(
   supabase: Supabase,
   code: string,

@@ -35,7 +35,8 @@ import { leadRowToFormValues } from "@/features/leads/lib/form-defaults";
 import type { LeadDetailRow } from "@/features/leads/types";
 import type { ConfirmateurWorkflowDetail as ConfirmateurWorkflowDetailData } from "@/features/cee-workflows/queries/get-confirmateur-workflow-detail";
 import type { ConfirmateurQualificationInput } from "@/features/cee-workflows/schemas/confirmateur-workspace.schema";
-import { getRecommendedProductCodes } from "@/features/products/domain/recommend";
+import { extractWorkflowSimulationMetrics } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
+import { AGENT_PAC_CATALOG_PRODUCT_CODE, getRecommendedProductCodes } from "@/features/products/domain/recommend";
 import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 
 function qualificationFromWorkflow(detail: ConfirmateurWorkflowDetailData | null): ConfirmateurQualificationInput {
@@ -135,14 +136,17 @@ export function ConfirmateurWorkflowFocusPanel({
   const sendToCloserBlocked = !fullLead || handoffLeadGaps.length > 0;
 
   const recommendedProduct = useMemo(() => {
-    const model =
-      detail.workflow.simulation_result_json &&
-      typeof detail.workflow.simulation_result_json === "object" &&
-      !Array.isArray(detail.workflow.simulation_result_json)
-        ? (detail.workflow.simulation_result_json as Record<string, unknown>).model
-        : null;
-    if (typeof model !== "string") return null;
-    const recommendation = getRecommendedProductCodes(model as never);
+    const raw = detail.workflow.simulation_result_json;
+    const metrics = extractWorkflowSimulationMetrics(raw);
+    const cee = metrics?.ceeSolution;
+    const sol =
+      cee && typeof cee === "object" && !Array.isArray(cee) ? (cee as { solution?: string }).solution : null;
+    if (sol === "PAC") {
+      return destratProducts.find((product) => product.code === AGENT_PAC_CATALOG_PRODUCT_CODE) ?? null;
+    }
+    const modelField = metrics?.model;
+    if (typeof modelField !== "string") return null;
+    const recommendation = getRecommendedProductCodes(modelField as never);
     return destratProducts.find((product) => product.code === recommendation.primary) ?? null;
   }, [detail, destratProducts]);
 

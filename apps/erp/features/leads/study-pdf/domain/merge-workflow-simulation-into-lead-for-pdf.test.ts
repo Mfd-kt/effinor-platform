@@ -150,6 +150,28 @@ describe("mergeLeadDetailWithWorkflowSimulationResult", () => {
     expect(validateLeadForStudyPdf(merged)).toEqual([]);
   });
 
+  it("remplace les sim_* à zéro lorsque le JSON workflow contient des valeurs calculées", () => {
+    const lead = {
+      company_name: "ACME",
+      sim_volume_m3: 0,
+      sim_needed_destrat: 0,
+      sim_model_capacity_m3h: 0,
+      sim_power_kw: 0,
+    } as any;
+
+    const merged = mergeLeadDetailWithWorkflowSimulationResult(lead, {
+      volumeM3: 5000,
+      neededDestrat: 6,
+      modelCapacityM3h: 2330,
+      powerKw: 12.5,
+    });
+
+    expect(merged.sim_volume_m3).toBe(5000);
+    expect(merged.sim_needed_destrat).toBe(6);
+    expect(merged.sim_model_capacity_m3h).toBe(2330);
+    expect(merged.sim_power_kw).toBe(12.5);
+  });
+
   it("ne remplace pas les colonnes lead déjà renseignées", () => {
     const lead = {
       company_name: "ACME",
