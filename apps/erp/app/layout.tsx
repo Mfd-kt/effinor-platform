@@ -16,7 +16,7 @@ const inter = Inter({
 });
 
 const poppins = Poppins({
-  variable: "--font-heading",
+  variable: "--font-family-display",
   subsets: ["latin"],
   weight: ["600", "700"],
 });
@@ -33,6 +33,10 @@ export const metadata: Metadata = {
   },
   description:
     "Pilotage des dossiers CEE — leads, bénéficiaires, opérations, documents et finance.",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({

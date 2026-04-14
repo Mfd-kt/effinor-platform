@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { EffinorLogo } from "@/components/brand/effinor-logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,11 +60,16 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md border-border/80 shadow-lg">
-      <CardHeader className="space-y-1">
+      <CardHeader className="space-y-4">
+        <div className="flex justify-center">
+          <EffinorLogo href={null} showWordmark={false} markSize={40} />
+        </div>
+        <div className="space-y-1">
         <CardTitle className="text-xl font-semibold tracking-tight">Connexion</CardTitle>
         <CardDescription>
-          Effinor ERP — accès sécurisé à votre espace métier.
+          Accès sécurisé à votre espace métier.
         </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">

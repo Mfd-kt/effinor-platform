@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Menu, LogOut, UserRound } from "lucide-react";
 
+import { EffinorLogo } from "@/components/brand/effinor-logo";
 import { NavLinks } from "@/components/layout/nav-links";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
@@ -54,7 +55,13 @@ export function AppHeader({
   const initials = profileInitials(displayName, userEmail);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:gap-4 lg:px-8">
+      <EffinorLogo
+        href="/"
+        showWordmark={false}
+        markSize={34}
+        className="shrink-0 lg:hidden"
+      />
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetTrigger
           className={cn(
@@ -66,8 +73,14 @@ export function AppHeader({
           <Menu className="size-5" />
         </SheetTrigger>
         <SheetContent side="left" className="w-72 p-0">
-          <SheetHeader className="border-b border-border px-6 py-4 text-left">
-            <SheetTitle className="text-sm font-semibold">Effinor ERP</SheetTitle>
+          <SheetHeader className="border-b border-border px-4 py-4 text-left">
+            <SheetTitle className="sr-only">Menu Effinor ERP</SheetTitle>
+            <EffinorLogo
+              href="/"
+              subtitle="ERP"
+              markSize={30}
+              linkOnClick={() => setMobileNavOpen(false)}
+            />
           </SheetHeader>
           <div className="p-3">
             <NavLinks
