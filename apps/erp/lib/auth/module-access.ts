@@ -1,0 +1,246 @@
+import type { AccessContext } from "./access-context";
+import { isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
+import { canAccessCeeWorkflowsModule as canAccessCeeWorkflowsModuleByScope } from "./cee-workflows-scope";
+import { hasFullCommercialDataAccess } from "./lead-scope";
+import { PERM_ACCESS_INSTALLATIONS, PERM_ACCESS_TECHNICAL_VISITS } from "./permission-codes";
+import {
+  hasTableScopeModuleAccess,
+  permScopeAllCode,
+  permScopeCreatorCode,
+  type TableScopeEntityKey,
+} from "./table-scope";
+
+/** Rôles internes : accès large aux modules hors matrice (catalogue, etc.). */
+function legacyInternalFullPipeline(access: Extract<AccessContext, { kind: "authenticated" }>): boolean {
+  const rc = access.roleCodes;
+  if (rc.includes("super_admin")) {
+    return true;
+  }
+  if (hasFullCommercialDataAccess(rc)) {
+    return true;
+  }
+  return rc.includes("confirmer");
+}
+
+function legacyTechnicalVisitsModule(_access: Extract<AccessContext, { kind: "authenticated" }>): boolean {
+  return true;
+}
+
+function hasAnyTableScopeModuleAccess(
+  access: AccessContext,
+  entities: readonly TableScopeEntityKey[],
+  legacyFns: Partial<Record<TableScopeEntityKey, typeof legacyInternalFullPipeline>>,
+): boolean {
+  const legacy = legacyInternalFullPipeline;
+  for (const entity of entities) {
+    const perm =
+      entity === "leads"
+        ? ""
+        : entity === "technical_visits"
+          ? PERM_ACCESS_TECHNICAL_VISITS
+          : PERM_ACCESS_INSTALLATIONS;
+    const legacyFn = legacyFns[entity] ?? legacy;
+    if (hasTableScopeModuleAccess(access, entity, perm, legacyFn)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Leads : matrice OU visites techniques (parcours lié). */
+export function canAccessLeadsModule(access: AccessContext): boolean {
+  return hasAnyTableScopeModuleAccess(access, ["leads", "technical_visits"], {});
+}
+
+/**
+ * Lien « liste globale des leads » dans la barre latérale : direction / admin uniquement.
+ * Les autres rôles accèdent aux fiches via leurs postes (agent, confirmateur, closer) ou URL directe autorisée par la matrice.
+ */
+export function canAccessLeadsDirectoryNav(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  const rc = access.roleCodes;
+  return (
+    rc.includes("super_admin") || rc.includes("admin") || rc.includes("sales_director")
+  );
+}
+
+/** Visites techniques : matrice OU leads (parcours lié). */
+export function canAccessTechnicalVisitsModule(access: AccessContext): boolean {
+  return hasAnyTableScopeModuleAccess(
+    access,
+    ["technical_visits", "leads"],
+    { technical_visits: legacyTechnicalVisitsModule },
+  );
+}
+
+/** Installations : matrice, rôles internes, ou technicien terrain (liste filtrée par assignation). */
+export function canAccessInstallationsModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (access.roleCodes.includes("technician")) {
+    return true;
+  }
+  return hasTableScopeModuleAccess(
+    access,
+    "installations",
+    PERM_ACCESS_INSTALLATIONS,
+    legacyInternalFullPipeline,
+  );
+}
+
+export function canAccessDocumentsModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}
+
+export function canAccessCeeWorkflowsModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return canAccessCeeWorkflowsModuleByScope(access);
+}
+
+export function canAccessConfirmateurWorkspace(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (!canAccessCeeWorkflowsModuleByScope(access)) {
+    return false;
+  }
+  return (
+    access.roleCodes.includes("super_admin") ||
+    access.roleCodes.includes("admin") ||
+    access.roleCodes.includes("sales_director") ||
+    access.roleCodes.includes("confirmer")
+  );
+}
+
+export function canAccessCloserWorkspace(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (!canAccessCeeWorkflowsModuleByScope(access)) {
+    return false;
+  }
+  return (
+    access.roleCodes.includes("super_admin") ||
+    access.roleCodes.includes("admin") ||
+    access.roleCodes.includes("sales_director") ||
+    access.roleCodes.includes("closer")
+  );
+}
+
+export function canAccessAdminCeeSheets(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return (
+    access.roleCodes.includes("super_admin") ||
+    access.roleCodes.includes("admin") ||
+    access.roleCodes.includes("sales_director")
+  );
+}
+
+/** Centre de commande direction : super_admin et directeur commercial uniquement. */
+export function canAccessCommandCockpit(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  const rc = access.roleCodes;
+  return rc.includes("super_admin") || rc.includes("sales_director");
+}
+
+/**
+ * Accès à la route `/cockpit` : direction (voir `canAccessCommandCockpit`) ou manager d’équipe CEE actif.
+ * Les managers voient une variante « manager » du bundle (périmètre équipes), sans doublon `/manager`.
+ */
+export async function canAccessCockpitRoute(access: AccessContext): Promise<boolean> {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (canAccessCommandCockpit(access)) {
+    return true;
+  }
+  return isCeeTeamManager(access.userId);
+}
+
+export function canAccessExistingHeatingModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}
+
+export function canAccessInstalledProductsModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}
+
+export function canAccessTechnicalStudiesModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}
+
+export function canAccessQuotesModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}
+
+export function canAccessProductsModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}
+
+export function canAccessDelegatorsModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}
+
+export function canAccessBeneficiariesModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (legacyInternalFullPipeline(access) || canAccessLeadsModule(access)) {
+    return true;
+  }
+  const pc = new Set(access.permissionCodes);
+  return (
+    pc.has(permScopeAllCode("beneficiaries")) || pc.has(permScopeCreatorCode("beneficiaries"))
+  );
+}
+
+export function canAccessOperationsModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access) || canAccessLeadsModule(access);
+}
+
+export function canAccessOperationSitesModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access) || canAccessLeadsModule(access);
+}
+
+export function canAccessInvoicesModule(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return legacyInternalFullPipeline(access);
+}

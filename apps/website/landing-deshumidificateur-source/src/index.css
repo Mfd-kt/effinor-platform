@@ -1,0 +1,70 @@
+@tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+
+    @layer base {
+      :root {
+        --background: 220 20% 97%; /* Light Grayish Blue */
+        --foreground: 224 71.4% 4.1%;
+        --card: 0 0% 100%;
+        --card-foreground: 224 71.4% 4.1%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 224 71.4% 4.1%;
+        --primary: 136 55% 38%; /* #2C9A47 - Dark Green */
+        --primary-foreground: 355.7 100% 97.3%;
+        --secondary: 220 13% 91%; /* Light Gray */
+        --secondary-foreground: 220 14.3% 9.1%;
+        --muted: 220 9% 46.1%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 45 93.4% 47.5%; /* Vibrant Yellow/Amber for CTAs */
+        --accent-foreground: 220 14.3% 9.1%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 220 13% 91%;
+        --input: 220 13% 91%;
+        --ring: 136 55% 38%;
+        --radius: 0.75rem;
+      }
+
+      .dark {
+        --background: 224 40% 5%; /* Darker Blue */
+        --foreground: 210 20% 98%;
+        --card: 224 30% 10%;
+        --card-foreground: 210 20% 98%;
+        --popover: 224 71.4% 4.1%;
+        --popover-foreground: 210 20% 98%;
+        --primary: 136 55% 42%;
+        --primary-foreground: 355.7 100% 97.3%;
+        --secondary: 215 27.9% 16.9%;
+        --secondary-foreground: 210 20% 98%;
+        --muted: 215 27.9% 16.9%;
+        --muted-foreground: 217.9 10.6% 64.9%;
+        --accent: 45 93.4% 47.5%;
+        --accent-foreground: 210 20% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 85.7% 97.3%;
+        --border: 215 20% 25%;
+        --input: 215 27.9% 16.9%;
+        --ring: 136 55% 42%;
+      }
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-background text-foreground;
+        font-family: 'Inter', sans-serif;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        @apply font-bold;
+      }
+      h1 { @apply text-4xl md:text-5xl lg:text-6xl; }
+      h2 { @apply text-3xl md:text-4xl; }
+      h3 { @apply text-2xl md:text-3xl; }
+    }
+
+    .gradient-text {
+      @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400;
+    }

@@ -1,0 +1,10 @@
+# Protection des fichiers sensibles
+<FilesMatch "\.(env|log)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquer l'accès au dossier logs
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^logs/ - [F,L]
+</IfModule>
