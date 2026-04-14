@@ -6,9 +6,11 @@ import {
 } from "./map-current-heating-mode-to-cee";
 
 describe("map-current-heating-mode-to-cee", () => {
-  it("mappe les 6 modes vers CeeHeatingKind", () => {
+  it("mappe les modes détaillés vers CeeHeatingKind", () => {
     expect(mapDestratCurrentHeatingModeToCeeHeatingKind("air_chaud_soufflage")).toBe("convectif");
     expect(mapDestratCurrentHeatingModeToCeeHeatingKind("chaudiere_eau")).toBe("convectif");
+    expect(mapDestratCurrentHeatingModeToCeeHeatingKind("pac_air_air")).toBe("convectif");
+    expect(mapDestratCurrentHeatingModeToCeeHeatingKind("pac_air_eau")).toBe("convectif");
     expect(mapDestratCurrentHeatingModeToCeeHeatingKind("rayonnement")).toBe("radiatif");
     expect(mapDestratCurrentHeatingModeToCeeHeatingKind("electrique_direct")).toBe("radiatif");
     expect(mapDestratCurrentHeatingModeToCeeHeatingKind("mix_air_rayonnement")).toBe("mixte");

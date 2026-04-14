@@ -20,6 +20,8 @@ export type DestratCurrentHeatingModeId =
   | "mix_air_rayonnement"
   | "chaudiere_eau"
   | "electrique_direct"
+  | "pac_air_air"
+  | "pac_air_eau"
   | "autre_inconnu";
 
 export type { CeeBuildingType, CeeHeatingKind, CeeNeed, LocalUsageId, CeeSolutionDecision };

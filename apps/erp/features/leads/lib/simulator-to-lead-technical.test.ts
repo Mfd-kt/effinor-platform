@@ -22,6 +22,8 @@ describe("leadHeatingTypesFromSimulator", () => {
   it("priorise le mode détaillé agent", () => {
     expect(leadHeatingTypesFromSimulator("electrique_direct", "gaz")).toEqual(["electricite"]);
     expect(leadHeatingTypesFromSimulator("rayonnement", "elec")).toEqual(["gaz"]);
+    expect(leadHeatingTypesFromSimulator("pac_air_air", "gaz")).toEqual(["pac_air_air"]);
+    expect(leadHeatingTypesFromSimulator("pac_air_eau", "elec")).toEqual(["pac_air_eau"]);
   });
 
   it("retombe sur le mode calculé", () => {

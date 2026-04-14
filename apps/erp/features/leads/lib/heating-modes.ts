@@ -1,11 +1,21 @@
 /** Codes stockés en base (`text[]`). */
-export const HEATING_MODE_VALUES = ["fioul", "gaz", "pac", "electricite", "autres"] as const;
+export const HEATING_MODE_VALUES = [
+  "fioul",
+  "gaz",
+  "pac",
+  "pac_air_air",
+  "pac_air_eau",
+  "electricite",
+  "autres",
+] as const;
 export type HeatingMode = (typeof HEATING_MODE_VALUES)[number];
 
 export const HEATING_MODE_LABELS: Record<HeatingMode, string> = {
   fioul: "Fioul",
   gaz: "Gaz",
   pac: "PAC",
+  pac_air_air: "Pompe à chaleur air / air",
+  pac_air_eau: "Pompe à chaleur air / eau",
   electricite: "Électricité",
   autres: "Autres",
 };

@@ -5,6 +5,7 @@ import type {
 } from "@/features/leads/simulator/domain/types";
 import type { BuildingType } from "@/features/leads/lib/building-types";
 import type { HeatingMode } from "@/features/leads/lib/heating-modes";
+import { isDestratCurrentHeatingModeId } from "@/features/leads/simulator/lib/map-current-heating-mode-to-cee";
 
 const SIM_HEATING: ReadonlySet<string> = new Set(["bois", "gaz", "fioul", "elec", "pac"]);
 
@@ -30,17 +31,6 @@ const LOCAL_USAGE_IDS = new Set<LocalUsageId>([
 
 function isLocalUsageId(v: unknown): v is LocalUsageId {
   return typeof v === "string" && LOCAL_USAGE_IDS.has(v as LocalUsageId);
-}
-
-function isDestratCurrentHeatingModeId(v: unknown): v is DestratCurrentHeatingModeId {
-  return (
-    v === "air_chaud_soufflage" ||
-    v === "rayonnement" ||
-    v === "mix_air_rayonnement" ||
-    v === "chaudiere_eau" ||
-    v === "electrique_direct" ||
-    v === "autre_inconnu"
-  );
 }
 
 function isSimHeatingMode(v: unknown): v is SimHeatingMode {
@@ -126,6 +116,10 @@ export function leadHeatingTypesFromSimulator(
     switch (currentHeatingMode) {
       case "electrique_direct":
         return ["electricite"];
+      case "pac_air_air":
+        return ["pac_air_air"];
+      case "pac_air_eau":
+        return ["pac_air_eau"];
       case "chaudiere_eau":
       case "air_chaud_soufflage":
       case "rayonnement":
@@ -183,7 +177,8 @@ export function parseWorkflowSimulationSnapshotJson(raw: unknown): ParsedWorkflo
     toFiniteNumber(result?.heightM);
 
   const currentRaw = src.currentHeatingMode ?? normalizedInput?.currentHeatingMode;
-  const currentHeatingMode = isDestratCurrentHeatingModeId(currentRaw) ? currentRaw : null;
+  const currentHeatingMode =
+    typeof currentRaw === "string" && isDestratCurrentHeatingModeId(currentRaw) ? currentRaw : null;
 
   const hmRaw = normalizedInput?.heatingMode ?? result?.heatingMode;
   const computedHeatingMode = isSimHeatingMode(hmRaw) ? hmRaw : null;

@@ -42,6 +42,9 @@ export function mapDestratCurrentHeatingModeToHeatingSystemType(
       return "reseau_eau_chaude";
     case "electrique_direct":
       return "chauffage_electrique_direct";
+    case "pac_air_air":
+    case "pac_air_eau":
+      return "aerotherme_electrique";
     case "autre_inconnu":
       return "autre";
     default:

@@ -96,7 +96,13 @@ function heatingModesFromFreeText(raw: string): HeatingMode[] | undefined {
   const found = new Set<HeatingMode>();
   if (/\bgaz\b|gaz\s| au gaz/i.test(t)) found.add("gaz");
   if (/fioul|fuel/i.test(t)) found.add("fioul");
-  if (/\bpac\b|pompe à chaleur|pompe a chaleur|air[- ]eau/i.test(t)) found.add("pac");
+  if (/air\s*[-\/]\s*air|air\s+air|pac\s+air\s*[-\/]\s*air|pompe.*air.*air/i.test(t)) {
+    found.add("pac_air_air");
+  } else if (/air\s*[-\/]\s*eau|air\s+eau|pompe.*air.*eau/i.test(t)) {
+    found.add("pac_air_eau");
+  } else if (/\bpac\b|pompe à chaleur|pompe a chaleur/i.test(t)) {
+    found.add("pac");
+  }
   if (/électric|electr/i.test(t)) found.add("electricite");
   if (/autre|mixte|bois|charbon/i.test(t) && found.size === 0) found.add("autres");
   const arr = [...found].filter((m) => HEATING_MODE_VALUES.includes(m));
@@ -121,6 +127,8 @@ function normalizeHeatingType(raw: ParsedRecordingErpFields["heating_type"]): He
       if (x === "gaz") return "gaz" as const;
       if (x === "fioul") return "fioul" as const;
       if (x === "pac") return "pac" as const;
+      if (x === "pac_air_air") return "pac_air_air" as const;
+      if (x === "pac_air_eau") return "pac_air_eau" as const;
       if (x === "electricite" || x === "électricité") return "electricite" as const;
       if (x === "autres") return "autres" as const;
       return null;

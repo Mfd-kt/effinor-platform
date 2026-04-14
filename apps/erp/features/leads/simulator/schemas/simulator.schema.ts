@@ -106,6 +106,8 @@ export const DESTRAT_CURRENT_HEATING_MODE_VALUES = [
   "mix_air_rayonnement",
   "chaudiere_eau",
   "electrique_direct",
+  "pac_air_air",
+  "pac_air_eau",
   "autre_inconnu",
 ] as const satisfies readonly DestratCurrentHeatingModeId[];
 
@@ -117,6 +119,8 @@ export const DESTRAT_CURRENT_HEATING_MODE_LABELS_FR: Record<DestratCurrentHeatin
   mix_air_rayonnement: "Mix air chaud + rayonnement",
   chaudiere_eau: "Chaudière (radiateurs ou réseau eau chaude)",
   electrique_direct: "Chauffage électrique direct",
+  pac_air_air: "Pompe à chaleur air / air",
+  pac_air_eau: "Pompe à chaleur air / eau",
   autre_inconnu: "Autre / je ne sais pas",
 };
 

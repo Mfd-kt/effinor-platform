@@ -18,6 +18,8 @@ export function mapDestratCurrentHeatingModeToCeeHeatingKind(mode: DestratCurren
   switch (mode) {
     case "air_chaud_soufflage":
     case "chaudiere_eau":
+    case "pac_air_air":
+    case "pac_air_eau":
       return "convectif";
     case "rayonnement":
     case "electrique_direct":

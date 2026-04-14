@@ -117,6 +117,9 @@ export function heatingModeForEnergyCost(
     switch (currentHeatingMode) {
       case "electrique_direct":
         return "elec";
+      case "pac_air_air":
+      case "pac_air_eau":
+        return "pac";
       case "air_chaud_soufflage":
       case "rayonnement":
       case "mix_air_rayonnement":
