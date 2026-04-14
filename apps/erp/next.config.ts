@@ -1,11 +1,16 @@
 import { loadEnvConfig } from "@next/env";
+import fs from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
 import type { NextConfig } from "next";
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
-const monorepoRoot = path.join(appRoot, "..", "..");
+/** En Docker (contexte `apps/erp` seul), la racine monorepo n’existe pas : on reste sur `appRoot`. */
+const monorepoRootCandidate = path.resolve(appRoot, "..", "..");
+const monorepoRoot = fs.existsSync(path.join(monorepoRootCandidate, "package.json"))
+  ? monorepoRootCandidate
+  : appRoot;
 
 /** Charge `effinor-platform/.env*` avant tout le reste (sinon NEXT_PUBLIC_* peut rester vide côté client malgré `envDir`). */
 loadEnvConfig(monorepoRoot, process.env.NODE_ENV !== "production", undefined, true);
