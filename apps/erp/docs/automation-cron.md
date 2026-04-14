@@ -164,10 +164,36 @@ Dans Dokploy : logs du conteneur Next.js — préfixe `[automation]` ou `[cron/a
 
 ---
 
-## I. Référence code
+## I. Cron synchronisation emails leads (Gmail)
 
-- Route : `app/api/cron/automation/route.ts`
+Les emails ne sont plus rafraîchis **en boucle** depuis le navigateur sur la fiche lead. Une tâche HTTP dédiée synchronise **en tâche de fond** les leads qui ont une adresse email (les plus récemment mis à jour en premier, jusqu’à une limite configurable).
+
+| Élément | Détail |
+|--------|--------|
+| **URL** | `https://<votre-domaine-erp>/api/cron/lead-email-sync` |
+| **Auth** | Identique au cron automation : `Authorization: Bearer <AUTOMATION_CRON_SECRET>` (ou `CRON_SECRET`). |
+| **Prérequis** | `GMAIL_USER` + credentials Gmail déjà utilisés par `syncLeadEmails`. |
+| **Variable optionnelle** | `LEAD_EMAIL_SYNC_CRON_MAX_LEADS` — nombre max de leads traités par exécution (défaut **120**, plafonné à **500**). |
+| **Fréquence suggérée** |5 à 15 minutes selon volume (chaque lead déclenche un aller-retour IMAP). |
+| **Dokploy (commande dans le conteneur)** | Si la planification exécute `curl` via `docker exec` dans l’image ERP, **`curl` est installé** dans `Dockerfile.erp` (stage `runner`). Remplacez tout placeholder du Bearer par la **vraie** valeur du secret. |
+
+Exemple :
+
+```bash
+curl -sS -X GET "https://erp.effinor.app/api/cron/lead-email-sync" \
+  -H "Authorization: Bearer VOTRE_AUTOMATION_CRON_SECRET"
+```
+
+Réponse JSON typique (`success: true`) : `leadsEligible`, `syncOk`, `syncFailed`, `totalNewEmails`, `totalAttachments`, `errors` (échantillon). Sans secret configuré : **503** ; sans `GMAIL_USER` : **503** avec message explicite.
+
+---
+
+## J. Référence code
+
+- Route automation : `app/api/cron/automation/route.ts`
+- Route sync emails : `app/api/cron/lead-email-sync/route.ts`
 - Tick : `features/automation/actions/run-automation-tick.ts`
+- Lot sync emails : `features/leads/services/run-lead-email-sync-cron.ts`
 - Secret : `features/automation/domain/cron-auth.ts`
 
 Voir aussi : [Déploiement Dokploy](./deployment-dokploy.md) (variables globales, `APP_URL`, etc.).

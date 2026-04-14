@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback, useEffect, useRef } from "react";
+import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -506,17 +506,11 @@ export function LeadEmailHistory({
     await refreshAll();
   }, [clientEmail, leadId, refreshAll]);
 
-  // Auto-sync on mount + periodic sync every 60s
-  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Sync à l’ouverture de la fiche (silencieux). La sync continue en arrière-plan via
+  // GET/POST /api/cron/lead-email-sync (Dokploy + même secret que l’automation).
   useEffect(() => {
     if (!clientEmail) return;
-    // Sync on mount (silent)
     runSync(true);
-    // Periodic sync every 60 seconds
-    syncIntervalRef.current = setInterval(() => runSync(true), 60_000);
-    return () => {
-      if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
-    };
   }, [clientEmail, runSync]);
 
   function onSync() {

@@ -44,6 +44,13 @@ FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app
 
+# curl : healthchecks, et tâches planifiées Dokploy qui font `docker exec … bash -c curl …`
+# vers /api/cron/* (l’image slim ne fournit pas curl par défaut).
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
