@@ -1,6 +1,9 @@
 # Debian bookworm-slim : Playwright/Chromium (PDF) + Next.js `output: "standalone"`.
 # Build context Dokploy : racine du monorepo `effinor-platform` (pas `apps/erp` seul).
-# Standalone : ne pas utiliser `next start` — CMD ci-dessous.
+#
+# Monorepo : la sortie standalone est sous `.next/standalone/apps/erp/` (pas `server.js` à la racine).
+# Ne pas utiliser `next start` ni `npm run start` si la commande Dokploy pointe encore vers Next classique :
+# la CMD ci-dessous est la source de vérité pour le runtime.
 FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
@@ -15,7 +18,6 @@ ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# `npm ci` monorepo : package-lock.json à la racine + chaque workspace référencé dans ce lockfile.
 COPY package.json package-lock.json ./
 COPY apps/erp/package.json apps/erp/
 COPY apps/website/package.json apps/website/
@@ -45,12 +47,14 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY --from=builder /ms-playwright /ms-playwright
 
+# Bundle tracé (node_modules à la racine du standalone + app sous apps/erp/).
 COPY --from=builder /app/apps/erp/.next/standalone ./.next/standalone
-COPY --from=builder /app/apps/erp/.next/static ./.next/standalone/.next/static
-COPY --from=builder /app/apps/erp/public ./.next/standalone/public
+# Fichiers statiques : attendus sous apps/erp/.next/static par le serveur après chdir.
+COPY --from=builder /app/apps/erp/.next/static ./.next/standalone/apps/erp/.next/static
+COPY --from=builder /app/apps/erp/public ./.next/standalone/apps/erp/public
 
 RUN node ./.next/standalone/node_modules/playwright/cli.js install-deps chromium
 
 EXPOSE 3000
 
-CMD ["node", ".next/standalone/server.js"]
+CMD ["node", ".next/standalone/apps/erp/server.js"]

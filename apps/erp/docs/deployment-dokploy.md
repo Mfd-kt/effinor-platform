@@ -58,8 +58,9 @@ Ne commitez jamais de secrets ; saisissez-les uniquement dans Dokploy.
 3. **Repository** : URL Git + branche (ex. `main`).
 4. **Build** : **Dockerfile** = chemin `apps/erp/Dockerfile` ; **contexte de build** = racine du repo (dossier qui contient `package-lock.json` à la racine), pas le sous-dossier `apps/erp`.
 5. **Port du conteneur** : **3000** (Next écoute sur `PORT`, défaut 3000).
-6. Coller les variables d’environnement (section ci-dessus). Pour **`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** et les `ARG` du `Dockerfile`, vérifier que Dokploy les transmet aussi à l’étape **build** (pas seulement au conteneur final).
-7. **Domaine** : attacher un domaine (ex. `erp.votredomaine.fr`) avec HTTPS (Let’s Encrypt intégré à Dokploy selon version).
+6. **Commande de démarrage** : laisser **vide** pour utiliser la `CMD` du Dockerfile (`node .next/standalone/apps/erp/server.js`). Ne pas forcer `next start` — avec `output: "standalone"`, ce n’est pas le runtime prévu.
+7. Coller les variables d’environnement (section ci-dessus). Pour **`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** et les `ARG` du `Dockerfile`, vérifier que Dokploy les transmet aussi à l’étape **build** (pas seulement au conteneur final).
+8. **Domaine** : attacher un domaine (ex. `erp.votredomaine.fr`) avec HTTPS (Let’s Encrypt intégré à Dokploy selon version).
 
 ## 3. Build & déploiement
 
