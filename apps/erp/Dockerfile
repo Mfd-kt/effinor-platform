@@ -59,7 +59,11 @@ COPY --from=builder /app/apps/erp/.next/standalone ./.next/standalone
 COPY --from=builder /app/apps/erp/.next/static ./.next/standalone/apps/erp/.next/static
 COPY --from=builder /app/apps/erp/public ./.next/standalone/apps/erp/public
 
-RUN node ./.next/standalone/node_modules/playwright/cli.js install-deps chromium
+# Le bundle standalone ne trace pas `playwright` ; le CLI nécessite aussi `playwright-core` (hoisté).
+COPY --from=builder /app/node_modules/playwright /tmp/pw-install-deps/node_modules/playwright
+COPY --from=builder /app/node_modules/playwright-core /tmp/pw-install-deps/node_modules/playwright-core
+RUN node /tmp/pw-install-deps/node_modules/playwright/cli.js install-deps chromium \
+  && rm -rf /tmp/pw-install-deps
 
 EXPOSE 3000
 
