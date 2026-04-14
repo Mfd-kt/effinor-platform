@@ -10,7 +10,8 @@ const monorepoRoot = path.join(appRoot, "..", "..");
 /** Charge `effinor-platform/.env*` avant tout le reste (sinon NEXT_PUBLIC_* peut rester vide côté client malgré `envDir`). */
 loadEnvConfig(monorepoRoot, process.env.NODE_ENV !== "production", undefined, true);
 
-const nextConfig: NextConfig = {
+/** `envDir` est pris en charge par Next.js en runtime ; les types stables peuvent le manquer. */
+const nextConfig: NextConfig & { envDir: string } = {
   /** Un seul `.env.local` à la racine `effinor-platform/` pour toutes les apps. */
   envDir: monorepoRoot,
   output: "standalone",

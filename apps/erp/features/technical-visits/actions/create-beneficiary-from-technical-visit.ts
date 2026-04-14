@@ -79,12 +79,27 @@ export async function createBeneficiaryFromTechnicalVisit(
     return { ok: false, message: "Lead introuvable.", code: "NOT_FOUND" };
   }
 
-  if (lead.converted_beneficiary_id) {
+  // Ancien champ `leads.converted_beneficiary_id` supprimé en base (migration drop conversion).
+  // Équivalent métier : une autre VT du même lead a déjà un bénéficiaire rattaché.
+  const { data: siblingVtRows, error: siblingVtError } = await supabase
+    .from("technical_visits")
+    .select("beneficiary_id")
+    .eq("lead_id", leadId)
+    .neq("id", id)
+    .not("beneficiary_id", "is", null)
+    .is("deleted_at", null)
+    .limit(1);
+
+  if (siblingVtError) {
+    return { ok: false, message: siblingVtError.message };
+  }
+  const beneficiaryFromSiblingVt = siblingVtRows?.[0]?.beneficiary_id ?? null;
+  if (beneficiaryFromSiblingVt) {
     return {
       ok: false,
       message:
-        "Ce lead a déjà un bénéficiaire de conversion. Ouvrez la fiche existante ou liez la visite manuellement depuis le formulaire.",
-      existingBeneficiaryId: lead.converted_beneficiary_id,
+        "Ce lead a déjà un bénéficiaire lié via une autre visite technique. Ouvrez la fiche existante ou liez la visite manuellement depuis le formulaire.",
+      existingBeneficiaryId: beneficiaryFromSiblingVt,
       code: "LEAD_CONVERTED",
     };
   }
@@ -138,17 +153,6 @@ export async function createBeneficiaryFromTechnicalVisit(
       ok: false,
       message: `Bénéficiaire créé (${beneficiaryId}) mais la visite n’a pas pu être mise à jour : ${updateVtError.message}`,
     };
-  }
-
-  const { error: updateLeadError } = await supabase
-    .from("leads")
-    .update({ converted_beneficiary_id: beneficiaryId })
-    .eq("id", leadId)
-    .is("converted_beneficiary_id", null);
-
-  if (updateLeadError) {
-    // Non bloquant : la VT est déjà liée
-    console.error("createBeneficiaryFromTechnicalVisit: lead update failed", updateLeadError);
   }
 
   revalidatePath("/beneficiaries");
