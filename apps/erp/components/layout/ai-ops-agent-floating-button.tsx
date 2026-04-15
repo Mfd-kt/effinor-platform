@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { Bot } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { AiOpsInbox } from "@/features/ai-ops-agent/components/ai-ops-inbox";
 import {
@@ -87,8 +88,7 @@ export function AiOpsAgentFloatingButton({ userId }: Props) {
         }
         onClick={() => setSheetOpen(true)}
         className={cn(
-          "fixed z-[45] flex size-14 touch-manipulation items-center justify-center rounded-full",
-          "bg-primary text-primary-foreground shadow-lg ring-2 ring-background transition-[box-shadow,transform] hover:shadow-xl active:scale-[0.97]",
+          "group relative fixed z-[45] touch-manipulation overflow-visible rounded-full p-0 transition-[transform,filter] hover:brightness-[1.02] active:scale-[0.97]",
           "bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]",
         )}
         aria-label={
@@ -99,11 +99,40 @@ export function AiOpsAgentFloatingButton({ userId }: Props) {
         aria-haspopup="dialog"
         aria-expanded={sheetOpen}
       >
-        <Bot className="size-6" aria-hidden />
+        <span className="relative flex size-16 items-center justify-center">
+          {/* Anneau dégradé « IA » */}
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 p-[2.5px] shadow-lg shadow-violet-500/30 ring-2 ring-background"
+          >
+            <span className="relative block size-full overflow-hidden rounded-full bg-background">
+              <Image
+                src="/images/ai-agent-avatar.png"
+                alt=""
+                width={64}
+                height={64}
+                className="size-full object-cover object-top"
+                priority
+                sizes="64px"
+              />
+            </span>
+          </span>
+          <Sparkles
+            className="pointer-events-none absolute -left-0.5 -top-0.5 size-[18px] text-cyan-300 drop-shadow-[0_0_6px_rgba(34,211,238,0.9)]"
+            aria-hidden
+            strokeWidth={2.25}
+          />
+          <span
+            className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-white shadow-md ring-2 ring-background"
+            aria-hidden
+          >
+            IA
+          </span>
+        </span>
         {interactionCount > 0 ? (
           <span
             className={cn(
-              "absolute -right-1 -top-1 flex min-h-6 min-w-6 items-center justify-center rounded-full bg-violet-600 px-1 tabular-nums text-xs font-bold text-white ring-2 ring-background",
+              "absolute -right-1 -top-1 z-10 flex min-h-6 min-w-6 items-center justify-center rounded-full bg-violet-600 px-1 tabular-nums text-xs font-bold text-white ring-2 ring-background",
               interactionCount >= 10 && "min-w-7 px-1.5 text-[11px]",
             )}
           >
