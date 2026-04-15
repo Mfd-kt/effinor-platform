@@ -19,6 +19,7 @@ import {
 import { buildAiOpsConversationContext } from "../build-conversation-context";
 import { detectWhenDirectionIsNeeded, routeAgentEscalationToDirection } from "../route-agent-escalation";
 import { logAiOpsEvent } from "../services/persist-ai-ops";
+import { completeUserHelpTurn } from "../services/complete-user-help-turn";
 
 export type PostAiOpsUserMessageResult =
   | { ok: true }
@@ -49,7 +50,7 @@ export async function postAiOpsUserMessage(
 
   const { data: conv, error: cErr } = await supabase
     .from("ai_conversations")
-    .select("id, user_id")
+    .select("id, user_id, issue_type")
     .eq("id", conversationId)
     .maybeSingle();
   if (cErr || !conv || conv.user_id !== access.userId) {
@@ -74,6 +75,41 @@ export async function postAiOpsUserMessage(
     channel: "in_app",
     payloadJson: { preview: trimmed.slice(0, 200) } as Json,
   });
+
+  if (conv.issue_type === "user_help") {
+    const helpIntent = intentFromText(trimmed);
+    if (helpIntent === "resolve") {
+      const nowIso = new Date().toISOString();
+      const { error: resErr } = await supabase
+        .from("ai_conversations")
+        .update({
+          status: "resolved",
+          resolved_at: nowIso,
+          awaiting_user_reply: false,
+          snoozed_until: null,
+          cooldown_until: null,
+          updated_at: nowIso,
+        })
+        .eq("id", conversationId)
+        .eq("user_id", access.userId);
+      if (resErr) return { ok: false, error: resErr.message };
+      await logAiOpsEvent(admin, {
+        conversationId,
+        targetUserId: access.userId,
+        eventType: "ai_ops_user_help_resolved",
+        channel: "in_app",
+        payloadJson: { via: "user_message_intent" } as Json,
+      });
+      revalidatePath("/agent-operations");
+      return { ok: true };
+    }
+    const help = await completeUserHelpTurn(admin, conversationId, trimmed);
+    if (!help.ok) {
+      return { ok: false, error: help.error };
+    }
+    revalidatePath("/agent-operations");
+    return { ok: true };
+  }
 
   const ctx = await buildAiOpsConversationContext(supabase, conversationId);
   if (!ctx) {

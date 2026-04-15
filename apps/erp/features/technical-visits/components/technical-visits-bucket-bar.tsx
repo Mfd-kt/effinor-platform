@@ -47,11 +47,11 @@ export function TechnicalVisitsBucketBar({ current, counts, urlBase }: Technical
 
   return (
     <div
-      className="mb-4 -mx-1 overflow-x-auto px-1 pb-2 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+      className="-mx-1 overflow-x-auto rounded-2xl border border-border/60 bg-muted/25 px-2 py-2.5 shadow-sm ring-1 ring-black/[0.02] dark:bg-muted/15 dark:ring-white/[0.05] [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:px-3 sm:py-3 [&::-webkit-scrollbar]:hidden"
       role="tablist"
       aria-label="Regroupement des visites techniques"
     >
-      <div className="flex min-w-min snap-x snap-mandatory gap-2 pb-0.5 sm:flex-wrap sm:snap-none">
+      <div className="flex min-w-min snap-x snap-mandatory gap-2 sm:flex-wrap sm:snap-none">
         {keys.map((bucket) => {
           const href = buildTechnicalVisitsListUrl({ ...urlBase, bucket });
           const n = counts[bucket];

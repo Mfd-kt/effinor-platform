@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MessageCirclePlus } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   escalateAiOpsConversationAction,
@@ -13,6 +15,7 @@ import {
   postAiOpsQuickReply,
   postAiOpsUserMessage,
 } from "../actions/post-ai-ops-user-message";
+import { createUserHelpConversation } from "../actions/create-user-help-conversation";
 import { rankAiOpsConversations } from "../lib/ai-ops-priority";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +31,14 @@ type MessageRow = Database["public"]["Tables"]["ai_messages"]["Row"];
 type Props = {
   userId: string;
   initialConversations: ConversationRow[];
+  /**
+   * Panneau flottant : pas de sync URL, chargement client au montage si la liste est vide,
+   * hauteurs adaptées au conteneur.
+   */
+  embedInSheet?: boolean;
 };
 
-type Tab = "priority" | "waiting" | "snoozed" | "resolved" | "escalated" | "all";
+type Tab = "priority" | "waiting" | "snoozed" | "resolved" | "escalated" | "all" | "help";
 
 function groupedCount(c: ConversationRow): number | null {
   const m = c.metadata_json;
@@ -67,6 +75,13 @@ function tabFilter(tab: Tab, c: ConversationRow): boolean {
     );
   }
   if (tab === "all") return c.status !== "auto_closed";
+  if (tab === "help") {
+    return (
+      c.issue_type === "user_help" &&
+      c.status !== "auto_closed" &&
+      c.status !== "resolved"
+    );
+  }
   return false;
 }
 
@@ -83,15 +98,17 @@ function severityBadgeVariant(s: string): "default" | "secondary" | "destructive
   return "outline";
 }
 
-export function AiOpsInbox({ userId, initialConversations }: Props) {
+export function AiOpsInbox({ userId, initialConversations, embedInSheet = false }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [conversations, setConversations] = useState(initialConversations);
-  const [activeId, setActiveId] = useState<string | null>(
-    searchParams.get("conversation") ?? initialConversations[0]?.id ?? null,
+  const [activeId, setActiveId] = useState<string | null>(() =>
+    embedInSheet
+      ? (initialConversations[0]?.id ?? null)
+      : (searchParams.get("conversation") ?? initialConversations[0]?.id ?? null),
   );
   const [messages, setMessages] = useState<MessageRow[]>([]);
-  const [tab, setTab] = useState<Tab>("priority");
+  const [tab, setTab] = useState<Tab>(() => (embedInSheet ? "help" : "priority"));
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -108,6 +125,11 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
       .limit(120);
     if (data) setConversations(data);
   }, [userId]);
+
+  useEffect(() => {
+    if (!embedInSheet) return;
+    void loadConversations();
+  }, [embedInSheet, loadConversations]);
 
   const loadMessages = useCallback(async (conversationId: string) => {
     const supabase = await createClient();
@@ -198,12 +220,14 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
     };
   }, [activeId, loadConversations]);
 
-   const active = conversations.find((c) => c.id === activeId);
+  const active = conversations.find((c) => c.id === activeId);
   const activeGroupedCount = active ? groupedCount(active) : null;
 
   function setConversationId(id: string) {
     setActiveId(id);
-    router.replace(`/agent-operations?conversation=${id}`, { scroll: false });
+    if (!embedInSheet) {
+      router.replace(`/agent-operations?conversation=${id}`, { scroll: false });
+    }
   }
 
   function send() {
@@ -214,16 +238,61 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
         setDraft("");
         await loadMessages(activeId);
         await loadConversations();
+      } else {
+        toast.error(r.error ?? "Envoi impossible.");
+      }
+    });
+  }
+
+  function startHelpConversation() {
+    startTransition(async () => {
+      const r = await createUserHelpConversation();
+      if (r.ok) {
+        await loadConversations();
+        setConversationId(r.conversationId);
+        setTab("help");
+        toast.success("Conversation d’aide ouverte — pose ta question en bas.");
+      } else {
+        toast.error(r.error);
       }
     });
   }
 
   return (
-    <div className="flex min-h-[70vh] flex-col gap-4 lg:flex-row">
-      <aside className="w-full shrink-0 space-y-2 lg:w-80">
+    <div
+      className={cn(
+        embedInSheet
+          ? "grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-4 overflow-hidden sm:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] sm:grid-rows-1 sm:items-stretch lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]"
+          : "flex min-h-[70vh] flex-col gap-4 lg:flex-row",
+      )}
+    >
+      <aside
+        className={cn(
+          "flex min-h-0 min-w-0 flex-col space-y-2",
+          embedInSheet ? "h-full min-h-0 sm:overflow-hidden" : "w-full shrink-0 lg:w-80",
+        )}
+      >
+        <div className="rounded-lg border border-border/80 bg-muted/30 p-2">
+          <p className="text-[11px] font-medium leading-snug text-muted-foreground">
+            Questions techniques, mode d’emploi du logiciel, workflows : ouvre un fil dédié et écris en bas.
+          </p>
+          <button
+            type="button"
+            onClick={startHelpConversation}
+            disabled={pending}
+            className={cn(
+              buttonVariants({ variant: "secondary", size: "sm" }),
+              "mt-2 h-9 w-full gap-2 text-xs font-medium sm:w-auto",
+            )}
+          >
+            <MessageCirclePlus className="size-4 shrink-0" aria-hidden />
+            Nouvelle question à l’assistant
+          </button>
+        </div>
         <div className="flex flex-wrap gap-1">
           {(
             [
+              ["help", "Aide IA"],
               ["priority", "Prioritaires"],
               ["waiting", "En attente"],
               ["snoozed", "Snoozées"],
@@ -245,12 +314,17 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
             </button>
           ))}
         </div>
-        <ScrollArea className="h-[50vh] rounded-md border border-border">
+        <ScrollArea
+          className={cn(
+            "min-w-0 rounded-md border border-border",
+            embedInSheet ? "min-h-[12rem] flex-1 sm:min-h-0" : "h-[50vh]",
+          )}
+        >
           <ul className="divide-y divide-border p-1">
             {filtered.length === 0 ? (
-              <li className="space-y-2 p-3 text-xs text-muted-foreground">
-                <p>Aucune conversation dans cette vue.</p>
-                <p className="text-[11px] leading-relaxed">
+              <li className="min-w-0 max-w-full space-y-2 p-3 text-pretty text-xs text-muted-foreground">
+                <p className="break-words">Aucune conversation dans cette vue.</p>
+                <p className="break-words text-[11px] leading-relaxed">
                   L’agent opérationnel surveille les rappels, leads, dossiers et complétude des fiches. Les alertes
                   apparaissent ici lorsqu’une action est utile — sans bruit inutile.
                 </p>
@@ -268,6 +342,11 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
                   >
                     <div className="flex flex-wrap items-center gap-1">
                       <p className="min-w-0 flex-1 font-medium leading-snug">{c.topic}</p>
+                      {c.issue_type === "user_help" ? (
+                        <Badge variant="outline" className="shrink-0 border-violet-500/50 text-[10px] text-violet-800 dark:text-violet-200">
+                          Aide
+                        </Badge>
+                      ) : null}
                       <Badge variant={priorityBadgeVariant(c.priority)} className="text-[10px]">
                         {c.priority}
                       </Badge>
@@ -290,9 +369,14 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
         </ScrollArea>
       </aside>
 
-      <section className="min-w-0 flex-1 space-y-3 rounded-lg border border-border bg-card p-3">
+      <section
+        className={cn(
+          "min-w-0 flex-1 space-y-3 rounded-lg border border-border bg-card p-3",
+          embedInSheet && "flex min-h-0 flex-col overflow-hidden",
+        )}
+      >
         {!active ? (
-          <div className="space-y-2 text-sm text-muted-foreground">
+          <div className="min-w-0 space-y-2 text-pretty text-sm text-muted-foreground">
             <p>Sélectionne une conversation dans la liste.</p>
             <p className="text-xs leading-relaxed">
               Quand tout est calme, cette boîte reste vide : l’agent ne crée un fil que si un signal métier mérite ton
@@ -300,9 +384,9 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
             </p>
           </div>
         ) : (
-          <>
-            <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border pb-2">
-              <div className="space-y-1">
+          <div className={cn("flex flex-col gap-3", embedInSheet && "min-h-0 min-w-0 flex-1")}>
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-2 border-b border-border pb-2">
+              <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-sm font-semibold">{active.topic}</h2>
                   <Badge variant={priorityBadgeVariant(active.priority)}>{active.priority}</Badge>
@@ -333,7 +417,12 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
               </div>
             </div>
 
-            <ScrollArea className="h-[42vh] rounded-md border border-border/80 bg-muted/20 p-2">
+            <ScrollArea
+              className={cn(
+                "min-w-0 rounded-md border border-border/80 bg-muted/20 p-2",
+                embedInSheet ? "min-h-0 flex-1 overflow-hidden sm:min-h-[10rem]" : "h-[42vh]",
+              )}
+            >
               <ul className="space-y-2">
                 {messages.map((m) => (
                   <li
@@ -364,6 +453,7 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
               </ul>
             </ScrollArea>
 
+            {active.issue_type !== "user_help" ? (
             <div className="flex flex-wrap gap-1 border-b border-border pb-2">
               <span className="w-full text-[10px] font-medium uppercase text-muted-foreground">Actions rapides</span>
               <button
@@ -497,12 +587,22 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
                 Marquer traité
               </button>
             </div>
+            ) : (
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Pour clôturer ce fil d’aide, écris par exemple « c’est bon » ou « résolu ». Sinon, continue à poser
+                tes questions ci-dessous.
+              </p>
+            )}
 
             <div className="flex gap-2">
               <Input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Répondre à l’agent…"
+                placeholder={
+                  active.issue_type === "user_help"
+                    ? "Ex. comment filtrer les visites techniques ? …"
+                    : "Répondre à l’agent…"
+                }
                 className="h-9"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -515,7 +615,7 @@ export function AiOpsInbox({ userId, initialConversations }: Props) {
                 Envoyer
               </button>
             </div>
-          </>
+          </div>
         )}
       </section>
     </div>

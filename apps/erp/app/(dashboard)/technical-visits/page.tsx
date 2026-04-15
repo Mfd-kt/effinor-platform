@@ -93,10 +93,11 @@ export default async function TechnicalVisitsPage({ searchParams }: PageProps) {
     const message =
       e instanceof Error ? e.message : "Erreur lors du chargement des visites techniques.";
     return (
-      <div>
+      <div className="mx-auto w-full max-w-7xl space-y-6">
         <PageHeader
           title="Visites techniques"
           description="Passage terrain, rapport et pièces associés au lead."
+          className="mb-0 border-border/60 pb-6"
         />
         <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {message}
@@ -134,7 +135,7 @@ export default async function TechnicalVisitsPage({ searchParams }: PageProps) {
       : { enabled: false, filters: [] as string[], debounceMs: 500 };
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {visitsListRealtime.enabled ? (
         <TechnicalVisitsRealtimeListener
           filters={visitsListRealtime.filters}
@@ -144,6 +145,7 @@ export default async function TechnicalVisitsPage({ searchParams }: PageProps) {
       <PageHeader
         title="Visites techniques"
         description="Passage terrain, rapport et pièces associés au lead."
+        className="mb-0 border-border/60 pb-6"
         actions={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
             <TechnicalVisitsViewToggle
@@ -199,12 +201,18 @@ export default async function TechnicalVisitsPage({ searchParams }: PageProps) {
               icon={<ClipboardCheck className="size-10 opacity-50" />}
             />
           ) : viewMode === "map" ? (
-            <TechnicalVisitsMapEntry visits={visitsForView} />
+            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm ring-1 ring-black/[0.03] dark:ring-white/[0.06]">
+              <TechnicalVisitsMapEntry visits={visitsForView} />
+            </div>
           ) : (
             <>
               <TechnicalVisitsMobileList visits={visitsForView} canAdminDelete={canAdminDeleteVt} />
               <div className="hidden md:block">
-                <TechnicalVisitsTable data={visitsForView} canAdminDelete={canAdminDeleteVt} />
+                <TechnicalVisitsTable
+                  data={visitsForView}
+                  canAdminDelete={canAdminDeleteVt}
+                  preserveDataOrder={listBucket === "active"}
+                />
               </div>
             </>
           )}

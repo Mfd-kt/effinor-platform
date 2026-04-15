@@ -7,7 +7,7 @@ import type { LeadOption } from "@/features/technical-visits/types";
 import { cn } from "@/lib/utils";
 
 const selectClassName = cn(
-  "flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm sm:h-10",
+  "flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm sm:h-10",
   "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 );
 
@@ -34,7 +34,7 @@ export function TechnicalVisitsFilters({
     <form
       method="get"
       action="/technical-visits"
-      className="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:mb-8 sm:flex-row sm:flex-wrap sm:items-end"
+      className="mb-0 flex flex-col gap-4 rounded-2xl border border-border/80 bg-card p-4 shadow-sm ring-1 ring-black/[0.02] dark:ring-white/[0.04] sm:flex-row sm:flex-wrap sm:items-end"
     >
       {defaultView === "map" ? <input type="hidden" name="view" value="map" /> : null}
       {defaultBucket && defaultBucket !== "all" && defaultBucket !== "active" ? (
@@ -47,7 +47,7 @@ export function TechnicalVisitsFilters({
           name="q"
           defaultValue={defaultQ}
           placeholder="Référence, adresse travaux…"
-          className="h-11 sm:h-10"
+          className="h-11 rounded-lg sm:h-10"
         />
       </div>
       <div className="w-full min-w-[180px] sm:w-48">

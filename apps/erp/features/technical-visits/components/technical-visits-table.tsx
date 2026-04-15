@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Table,
@@ -31,13 +31,24 @@ import type { TechnicalVisitListRow } from "@/features/technical-visits/types";
 type TechnicalVisitsTableProps = {
   data: TechnicalVisitListRow[];
   canAdminDelete?: boolean;
+  /**
+   * Quand true (ex. onglet « À faire »), conserve l’ordre renvoyé par le serveur (créneau / priorité).
+   * Sinon tri par défaut sur la date de création.
+   */
+  preserveDataOrder?: boolean;
+  className?: string;
 };
 
-export function TechnicalVisitsTable({ data, canAdminDelete = false }: TechnicalVisitsTableProps) {
+export function TechnicalVisitsTable({
+  data,
+  canAdminDelete = false,
+  preserveDataOrder = false,
+  className,
+}: TechnicalVisitsTableProps) {
   const router = useRouter();
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "created_at", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>(() =>
+    preserveDataOrder ? [] : [{ id: "created_at", desc: true }],
+  );
 
   const columns = useMemo<ColumnDef<TechnicalVisitListRow>[]>(
     () => [
@@ -134,6 +145,10 @@ export function TechnicalVisitsTable({ data, canAdminDelete = false }: Technical
     [canAdminDelete],
   );
 
+  useEffect(() => {
+    setSorting(preserveDataOrder ? [] : [{ id: "created_at", desc: true }]);
+  }, [preserveDataOrder]);
+
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table
   const table = useReactTable({
     data,
@@ -145,11 +160,16 @@ export function TechnicalVisitsTable({ data, canAdminDelete = false }: Technical
   });
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+    <div
+      className={cn(
+        "overflow-x-auto rounded-2xl border border-border/80 bg-card shadow-sm ring-1 ring-black/[0.03] dark:ring-white/[0.06]",
+        className,
+      )}
+    >
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+            <TableRow key={headerGroup.id} className="border-b border-border/60 bg-muted/40 hover:bg-muted/40">
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
@@ -181,7 +201,7 @@ export function TechnicalVisitsTable({ data, canAdminDelete = false }: Technical
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="cursor-pointer"
+              className="cursor-pointer transition-colors hover:bg-muted/35"
               onClick={() => router.push(`/technical-visits/${row.original.id}`)}
             >
               {row.getVisibleCells().map((cell) => (

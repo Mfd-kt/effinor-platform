@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
+import { AiOpsAgentFloatingButton } from "@/components/layout/ai-ops-agent-floating-button";
 import { AppHeader } from "@/components/layout/app-header";
+import { AppProfileDock } from "@/components/layout/app-profile-dock";
 import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppShell } from "@/components/shared/app-shell";
@@ -57,24 +59,32 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const actorIsSuperAdmin = access.kind === "authenticated" && isSuperAdmin(access.actorRoleCodes);
   const isImpersonating = access.kind === "authenticated" && access.impersonation != null;
 
+  const userEmail = profileRow?.email ?? user.email ?? "";
+
   return (
-    <AppShell
-      topBanner={topBanner}
-      sidebar={<AppSidebar allowedNavHrefs={allowedNavHrefs} />}
-      header={
-        <AppHeader
-          userId={effectiveId}
-          userEmail={profileRow?.email ?? user.email ?? ""}
-          displayName={profileRow?.full_name ?? null}
-          avatarUrl={profileRow?.avatar_url ?? null}
-          allowedNavHrefs={allowedNavHrefs}
-          actorIsSuperAdmin={actorIsSuperAdmin}
-          isImpersonating={isImpersonating}
-          impersonationRoleOptions={impersonationRoleOptions}
-        />
-      }
-    >
-      {children}
-    </AppShell>
+    <>
+      <AppShell
+        topBanner={topBanner}
+        sidebar={<AppSidebar allowedNavHrefs={allowedNavHrefs} />}
+        header={
+          <AppHeader
+            userId={effectiveId}
+            allowedNavHrefs={allowedNavHrefs}
+            actorIsSuperAdmin={actorIsSuperAdmin}
+            isImpersonating={isImpersonating}
+            impersonationRoleOptions={impersonationRoleOptions}
+          />
+        }
+      >
+        {children}
+      </AppShell>
+      <AppProfileDock
+        userEmail={userEmail}
+        displayName={profileRow?.full_name ?? null}
+        avatarUrl={profileRow?.avatar_url ?? null}
+        isImpersonating={isImpersonating}
+      />
+      <AiOpsAgentFloatingButton userId={effectiveId} />
+    </>
   );
 }
