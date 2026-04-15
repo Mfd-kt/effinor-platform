@@ -43,6 +43,12 @@ function filesMatchingAccept(files: File[], accept: string): File[] {
 type TechnicalVisitMediaFilesFieldProps = {
   technicalVisitId: string;
   kind: TechnicalVisitMediaKind;
+  /**
+   * Optional sub-folder inserted after `kind` in the Storage path.
+   * Used by dynamic template photo fields to namespace by field.id
+   * (e.g. `dyn_photo_generator`).
+   */
+  subFolder?: string;
   label: string;
   description?: string;
   accept: string;
@@ -148,6 +154,7 @@ function VtMediaFileRow({
 export function TechnicalVisitMediaFilesField({
   technicalVisitId,
   kind,
+  subFolder,
   label,
   description,
   accept,
@@ -194,6 +201,7 @@ export function TechnicalVisitMediaFilesField({
       technicalVisitId,
       kind,
       filtered,
+      subFolder,
     );
     setUploading(false);
     if (upErr) {

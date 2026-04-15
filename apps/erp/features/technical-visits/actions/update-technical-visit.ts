@@ -3,10 +3,17 @@
 import { revalidatePath } from "next/cache";
 
 import { geocodeWorksiteForSave } from "@/features/technical-visits/lib/geocode-worksite-for-save";
+import { clearLifecycleTimestampsWhenStatusMovesToPlanning } from "@/features/technical-visits/lib/lifecycle-save-sync";
 import { updateFromTechnicalVisitForm } from "@/features/technical-visits/lib/map-to-db";
 import { TechnicalVisitUpdateSchema } from "@/features/technical-visits/schemas/technical-visit.schema";
 import type { TechnicalVisitRow } from "@/features/technical-visits/types";
+import { isTechnicianWithoutDeskVisitPrivileges } from "@/features/technical-visits/access";
+import {
+  assertTechnicalVisitNotTechnicianRestrictedForViewer,
+  assertTechnicianFieldworkSaveAllowedIfApplicable,
+} from "@/features/technical-visits/access/technician-mutation-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/auth/access-context";
 import { notifyTechnicalVisitLifecycle } from "@/features/notifications/services/notification-service";
 
 export type UpdateTechnicalVisitResult =
@@ -28,9 +35,21 @@ export async function updateTechnicalVisit(
 
   const { data: beforeRow } = await supabase
     .from("technical_visits")
-    .select("status, vt_reference, scheduled_at, lead_id")
+    .select("status, vt_reference, scheduled_at, lead_id, technician_id, started_at")
     .eq("id", id)
     .maybeSingle();
+
+  const access = await getAccessContext();
+  if (access.kind === "authenticated" && beforeRow) {
+    const gate = await assertTechnicalVisitNotTechnicianRestrictedForViewer(access, beforeRow);
+    if (!gate.ok) {
+      return { ok: false, message: gate.message };
+    }
+    const fieldworkGate = await assertTechnicianFieldworkSaveAllowedIfApplicable(access, beforeRow);
+    if (!fieldworkGate.ok) {
+      return { ok: false, message: fieldworkGate.message };
+    }
+  }
 
   const worksiteTouched =
     "worksite_address" in rest ||
@@ -68,6 +87,19 @@ export async function updateTechnicalVisit(
     patch.worksite_latitude = lat;
     patch.worksite_longitude = lng;
   }
+
+  const pureTechnician =
+    access.kind === "authenticated" && isTechnicianWithoutDeskVisitPrivileges(access);
+  if (pureTechnician) {
+    delete (patch as Record<string, unknown>).status;
+    delete (patch as Record<string, unknown>).technician_id;
+  }
+
+  clearLifecycleTimestampsWhenStatusMovesToPlanning(
+    patch as Record<string, unknown>,
+    pureTechnician ? beforeRow?.status : rest.status,
+    beforeRow?.status,
+  );
 
   const { data, error } = await supabase
     .from("technical_visits")

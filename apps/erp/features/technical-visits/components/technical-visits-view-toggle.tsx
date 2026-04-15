@@ -12,7 +12,7 @@ type TechnicalVisitsViewToggleProps = {
 export function TechnicalVisitsViewToggle({ hrefList, hrefMap, current }: TechnicalVisitsViewToggleProps) {
   return (
     <div
-      className="inline-flex rounded-lg border border-border bg-muted/30 p-1"
+      className="flex w-full rounded-lg border border-border bg-muted/30 p-1 sm:inline-flex sm:w-auto"
       role="tablist"
       aria-label="Affichage des visites techniques"
     >
@@ -20,7 +20,7 @@ export function TechnicalVisitsViewToggle({ hrefList, hrefMap, current }: Techni
         href={hrefList}
         className={cn(
           buttonVariants({ variant: "ghost", size: "sm" }),
-          "rounded-md px-4",
+          "min-h-11 flex-1 justify-center rounded-md px-4 touch-manipulation sm:min-h-9 sm:flex-initial",
           current === "list" && "bg-background shadow-sm",
         )}
         aria-current={current === "list" ? "true" : undefined}
@@ -31,7 +31,7 @@ export function TechnicalVisitsViewToggle({ hrefList, hrefMap, current }: Techni
         href={hrefMap}
         className={cn(
           buttonVariants({ variant: "ghost", size: "sm" }),
-          "rounded-md px-4",
+          "min-h-11 flex-1 justify-center rounded-md px-4 touch-manipulation sm:min-h-9 sm:flex-initial",
           current === "map" && "bg-background shadow-sm",
         )}
         aria-current={current === "map" ? "true" : undefined}

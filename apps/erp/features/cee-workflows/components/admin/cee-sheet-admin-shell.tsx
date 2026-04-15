@@ -9,11 +9,13 @@ import {
   DEFAULT_ADMIN_CEE_SHEET_FORM,
   formFromSheet,
 } from "@/features/cee-workflows/components/admin/cee-sheet-form";
+import { CeeSheetTechnicalVisitConfigPanel } from "@/features/cee-workflows/components/admin/cee-sheet-technical-visit-config-panel";
 import { CeeSheetTeamPanel } from "@/features/cee-workflows/components/admin/cee-sheet-team-panel";
 import type { AdminCeeSheetListItem } from "@/features/cee-workflows/queries/get-admin-cee-sheets";
 import type { AdminCeeSheetTeamDetail } from "@/features/cee-workflows/queries/get-cee-sheet-team-with-members";
 import type { AssignableProfileOption } from "@/features/cee-workflows/queries/list-assignable-profiles";
 import type { AdminCeeNetworkOverviewData } from "@/features/cee-workflows/queries/get-admin-cee-network-overview";
+import type { TechnicalVisitTemplateOption } from "@/features/technical-visits/templates/registry";
 import { toggleCeeSheetActive } from "@/features/cee-workflows/actions/admin-cee-sheet-actions";
 import { useRouter } from "next/navigation";
 
@@ -22,9 +24,16 @@ type Props = {
   teamsBySheetId: Record<string, AdminCeeSheetTeamDetail | null>;
   profiles: AssignableProfileOption[];
   networkOverview: AdminCeeNetworkOverviewData;
+  technicalVisitTemplateOptions: TechnicalVisitTemplateOption[];
 };
 
-export function CeeSheetAdminShell({ sheets, teamsBySheetId, profiles, networkOverview }: Props) {
+export function CeeSheetAdminShell({
+  sheets,
+  teamsBySheetId,
+  profiles,
+  networkOverview,
+  technicalVisitTemplateOptions,
+}: Props) {
   const router = useRouter();
   const [selectedSheetId, setSelectedSheetId] = useState<string | null>(sheets[0]?.id ?? null);
   const [creating, setCreating] = useState(false);
@@ -81,6 +90,10 @@ export function CeeSheetAdminShell({ sheets, teamsBySheetId, profiles, networkOv
           <CeeSheetForm
             sheet={creating ? null : selectedSheet}
             onSaved={handleSaved}
+          />
+          <CeeSheetTechnicalVisitConfigPanel
+            sheet={creating ? null : selectedSheet}
+            templateOptions={technicalVisitTemplateOptions}
           />
           <CeeSheetTeamPanel
             sheetId={creating ? null : selectedSheet?.id ?? null}

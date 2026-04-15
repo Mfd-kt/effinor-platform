@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -25,9 +25,19 @@ import {
   workflowStatusLabel,
 } from "@/features/cee-workflows/components/workflow-crm-queue-tools";
 import type { CrmSortKey } from "@/features/cee-workflows/components/workflow-crm-queue-tools";
-import type { CloserQueueBuckets, CloserQueueItem } from "@/features/cee-workflows/lib/closer-workflow-activity";
+import {
+  closerEffectiveRelanceAt,
+  type CloserQueueBuckets,
+  type CloserQueueItem,
+} from "@/features/cee-workflows/lib/closer-workflow-activity";
+import {
+  phoneRdvReminderLabelFr,
+  phoneRdvReminderLevel,
+  type PhoneRdvReminderLevel,
+} from "@/features/cee-workflows/lib/closer-phone-rdv-reminder";
 import type { CloserQueueTab } from "@/features/cee-workflows/lib/closer-paths";
 import { formatCivilityNamePair } from "@/features/leads/lib/contact-map";
+import { cn } from "@/lib/utils";
 
 type QueueTab = CloserQueueTab;
 
@@ -87,11 +97,41 @@ function compareFollowUp(a: string | null, b: string | null, dir: "asc" | "desc"
   return dir === "desc" ? -c : c;
 }
 
+function relanceRowClass(level: PhoneRdvReminderLevel): string {
+  switch (level) {
+    case "overdue":
+      return "bg-destructive/[0.07]";
+    case "imminent":
+      return "bg-orange-500/12";
+    case "soon":
+      return "bg-amber-500/10";
+    case "upcoming":
+      return "bg-amber-500/5";
+    default:
+      return "";
+  }
+}
+
+function relanceBadgeClass(level: PhoneRdvReminderLevel): string {
+  switch (level) {
+    case "overdue":
+      return "border-destructive/40 bg-destructive/15 text-destructive";
+    case "imminent":
+      return "border-orange-600/35 bg-orange-500/15 text-orange-900 dark:text-orange-100";
+    case "soon":
+      return "border-amber-600/35 bg-amber-500/15 text-amber-950 dark:text-amber-100";
+    case "upcoming":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-50";
+    default:
+      return "";
+  }
+}
+
 function sortItems(items: CloserQueueItem[], key: CrmSortKey, dir: "asc" | "desc"): CloserQueueItem[] {
   const d = dir === "desc" ? -1 : 1;
   return [...items].sort((a, b) => {
     if (key === "followUp") {
-      return compareFollowUp(a.nextFollowUpAt, b.nextFollowUpAt, dir);
+      return compareFollowUp(closerEffectiveRelanceAt(a), closerEffectiveRelanceAt(b), dir);
     }
     if (key === "updated") {
       return d * a.updatedAt.localeCompare(b.updatedAt);
@@ -126,6 +166,12 @@ export function CloserWorkflowQueue({
   );
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: CrmSortKey; dir: "asc" | "desc" }>({ key: "updated", dir: "desc" });
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const rawItems = useMemo(() => itemsForTab(queue, tab), [queue, tab]);
   const filtered = useMemo(() => filterItems(rawItems, search), [rawItems, search]);
@@ -236,10 +282,17 @@ export function CloserWorkflowQueue({
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((item) => (
+                rows.map((item) => {
+                  const relanceAt = closerEffectiveRelanceAt(item);
+                  const reminderLevel = phoneRdvReminderLevel(relanceAt, nowMs);
+                  const reminderLabel = phoneRdvReminderLabelFr(reminderLevel);
+                  return (
                   <TableRow
                     key={`${tab}-${item.workflowId}`}
-                    className="group cursor-pointer hover:bg-muted/40"
+                    className={cn(
+                      "group cursor-pointer hover:bg-muted/40",
+                      relanceRowClass(reminderLevel),
+                    )}
                     onClick={() => onOpen(item)}
                   >
                     <TableCell className="max-w-[180px] pl-4 font-medium" title={item.companyName}>
@@ -291,7 +344,21 @@ export function CloserWorkflowQueue({
                       {crmFormatEur(item.restToCharge)}
                     </TableCell>
                     <TableCell className="tabular-nums text-xs text-muted-foreground">
-                      {crmFormatOptionalDate(item.nextFollowUpAt)}
+                      <div className="flex min-w-[8.5rem] flex-col gap-1">
+                        <span className="text-foreground">{crmFormatOptionalDate(relanceAt)}</span>
+                        {reminderLabel ? (
+                          <Badge
+                            variant="outline"
+                            className={cn("w-fit whitespace-nowrap text-[10px] font-medium", relanceBadgeClass(reminderLevel))}
+                          >
+                            {reminderLabel}
+                          </Badge>
+                        ) : item.phoneRdvAt ? (
+                          <span className="text-[10px] text-muted-foreground">RDV téléphone</span>
+                        ) : item.nextFollowUpAt ? (
+                          <span className="text-[10px] text-muted-foreground">Relance workflow</span>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className="tabular-nums text-xs text-muted-foreground">
                       {crmFormatUpdated(item.updatedAt)}
@@ -308,7 +375,8 @@ export function CloserWorkflowQueue({
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

@@ -111,6 +111,9 @@ export async function canAccessTechnicalVisitsDirectoryNav(access: AccessContext
   ) {
     return true;
   }
+  if (rc.includes("technician")) {
+    return true;
+  }
   return isCeeTeamManager(access.userId);
 }
 

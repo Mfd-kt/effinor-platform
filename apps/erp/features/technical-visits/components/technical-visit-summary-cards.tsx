@@ -16,14 +16,20 @@ import type { TechnicalVisitDetailRow } from "@/features/technical-visits/types"
 
 type TechnicalVisitSummaryCardsProps = {
   visit: TechnicalVisitDetailRow;
+  fieldAccessLevel?: "full" | "technician_restricted";
 };
 
-export function TechnicalVisitSummaryCards({ visit }: TechnicalVisitSummaryCardsProps) {
-  const leadName = visit.leads?.company_name ?? "—";
+export function TechnicalVisitSummaryCards({
+  visit,
+  fieldAccessLevel = "full",
+}: TechnicalVisitSummaryCardsProps) {
+  const restricted = fieldAccessLevel === "technician_restricted";
+  const leadName = restricted ? "—" : (visit.leads?.company_name ?? "—");
   const techLabel =
     visit.technician?.full_name?.trim() ||
     visit.technician?.email?.trim() ||
     null;
+  const previewPlace = [visit.worksite_postal_code, visit.worksite_city].filter(Boolean).join(" ").trim();
 
   return (
     <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -39,11 +45,15 @@ export function TechnicalVisitSummaryCards({ visit }: TechnicalVisitSummaryCards
 
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <CardDescription>Lead</CardDescription>
+          <CardDescription>{restricted ? "Dossier commercial" : "Lead"}</CardDescription>
           <CardTitle className="text-lg">{leadName}</CardTitle>
         </CardHeader>
-        <CardContent>
-          {visit.leads ? (
+        <CardContent className="space-y-2">
+          {restricted ? (
+            <p className="text-sm text-muted-foreground">
+              Masqué jusqu’à l’ouverture des détails (24h avant le créneau planifié).
+            </p>
+          ) : visit.leads ? (
             <Link
               href={`/leads/${visit.leads.id}`}
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
@@ -54,9 +64,21 @@ export function TechnicalVisitSummaryCards({ visit }: TechnicalVisitSummaryCards
         </CardContent>
       </Card>
 
+      {restricted ? (
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-2">
+            <CardDescription>Lieu (aperçu)</CardDescription>
+            <CardTitle className="text-base font-normal">
+              {previewPlace || "—"}
+              {visit.region ? ` · ${visit.region}` : ""}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      ) : null}
+
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <CardDescription>Date planifiée</CardDescription>
+          <CardDescription>Passage</CardDescription>
           <CardTitle className="text-base font-normal">
             {formatDateFr(visit.scheduled_at)}
           </CardTitle>

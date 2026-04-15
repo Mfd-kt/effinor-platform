@@ -2,8 +2,15 @@ import { createClient } from "@/lib/supabase/server";
 
 import { getManagedTeamsContext, isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
 import type { AccessContext } from "@/lib/auth/access-context";
-import { getLeadIdsForAccess, shouldRestrictTechnicalVisitsToCreatorOnly } from "@/lib/auth/data-scope";
+import {
+  getLeadIdsForAccess,
+  shouldRestrictTechnicalVisitsToCreatorOnly,
+} from "@/lib/auth/data-scope";
 
+import {
+  getTechnicalVisitFieldAccessLevelForAuthenticatedViewer,
+  sanitizeTechnicalVisitListRowForRestrictedTechnician,
+} from "@/features/technical-visits/access";
 import type { TechnicalVisitListRow, TechnicalVisitRow } from "@/features/technical-visits/types";
 import type { TechnicalVisitStatus } from "@/types/database.types";
 
@@ -12,6 +19,127 @@ export type TechnicalVisitListFilters = {
   status?: TechnicalVisitStatus;
   lead_id?: string;
 };
+
+/** Périmètre liste VT (leads + règle technicien affecté seul). */
+export type TechnicalVisitsListAccessScope = {
+  scopedLeadIds: string[] | "all" | undefined;
+  technicianAssignedVisitsOnly: boolean;
+  isTechnician: boolean;
+  /** Confirmeur / rôle sans leads : aucune VT listable. */
+  nonTechnicianEmptyScope: boolean;
+};
+
+export async function resolveTechnicalVisitsListAccessScope(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  access: AccessContext,
+): Promise<TechnicalVisitsListAccessScope | null> {
+  if (access.kind !== "authenticated") return null;
+
+  let scopedLeadIds: string[] | "all" | undefined;
+  let technicianAssignedVisitsOnly = false;
+
+  scopedLeadIds = await getLeadIdsForAccess(supabase, access);
+  if (scopedLeadIds !== "all" && (await isCeeTeamManager(access.userId))) {
+    const ctx = await getManagedTeamsContext(access.userId);
+    if (ctx?.sheetIds.length) {
+      const { data: wfRows, error: wfErr } = await supabase
+        .from("lead_sheet_workflows")
+        .select("lead_id")
+        .in("cee_sheet_id", ctx.sheetIds)
+        .eq("is_archived", false);
+      if (wfErr) {
+        throw new Error(`Périmètre visites techniques : ${wfErr.message}`);
+      }
+      const merged = new Set<string>(scopedLeadIds);
+      for (const r of wfRows ?? []) {
+        merged.add(r.lead_id);
+      }
+      scopedLeadIds = [...merged];
+    }
+  }
+
+  let nonTechnicianEmptyScope = false;
+  if (scopedLeadIds !== "all" && scopedLeadIds.length === 0) {
+    if (access.roleCodes.includes("technician")) {
+      technicianAssignedVisitsOnly = true;
+    } else {
+      nonTechnicianEmptyScope = true;
+    }
+  }
+
+  return {
+    scopedLeadIds,
+    technicianAssignedVisitsOnly,
+    isTechnician: access.roleCodes.includes("technician"),
+    nonTechnicianEmptyScope,
+  };
+}
+
+/**
+ * Filtres Realtime alignés sur `getTechnicalVisits` (périmètre leads / technicien / créateur seul).
+ */
+export async function getTechnicalVisitsRealtimeSubscriptionForList(access: AccessContext): Promise<{
+  enabled: boolean;
+  filters: string[];
+  debounceMs: number;
+}> {
+  const off = { enabled: false as const, filters: [] as string[], debounceMs: 500 };
+
+  if (access.kind !== "authenticated") {
+    return off;
+  }
+
+  const supabase = await createClient();
+  const scope = await resolveTechnicalVisitsListAccessScope(supabase, access);
+  if (!scope || scope.nonTechnicianEmptyScope) {
+    return off;
+  }
+
+  const uid = access.userId;
+  const creatorOnly = shouldRestrictTechnicalVisitsToCreatorOnly(access);
+
+  if (creatorOnly) {
+    return {
+      enabled: true,
+      filters: [`created_by_user_id=eq.${uid}`],
+      debounceMs: 450,
+    };
+  }
+
+  if (scope.technicianAssignedVisitsOnly) {
+    return {
+      enabled: true,
+      filters: [`technician_id=eq.${uid}`],
+      debounceMs: 450,
+    };
+  }
+
+  if (scope.scopedLeadIds === "all") {
+    return {
+      enabled: true,
+      filters: [],
+      debounceMs: 650,
+    };
+  }
+
+  if (Array.isArray(scope.scopedLeadIds) && scope.scopedLeadIds.length > 0) {
+    const leadFilter = `lead_id=in.(${scope.scopedLeadIds.join(",")})`;
+    if (scope.isTechnician) {
+      return {
+        enabled: true,
+        filters: [`technician_id=eq.${uid}`, leadFilter],
+        debounceMs: 450,
+      };
+    }
+    return {
+      enabled: true,
+      filters: [leadFilter],
+      debounceMs: 450,
+    };
+  }
+
+  return off;
+}
 
 type RawRow = TechnicalVisitRow & {
   leads: { company_name: string } | null;
@@ -36,28 +164,19 @@ export async function getTechnicalVisits(
   const supabase = await createClient();
 
   let scopedLeadIds: string[] | "all" | undefined;
+  /** Profil « technicien » sans périmètre leads : on liste uniquement les VT où il est affecté. */
+  let technicianAssignedVisitsOnly = false;
+  let isTechnician = false;
+
   if (access?.kind === "authenticated") {
-    scopedLeadIds = await getLeadIdsForAccess(supabase, access);
-    if (scopedLeadIds !== "all" && (await isCeeTeamManager(access.userId))) {
-      const ctx = await getManagedTeamsContext(access.userId);
-      if (ctx?.sheetIds.length) {
-        const { data: wfRows, error: wfErr } = await supabase
-          .from("lead_sheet_workflows")
-          .select("lead_id")
-          .in("cee_sheet_id", ctx.sheetIds)
-          .eq("is_archived", false);
-        if (wfErr) {
-          throw new Error(`Périmètre visites techniques : ${wfErr.message}`);
-        }
-        const merged = new Set<string>(scopedLeadIds);
-        for (const r of wfRows ?? []) {
-          merged.add(r.lead_id);
-        }
-        scopedLeadIds = [...merged];
-      }
-    }
-    if (scopedLeadIds !== "all" && scopedLeadIds.length === 0) {
+    const scope = await resolveTechnicalVisitsListAccessScope(supabase, access);
+    if (scope?.nonTechnicianEmptyScope) {
       return [];
+    }
+    if (scope) {
+      scopedLeadIds = scope.scopedLeadIds;
+      technicianAssignedVisitsOnly = scope.technicianAssignedVisitsOnly;
+      isTechnician = scope.isTechnician;
     }
   }
 
@@ -79,8 +198,24 @@ export async function getTechnicalVisits(
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
-  if (scopedLeadIds && scopedLeadIds !== "all") {
+  if (isTechnician && scopedLeadIds === "all") {
+    /* Périmètre leads déjà large : pas de filtre supplémentaire. */
+  } else if (
+    isTechnician &&
+    access?.kind === "authenticated" &&
+    scopedLeadIds &&
+    scopedLeadIds !== "all" &&
+    scopedLeadIds.length > 0
+  ) {
+    query = query.or(
+      `technician_id.eq.${access.userId},lead_id.in.(${scopedLeadIds.join(",")})`,
+    );
+  } else if (scopedLeadIds && scopedLeadIds !== "all" && scopedLeadIds.length > 0) {
     query = query.in("lead_id", scopedLeadIds);
+  }
+
+  if (access?.kind === "authenticated" && technicianAssignedVisitsOnly) {
+    query = query.eq("technician_id", access.userId);
   }
 
   if (access?.kind === "authenticated" && shouldRestrictTechnicalVisitsToCreatorOnly(access)) {
@@ -107,5 +242,16 @@ export async function getTechnicalVisits(
     throw new Error(`Impossible de charger les visites techniques : ${error.message}`);
   }
 
-  return (data as unknown as RawRow[] | null)?.map(normalize) ?? [];
+  const rows = (data as unknown as RawRow[] | null)?.map(normalize) ?? [];
+
+  if (access?.kind !== "authenticated") {
+    return rows;
+  }
+
+  return rows.map((row) => {
+    const level = getTechnicalVisitFieldAccessLevelForAuthenticatedViewer(access, row);
+    const payload =
+      level === "technician_restricted" ? sanitizeTechnicalVisitListRowForRestrictedTechnician(row) : row;
+    return { ...payload, technician_field_access: level };
+  });
 }

@@ -7,12 +7,22 @@ import { geocodeWorksiteForSave } from "@/features/technical-visits/lib/geocode-
 import { insertFromTechnicalVisitForm } from "@/features/technical-visits/lib/map-to-db";
 import { TechnicalVisitInsertSchema } from "@/features/technical-visits/schemas/technical-visit.schema";
 import type { TechnicalVisitRow } from "@/features/technical-visits/types";
+import { isTechnicianWithoutDeskVisitPrivileges } from "@/features/technical-visits/access";
+import { getAccessContext } from "@/lib/auth/access-context";
 import { createClient } from "@/lib/supabase/server";
 
 export type CreateTechnicalVisitResult =
   | { ok: true; data: TechnicalVisitRow }
   | { ok: false; message: string };
 
+/**
+ * Crée une VT **legacy** (sans template dynamique).
+ *
+ * RÈGLE MÉTIER : une VT dynamique (visit_template_key, visit_schema_snapshot_json)
+ * doit être créée depuis un contexte workflow / fiche CEE qui fournit le template.
+ * Voir `createTechnicalVisitFromLead` et le futur flux « création depuis workflow ».
+ * Cette action ne pose pas de template ; les colonnes restent NULL.
+ */
 export async function createTechnicalVisit(
   input: unknown,
 ): Promise<CreateTechnicalVisitResult> {
@@ -31,6 +41,12 @@ export async function createTechnicalVisit(
 
   const row = insertFromTechnicalVisitForm(parsed.data);
   row.created_by_user_id = user.id;
+
+  const access = await getAccessContext();
+  if (access.kind === "authenticated" && isTechnicianWithoutDeskVisitPrivileges(access)) {
+    row.technician_id = access.userId;
+    row.status = "to_schedule";
+  }
 
   const { data: leadRow } = await supabase
     .from("leads")

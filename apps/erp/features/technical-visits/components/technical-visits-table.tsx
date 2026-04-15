@@ -22,14 +22,18 @@ import {
 import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+import { Badge } from "@/components/ui/badge";
+import { TechnicalVisitAdminDeleteButton } from "@/features/technical-visits/components/technical-visit-admin-delete-button";
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
+import { isTechnicalVisitInProgress } from "@/features/technical-visits/lib/visit-in-progress";
 import type { TechnicalVisitListRow } from "@/features/technical-visits/types";
 
 type TechnicalVisitsTableProps = {
   data: TechnicalVisitListRow[];
+  canAdminDelete?: boolean;
 };
 
-export function TechnicalVisitsTable({ data }: TechnicalVisitsTableProps) {
+export function TechnicalVisitsTable({ data, canAdminDelete = false }: TechnicalVisitsTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([
     { id: "created_at", desc: true },
@@ -37,6 +41,24 @@ export function TechnicalVisitsTable({ data }: TechnicalVisitsTableProps) {
 
   const columns = useMemo<ColumnDef<TechnicalVisitListRow>[]>(
     () => [
+      ...(canAdminDelete
+        ? [
+            {
+              id: "admin_actions",
+              header: () => <span className="sr-only">Archiver (admin)</span>,
+              enableSorting: false,
+              cell: ({ row }) => (
+                <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                  <TechnicalVisitAdminDeleteButton
+                    visitId={row.original.id}
+                    vtReference={row.original.vt_reference}
+                    stopRowNavigation
+                  />
+                </div>
+              ),
+            } as ColumnDef<TechnicalVisitListRow>,
+          ]
+        : []),
       {
         accessorKey: "vt_reference",
         header: "Réf.",
@@ -57,7 +79,19 @@ export function TechnicalVisitsTable({ data }: TechnicalVisitsTableProps) {
       {
         accessorKey: "status",
         header: "Statut",
-        cell: ({ row }) => <TechnicalVisitStatusBadge status={row.original.status} />,
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <TechnicalVisitStatusBadge status={row.original.status} />
+            {isTechnicalVisitInProgress(row.original) ? (
+              <Badge
+                variant="outline"
+                className="rounded-md border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-100"
+              >
+                En cours
+              </Badge>
+            ) : null}
+          </div>
+        ),
       },
       {
         accessorKey: "scheduled_at",
@@ -97,7 +131,7 @@ export function TechnicalVisitsTable({ data }: TechnicalVisitsTableProps) {
         ),
       },
     ],
-    [],
+    [canAdminDelete],
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table

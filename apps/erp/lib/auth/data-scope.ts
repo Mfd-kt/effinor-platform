@@ -184,7 +184,7 @@ export async function getLeadIdsForAccess(
   access: AccessContext,
 ): Promise<string[] | "all"> {
   const scope = getLeadScopeForAccess(access);
-  let base = await resolveLeadIdsForScope(supabase, scope);
+  const base = await resolveLeadIdsForScope(supabase, scope);
   if (base === "all") {
     return "all";
   }
@@ -287,7 +287,11 @@ async function canAccessTechnicalVisitViaManagedCeeSheets(
 
 export async function canAccessTechnicalVisitDetail(
   supabase: SupabaseClient<Database>,
-  visit: { lead_id: string; created_by_user_id: string | null },
+  visit: {
+    lead_id: string | null;
+    created_by_user_id: string | null;
+    technician_id: string | null;
+  },
   access: AccessContext,
 ): Promise<boolean> {
   if (access.kind !== "authenticated") {
@@ -296,10 +300,16 @@ export async function canAccessTechnicalVisitDetail(
   if (shouldRestrictTechnicalVisitsToCreatorOnly(access)) {
     return visit.created_by_user_id === access.userId;
   }
-  if (await canAccessTechnicalVisitByLeadId(supabase, visit.lead_id, access)) {
+  if (visit.technician_id != null && visit.technician_id === access.userId) {
     return true;
   }
-  return canAccessTechnicalVisitViaManagedCeeSheets(supabase, visit.lead_id, access.userId);
+  if (visit.lead_id && (await canAccessTechnicalVisitByLeadId(supabase, visit.lead_id, access))) {
+    return true;
+  }
+  if (visit.lead_id) {
+    return canAccessTechnicalVisitViaManagedCeeSheets(supabase, visit.lead_id, access.userId);
+  }
+  return false;
 }
 
 export async function canAccessTechnicalVisitByLeadId(

@@ -18,6 +18,7 @@ export async function uploadFilesToTechnicalVisitMedia(
   visitId: string,
   kind: TechnicalVisitMediaKind,
   files: File[],
+  subFolder?: string,
 ): Promise<{ urls: string[]; error?: string }> {
   const urls: string[] = [];
   const batchBase = Date.now();
@@ -26,6 +27,7 @@ export async function uploadFilesToTechnicalVisitMedia(
     const formData = new FormData();
     formData.set("visitId", visitId);
     formData.set("kind", kind);
+    if (subFolder) formData.set("subFolder", subFolder);
     formData.set("batchBase", String(batchBase));
     formData.set("fileIndex", String(i));
     formData.append("files", files[i]);

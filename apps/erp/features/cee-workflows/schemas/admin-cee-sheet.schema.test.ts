@@ -17,7 +17,6 @@ describe("AdminCeeSheetSchema", () => {
       presentation_template_key: "presentation_pac_v1",
       agreement_template_key: "agreement_pac_v1",
       workflow_key: "workflow_pac",
-      requires_technical_visit: true,
       requires_quote: true,
       description: "Fiche chauffage",
       control_points: "Verifier les justificatifs",

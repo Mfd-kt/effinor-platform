@@ -22,7 +22,6 @@ export const AdminCeeSheetSchema = z.object({
   presentation_template_key: z.string().min(1, "Template présentation requis.").max(200),
   agreement_template_key: z.string().min(1, "Template accord requis.").max(200),
   workflow_key: z.string().max(120).optional().nullable(),
-  requires_technical_visit: z.boolean().optional(),
   requires_quote: z.boolean().optional(),
   description: z.string().max(5000).optional().nullable(),
   control_points: z.string().max(50000).optional().nullable(),
@@ -52,3 +51,32 @@ export const AdminCeeSheetToggleSchema = z.object({
   sheetId: z.string().uuid(),
   isCommercialActive: z.boolean(),
 });
+
+/** Mise à jour ciblée : visite technique dynamique (fiche CEE). */
+export const CeeSheetTechnicalVisitConfigSchema = z
+  .object({
+    sheetId: z.string().uuid("Identifiant fiche invalide."),
+    requires_technical_visit: z.boolean(),
+    technical_visit_template_key: z.string().max(120).optional().nullable(),
+    technical_visit_template_version: z.coerce.number().int().optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.requires_technical_visit) {
+      return;
+    }
+    const key = data.technical_visit_template_key?.trim() ?? "";
+    if (!key) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sélectionnez un template de visite technique.",
+        path: ["technical_visit_template_key"],
+      });
+    }
+    if (data.technical_visit_template_version == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sélectionnez une version de template.",
+        path: ["technical_visit_template_version"],
+      });
+    }
+  });

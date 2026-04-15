@@ -21,7 +21,6 @@ import {
   type AgentProspectFormValue,
 } from "@/features/cee-workflows/components/agent-prospect-form";
 import { AgentSimulatorContextCard } from "@/features/cee-workflows/components/agent-simulator-context-card";
-import { AgentSheetSelector } from "@/features/cee-workflows/components/agent-sheet-selector";
 import { AgentSheetSimulatorPanel } from "@/features/cee-workflows/components/agent-sheet-simulator-panel";
 import { finalizeCommercialCallbackWithSimulation } from "@/features/cee-workflows/actions/agent-actions";
 import {
@@ -228,16 +227,11 @@ export function CommercialCallbackConvertSimulatorDialog({
           ) : !activeSheet ? (
             <EmptyState
               title="Aucune fiche active"
-              description="Sélectionnez une fiche CEE ci-dessous."
+              description="Impossible de résoudre une fiche CEE. Vérifiez l’affectation équipe."
               icon={<TriangleAlert className="size-6" />}
             />
           ) : (
             <div className="space-y-5">
-              <div className="space-y-3">
-                <div className="text-sm font-medium text-foreground">Fiche CEE</div>
-                <AgentSheetSelector sheets={sheets} activeSheetId={activeSheetId} onSelect={setActiveSheetId} />
-              </div>
-
               <AgentSimulatorContextCard sheet={activeSheet} previewResult={previewResult} />
 
               {simulatorDefinition.kind === "destrat" ? (

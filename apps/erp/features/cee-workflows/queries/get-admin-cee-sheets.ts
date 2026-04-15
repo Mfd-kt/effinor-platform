@@ -12,6 +12,8 @@ export type AdminCeeSheetListItem = {
   agreementTemplateKey: string | null;
   workflowKey: string | null;
   requiresTechnicalVisit: boolean;
+  technicalVisitTemplateKey: string | null;
+  technicalVisitTemplateVersion: number | null;
   requiresQuote: boolean;
   description: string | null;
   controlPoints: string | null;
@@ -67,6 +69,8 @@ export async function getAdminCeeSheets(): Promise<AdminCeeSheetListItem[]> {
       agreementTemplateKey: sheet.agreement_template_key ?? null,
       workflowKey: sheet.workflow_key ?? null,
       requiresTechnicalVisit: sheet.requires_technical_visit ?? false,
+      technicalVisitTemplateKey: sheet.technical_visit_template_key ?? null,
+      technicalVisitTemplateVersion: sheet.technical_visit_template_version ?? null,
       requiresQuote: sheet.requires_quote ?? true,
       description: sheet.description ?? null,
       controlPoints: sheet.control_points ?? null,

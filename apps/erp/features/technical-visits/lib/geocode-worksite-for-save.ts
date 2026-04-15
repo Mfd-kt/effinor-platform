@@ -1,4 +1,4 @@
-import { geocodeFranceAddress } from "@/features/technical-visits/lib/nominatim-geocode";
+import { geocodeFranceAddressServer } from "@/features/technical-visits/lib/nominatim-geocode-server";
 import { buildWorksiteGeocodeQueryFromFields } from "@/features/technical-visits/lib/worksite-geocode-query";
 
 /** Géocode serveur (Nominatim) pour enregistrer lat/lng sur la VT. */
@@ -11,7 +11,7 @@ export async function geocodeWorksiteForSave(fields: {
   if (!q) {
     return { lat: null, lng: null };
   }
-  const c = await geocodeFranceAddress(q);
+  const c = await geocodeFranceAddressServer(q);
   if (!c) {
     return { lat: null, lng: null };
   }

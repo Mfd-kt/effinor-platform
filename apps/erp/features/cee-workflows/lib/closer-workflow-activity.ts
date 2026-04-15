@@ -18,12 +18,19 @@ export type CloserQueueItem = {
   restToCharge: number | null;
   recommendedModel: string | null;
   lastContactAt: string | null;
+  /** RDV téléphone (rappel) — champ lead `callback_at`. */
+  phoneRdvAt: string | null;
   nextFollowUpAt: string | null;
   closerNotes: string | null;
   confirmateurNotes: string | null;
   closerHandoverNotes: string | null;
   lossReason: string | null;
 };
+
+/** Date affichée / tri « Relance » : RDV téléphone si renseigné, sinon relance workflow. */
+export function closerEffectiveRelanceAt(item: CloserQueueItem): string | null {
+  return item.phoneRdvAt ?? item.nextFollowUpAt;
+}
 
 export type CloserQueueBuckets = {
   pending: CloserQueueItem[];
@@ -72,6 +79,7 @@ export function mapWorkflowToCloserQueueItem(
     restToCharge: getNumber(workflow.simulation_result_json, "restToCharge"),
     recommendedModel: getString(workflow.simulation_result_json, "model"),
     lastContactAt: getString(workflow.qualification_data_json, "last_contact_at"),
+    phoneRdvAt: workflow.lead?.callback_at?.trim() ? workflow.lead.callback_at : null,
     nextFollowUpAt: getString(workflow.qualification_data_json, "next_follow_up_at"),
     closerNotes: getString(workflow.qualification_data_json, "closer_notes") ?? workflow.closer_notes ?? null,
     confirmateurNotes: getString(workflow.qualification_data_json, "confirmateur_notes"),
@@ -86,12 +94,14 @@ export function classifyCloserQueue(
 ): CloserQueueBuckets {
   const pending = items.filter((item) => ["to_close", "docs_prepared"].includes(item.workflowStatus));
   const waitingSignature = items.filter((item) => item.workflowStatus === "agreement_sent");
-  const followUps = items.filter(
-    (item) =>
-      Boolean(item.nextFollowUpAt) &&
-      item.nextFollowUpAt! <= nowIso &&
-      !["agreement_signed", "lost", "paid"].includes(item.workflowStatus),
-  );
+  const followUps = items.filter((item) => {
+    const rel = closerEffectiveRelanceAt(item);
+    return (
+      Boolean(rel) &&
+      rel! <= nowIso &&
+      !["agreement_signed", "lost", "paid"].includes(item.workflowStatus)
+    );
+  });
   const signed = items.filter((item) => ["agreement_signed", "paid", "quote_signed"].includes(item.workflowStatus));
   const lost = items.filter((item) => item.workflowStatus === "lost");
 

@@ -1,6 +1,7 @@
 import { SlackEventType } from "@/features/notifications/domain/slack-events";
 import * as T from "@/features/notifications/domain/templates";
 import { sendSlackNotification } from "@/features/notifications/services/slack-notification-service";
+import { createClient } from "@/lib/supabase/server";
 import type { LeadRow } from "@/features/leads/types";
 import { LEAD_SOURCE_LABELS } from "@/features/leads/constants";
 import type { LeadSource } from "@/types/database.types";
@@ -141,6 +142,39 @@ export async function notifyProductAddedToCart(params: {
       eventType: SlackEventType.CART_PRODUCT_ADDED,
       entityType: "cart",
       entityId: params.leadId ?? "unknown",
+    }),
+  );
+}
+
+export async function notifyTechnicalVisitStarted(params: {
+  vtReference: string;
+  vtId: string;
+  leadId: string | null;
+  technicianLabel?: string | null;
+  startedAt?: string | null;
+}): Promise<void> {
+  let companyName: string | null = null;
+  if (params.leadId) {
+    const supabase = await createClient();
+    const { data: lr } = await supabase
+      .from("leads")
+      .select("company_name")
+      .eq("id", params.leadId)
+      .maybeSingle();
+    companyName = lr?.company_name ?? null;
+  }
+  const payload = T.templateVtStarted({
+    vtReference: params.vtReference,
+    vtId: params.vtId,
+    companyHint: companyName,
+    technicianLabel: params.technicianLabel ?? null,
+    startedAt: params.startedAt ?? null,
+  });
+  safeNotify(
+    sendSlackNotification(payload, {
+      eventType: SlackEventType.VT_STARTED,
+      entityType: "technical_visit",
+      entityId: params.vtId,
     }),
   );
 }

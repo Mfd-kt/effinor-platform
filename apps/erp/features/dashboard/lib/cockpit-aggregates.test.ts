@@ -85,6 +85,9 @@ describe("filterWorkflowsForCockpit", () => {
         simulator_key: "",
         workflow_key: "",
         is_commercial_active: true,
+        requires_technical_visit: false,
+        technical_visit_template_key: null,
+        technical_visit_template_version: null,
       },
     }),
     wf({
@@ -123,6 +126,9 @@ describe("filterWorkflowsForCockpit", () => {
         simulator_key: "",
         workflow_key: "",
         is_commercial_active: true,
+        requires_technical_visit: false,
+        technical_visit_template_key: null,
+        technical_visit_template_version: null,
       },
     }),
   ];

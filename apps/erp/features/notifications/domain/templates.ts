@@ -1,3 +1,5 @@
+import { formatDateFr } from "@/lib/format";
+
 import type { NotificationChannelKey, NotificationSeverity, SlackNotificationPayload } from "./types";
 
 const CH = {
@@ -198,6 +200,30 @@ export function templateCartFinalizedPlaceholder(opts: { cartCode: string }): Sl
 }
 
 // ——— VT ———
+
+export function templateVtStarted(opts: {
+  vtReference: string;
+  vtId: string;
+  companyHint?: string | null;
+  technicianLabel?: string | null;
+  startedAt?: string | null;
+}): SlackNotificationPayload {
+  const lines = [`Réf. VT : ${opts.vtReference}`, "Le technicien a démarré la visite sur le terrain."];
+  if (opts.startedAt) lines.push(`Heure de démarrage : ${formatDateFr(opts.startedAt)}`);
+  if (opts.technicianLabel) lines.push(`Technicien : ${opts.technicianLabel}`);
+  if (opts.companyHint) lines.push(`Contexte : ${opts.companyHint}`);
+  const root = baseUrl();
+  const path = `/technical-visits/${opts.vtId}`;
+  const url = root ? `${root.replace(/\/$/, "")}${path}` : path;
+  return {
+    title: "VT en cours",
+    lines,
+    severity: "info",
+    channelKey: CH.technique,
+    actionUrl: url,
+    actionLabel: "Ouvrir la VT",
+  };
+}
 
 export function templateVtScheduled(opts: {
   vtReference: string;

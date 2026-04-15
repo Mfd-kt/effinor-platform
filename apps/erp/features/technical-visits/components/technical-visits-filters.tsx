@@ -7,7 +7,7 @@ import type { LeadOption } from "@/features/technical-visits/types";
 import { cn } from "@/lib/utils";
 
 const selectClassName = cn(
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
+  "flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm sm:h-10",
   "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 );
 
@@ -17,6 +17,8 @@ type TechnicalVisitsFiltersProps = {
   defaultLeadId: string;
   /** Conserve la vue carte lors du filtrage. */
   defaultView?: "list" | "map";
+  /** Conserve l’onglet métier (Toutes, Aujourd’hui, …) lors du filtrage. */
+  defaultBucket?: string;
   leads: LeadOption[];
 };
 
@@ -25,15 +27,19 @@ export function TechnicalVisitsFilters({
   defaultStatus,
   defaultLeadId,
   defaultView = "list",
+  defaultBucket,
   leads,
 }: TechnicalVisitsFiltersProps) {
   return (
     <form
       method="get"
       action="/technical-visits"
-      className="mb-8 flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card p-4 shadow-sm"
+      className="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:mb-8 sm:flex-row sm:flex-wrap sm:items-end"
     >
       {defaultView === "map" ? <input type="hidden" name="view" value="map" /> : null}
+      {defaultBucket && defaultBucket !== "all" && defaultBucket !== "active" ? (
+        <input type="hidden" name="bucket" value={defaultBucket} />
+      ) : null}
       <div className="min-w-[200px] flex-1 space-y-2">
         <Label htmlFor="filter-vt-q">Recherche</Label>
         <Input
@@ -41,6 +47,7 @@ export function TechnicalVisitsFilters({
           name="q"
           defaultValue={defaultQ}
           placeholder="Référence, adresse travaux…"
+          className="h-11 sm:h-10"
         />
       </div>
       <div className="w-full min-w-[180px] sm:w-48">
@@ -79,7 +86,7 @@ export function TechnicalVisitsFilters({
           </select>
         </div>
       </div>
-      <button type="submit" className={cn(buttonVariants())}>
+      <button type="submit" className={cn(buttonVariants(), "h-11 w-full shrink-0 sm:h-10 sm:w-auto")}>
         Filtrer
       </button>
     </form>

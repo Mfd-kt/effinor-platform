@@ -138,9 +138,39 @@ export function getModelCapacity(model: DestratModel): number {
 }
 
 export function getSuggestedModel(heightM: number): DestratModel {
-  if (heightM < 6) return "teddington_ds3";
-  if (heightM < 7) return "teddington_ds7";
+  const h = clamp(heightM, SIMULATOR_CONSTANTS.HEIGHT_MIN, SIMULATOR_CONSTANTS.HEIGHT_MAX);
+  if (h < 6) return "teddington_ds3";
+  if (h < 7) return "teddington_ds7";
   return "generfeu";
+}
+
+/** Modèles autorisés selon la hauteur (même logique que le simulateur terrain / agent). */
+export function getAllowedDestratModelsForHeight(heightM: number): DestratModel[] {
+  const h = clamp(heightM, SIMULATOR_CONSTANTS.HEIGHT_MIN, SIMULATOR_CONSTANTS.HEIGHT_MAX);
+  if (h < 6) return ["teddington_ds3"];
+  if (h < 7) return ["teddington_ds7"];
+  return ["teddington_ds7", "generfeu"];
+}
+
+/**
+ * Choix du modèle comme dans `DestratQuickSimulatorUi` : respect du modèle courant s’il reste
+ * autorisé ; à partir de 7 m, passage systématique sur Generfeu.
+ */
+export function resolveDestratModelFromHeightAndSelection(
+  heightM: number,
+  previous: string | null | undefined,
+): DestratModel {
+  const h = clamp(heightM, SIMULATOR_CONSTANTS.HEIGHT_MIN, SIMULATOR_CONSTANTS.HEIGHT_MAX);
+  const allowed = getAllowedDestratModelsForHeight(heightM);
+  const prevRaw = typeof previous === "string" && previous.trim() !== "" ? previous.trim() : null;
+  const prev = prevRaw && allowed.includes(prevRaw as DestratModel) ? (prevRaw as DestratModel) : null;
+  if (!prev) {
+    return getSuggestedModel(h);
+  }
+  if (h >= 7) {
+    return "generfeu";
+  }
+  return prev;
 }
 
 export function getInstallUnitPrice(model: DestratModel): number {

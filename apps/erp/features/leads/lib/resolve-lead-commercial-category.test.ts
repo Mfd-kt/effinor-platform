@@ -10,10 +10,29 @@ import {
 } from "./resolve-lead-commercial-category";
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 
+const ceeSheetEmbedDefaults: Pick<
+  NonNullable<WorkflowScopedListRow["cee_sheet"]>,
+  "requires_technical_visit" | "technical_visit_template_key" | "technical_visit_template_version"
+> = {
+  requires_technical_visit: false,
+  technical_visit_template_key: null,
+  technical_visit_template_version: null,
+};
+
+type WfStubCeeSheet = {
+  id: string;
+  code: string;
+  label: string;
+  simulator_key: string;
+  workflow_key: string;
+  is_commercial_active: boolean;
+  requires_technical_visit?: boolean;
+  technical_visit_template_key?: string | null;
+  technical_visit_template_version?: number | null;
+};
+
 function wfStub(
-  partial: Partial<WorkflowScopedListRow> & {
-    cee_sheet: NonNullable<WorkflowScopedListRow["cee_sheet"]>;
-  },
+  partial: Omit<Partial<WorkflowScopedListRow>, "cee_sheet"> & { cee_sheet: WfStubCeeSheet },
 ): WorkflowScopedListRow {
   return {
     id: partial.id ?? "w1",
@@ -40,7 +59,9 @@ function wfStub(
     created_at: partial.created_at ?? new Date().toISOString(),
     updated_at: partial.updated_at ?? new Date().toISOString(),
     lead: null,
-    cee_sheet: partial.cee_sheet,
+    cee_sheet: { ...ceeSheetEmbedDefaults, ...partial.cee_sheet } as NonNullable<
+      WorkflowScopedListRow["cee_sheet"]
+    >,
     assigned_agent: null,
     assigned_confirmateur: null,
     assigned_closer: null,

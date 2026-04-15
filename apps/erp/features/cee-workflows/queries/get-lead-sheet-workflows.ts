@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AccessContext } from "@/lib/auth/access-context";
 import { hasFullCeeWorkflowAccess, resolveAllowedCeeSheetIdsForAccess } from "@/lib/auth/cee-workflows-scope";
+import { CEE_SHEET_WORKFLOW_EMBED } from "@/features/cee-workflows/queries/cee-sheet-workflow-embed";
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 
 export type WorkflowListParams = {
@@ -141,7 +142,7 @@ export async function getLeadSheetWorkflowsForAccess(
   const selectClause = `
     *,
     lead:leads!lead_id(id, created_at, company_name, lead_status, cee_sheet_id, current_workflow_id, civility, first_name, last_name, contact_name, phone, email, worksite_address, worksite_city, worksite_postal_code, heating_type, recording_notes, lead_channel, lead_origin, callback_at, deleted_at),
-    cee_sheet:cee_sheets!cee_sheet_id(id, code, label, simulator_key, workflow_key, is_commercial_active),
+    cee_sheet:cee_sheets!cee_sheet_id(${CEE_SHEET_WORKFLOW_EMBED}),
     assigned_agent:profiles!assigned_agent_user_id(id, full_name, email),
     assigned_confirmateur:profiles!assigned_confirmateur_user_id(id, full_name, email),
     assigned_closer:profiles!assigned_closer_user_id(id, full_name, email),

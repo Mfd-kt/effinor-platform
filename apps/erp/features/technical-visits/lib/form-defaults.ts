@@ -11,6 +11,47 @@ function trimU(s: string | null | undefined): string | undefined {
   return t ? t : undefined;
 }
 
+/**
+ * Adresse travaux : priorité VT, repli lead (même logique que le formulaire legacy).
+ */
+export function resolveWorksiteStringsFromRowAndLead(
+  row: Pick<TechnicalVisitRow, "worksite_address" | "worksite_postal_code" | "worksite_city"> | null | undefined,
+  lead: Pick<LeadRow, "worksite_address" | "worksite_postal_code" | "worksite_city"> | null | undefined,
+): {
+  worksite_address?: string;
+  worksite_postal_code?: string;
+  worksite_city?: string;
+} {
+  const vtAddr = trimU(row?.worksite_address);
+  const vtCp = trimU(row?.worksite_postal_code);
+  const vtCity = trimU(row?.worksite_city);
+
+  let worksite_address = vtAddr;
+  let worksite_postal_code = vtCp;
+  let worksite_city = vtCity;
+
+  const l = lead;
+  if (l) {
+    const lAddr = trimU(l.worksite_address);
+    const lCp = trimU(l.worksite_postal_code);
+    const lCity = trimU(l.worksite_city);
+    const leadHasCpAndCity = Boolean(lCp && lCity);
+    const vtMissingCpOrCity = !vtCp || !vtCity;
+
+    if (leadHasCpAndCity && vtMissingCpOrCity) {
+      worksite_address = lAddr ?? vtAddr;
+      worksite_postal_code = lCp;
+      worksite_city = lCity;
+    } else {
+      worksite_address = vtAddr ?? lAddr;
+      worksite_postal_code = vtCp ?? lCp;
+      worksite_city = vtCity ?? lCity;
+    }
+  }
+
+  return { worksite_address, worksite_postal_code, worksite_city };
+}
+
 export const EMPTY_TECHNICAL_VISIT_FORM: TechnicalVisitInsertInput = {
   vt_reference: "",
   lead_id: "",
@@ -39,32 +80,10 @@ export function technicalVisitRowToFormValues(
   row: TechnicalVisitRow,
   leadForWorksite?: Pick<LeadRow, "worksite_address" | "worksite_postal_code" | "worksite_city"> | null,
 ): TechnicalVisitInsertInput {
-  const vtAddr = trimU(row.worksite_address);
-  const vtCp = trimU(row.worksite_postal_code);
-  const vtCity = trimU(row.worksite_city);
-
-  let worksite_address = vtAddr;
-  let worksite_postal_code = vtCp;
-  let worksite_city = vtCity;
-
-  const l = leadForWorksite;
-  if (l) {
-    const lAddr = trimU(l.worksite_address);
-    const lCp = trimU(l.worksite_postal_code);
-    const lCity = trimU(l.worksite_city);
-    const leadHasCpAndCity = Boolean(lCp && lCity);
-    const vtMissingCpOrCity = !vtCp || !vtCity;
-
-    if (leadHasCpAndCity && vtMissingCpOrCity) {
-      worksite_address = lAddr ?? vtAddr;
-      worksite_postal_code = lCp;
-      worksite_city = lCity;
-    } else {
-      worksite_address = vtAddr ?? lAddr;
-      worksite_postal_code = vtCp ?? lCp;
-      worksite_city = vtCity ?? lCity;
-    }
-  }
+  const { worksite_address, worksite_postal_code, worksite_city } = resolveWorksiteStringsFromRowAndLead(
+    row,
+    leadForWorksite ?? null,
+  );
 
   const regionFromCp = regionFromWorksiteOrHeadOfficePostalCode(worksite_postal_code, undefined);
   const region = regionFromCp ?? trimU(row.region) ?? undefined;

@@ -5,7 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { isPacPreferredLocalUsage } from "@/features/leads/simulator/domain/cee-solution-decision";
-import { computeSimulator } from "@/features/leads/simulator/domain/simulator";
+import {
+  computeSimulator,
+  getAllowedDestratModelsForHeight,
+  getSuggestedModel,
+} from "@/features/leads/simulator/domain/simulator";
 import type { SimulatorComputedResult } from "@/features/leads/simulator/domain/types";
 import { toAgentDestratSimulatorInput } from "@/features/leads/simulator/lib/agent-form-to-input";
 import { BUILDING_TYPE_FROM_LOCAL_USAGE } from "@/features/leads/simulator/lib/local-usage-building-type";
@@ -37,18 +41,6 @@ function formatCurrency(value: number): string {
 function parseNumericInput(raw: string, fallback: number): number {
   const parsed = Number(raw.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function getAllowedModels(heightM: number): (typeof DESTRAT_MODEL_VALUES)[number][] {
-  if (heightM < 6) return ["teddington_ds3"];
-  if (heightM < 7) return ["teddington_ds7"];
-  return ["teddington_ds7", "generfeu"];
-}
-
-function getDefaultModel(heightM: number): (typeof DESTRAT_MODEL_VALUES)[number] {
-  if (heightM < 6) return "teddington_ds3";
-  if (heightM < 7) return "teddington_ds7";
-  return "generfeu";
 }
 
 export function buildDestratCommercialScript(params: {
@@ -93,10 +85,10 @@ export function DestratQuickSimulatorUi({
 
   function handleHeightChange(raw: string) {
     const parsed = parseNumericInput(raw, 5);
-    const allowed = getAllowedModels(parsed);
+    const allowed = getAllowedDestratModelsForHeight(parsed);
     let nextModel = form.model;
     if (!form.model || !allowed.includes(form.model)) {
-      nextModel = getDefaultModel(parsed);
+      nextModel = getSuggestedModel(parsed);
     } else if (parsed >= 7) {
       nextModel = "generfeu";
     }
@@ -145,7 +137,7 @@ export function DestratQuickSimulatorUi({
         })
       : null;
 
-  const allowedModels = getAllowedModels(heightSliderValue);
+  const allowedModels = getAllowedDestratModelsForHeight(heightSliderValue);
 
   const solution = previewResult?.ceeSolution.solution;
   const showDestratModel =

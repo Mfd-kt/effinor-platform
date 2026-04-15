@@ -44,6 +44,7 @@ export async function buildAllowedNavHrefs(
   }
   if (canAccessAdminCeeSheets(access)) {
     extra.push("/admin/cee-sheets");
+    extra.push("/admin/technical-visit-templates");
   }
   if (canAccessLeadsDirectoryNav(access)) {
     extra.push("/leads");

@@ -83,7 +83,15 @@ export type WorkflowScopedListRow = CeeSheetWorkflowRow & {
   > | null;
   cee_sheet: Pick<
     CeeSheetRow,
-    "id" | "code" | "label" | "simulator_key" | "workflow_key" | "is_commercial_active"
+    | "id"
+    | "code"
+    | "label"
+    | "simulator_key"
+    | "workflow_key"
+    | "is_commercial_active"
+    | "requires_technical_visit"
+    | "technical_visit_template_key"
+    | "technical_visit_template_version"
   > | null;
   assigned_agent: {
     id: string;

@@ -8,7 +8,9 @@ import {
   AdminCeeSheetTeamMemberUpdateSchema,
   AdminCeeSheetTeamSchema,
   AdminCeeSheetToggleSchema,
+  CeeSheetTechnicalVisitConfigSchema,
 } from "@/features/cee-workflows/schemas/admin-cee-sheet.schema";
+import { resolveVisitTemplateByKeyAndVersionUnified } from "@/features/technical-visits/workflow/resolve-visit-template-unified";
 import { requireCeeAdminAccess } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,7 +41,7 @@ export async function createCeeSheet(input: unknown): Promise<AdminActionResult<
     presentation_template_key: parsed.data.presentation_template_key.trim(),
     agreement_template_key: parsed.data.agreement_template_key.trim(),
     workflow_key: parsed.data.workflow_key?.trim() || null,
-    requires_technical_visit: parsed.data.requires_technical_visit ?? false,
+    requires_technical_visit: false,
     requires_quote: parsed.data.requires_quote ?? true,
     description: parsed.data.description?.trim() || null,
     control_points: parsed.data.control_points?.trim() || null,
@@ -72,7 +74,6 @@ export async function updateCeeSheet(input: unknown): Promise<AdminActionResult<
     presentation_template_key: parsed.data.presentation_template_key.trim(),
     agreement_template_key: parsed.data.agreement_template_key.trim(),
     workflow_key: parsed.data.workflow_key?.trim() || null,
-    requires_technical_visit: parsed.data.requires_technical_visit ?? false,
     requires_quote: parsed.data.requires_quote ?? true,
     description: parsed.data.description?.trim() || null,
     control_points: parsed.data.control_points?.trim() || null,
@@ -113,6 +114,54 @@ export async function toggleCeeSheetActive(input: unknown): Promise<AdminActionR
     return { ok: false, message: error.message };
   }
   revalidateAdminCee();
+  return { ok: true, data: parsed.data.sheetId };
+}
+
+export async function updateCeeSheetTechnicalVisitConfig(
+  input: unknown,
+): Promise<AdminActionResult<string>> {
+  const parsed = CeeSheetTechnicalVisitConfigSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Données invalides." };
+  }
+  await requireCeeAdminAccess();
+  const supabase = await createClient();
+
+  const requires = parsed.data.requires_technical_visit;
+  const keyTrim = parsed.data.technical_visit_template_key?.trim() ?? "";
+  const version = parsed.data.technical_visit_template_version;
+
+  if (requires) {
+    if (!keyTrim || version == null) {
+      return {
+        ok: false,
+        message: "Template et version obligatoires lorsque la visite technique est requise.",
+      };
+    }
+    const resolved = await resolveVisitTemplateByKeyAndVersionUnified(supabase, keyTrim, version);
+    if (!resolved) {
+      return {
+        ok: false,
+        message: `Aucun template publié « ${keyTrim} » en version ${version} (registry ou builder).`,
+      };
+    }
+  }
+  const { error } = await supabase
+    .from("cee_sheets")
+    .update({
+      requires_technical_visit: requires,
+      technical_visit_template_key: requires ? keyTrim : null,
+      technical_visit_template_version: requires ? version : null,
+    })
+    .eq("id", parsed.data.sheetId);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  revalidateAdminCee();
+  revalidatePath("/confirmateur");
+  revalidatePath("/technical-visits");
   return { ok: true, data: parsed.data.sheetId };
 }
 

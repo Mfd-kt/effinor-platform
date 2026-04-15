@@ -21,7 +21,6 @@ export type AdminCeeSheetFormValue = {
   presentation_template_key: string;
   agreement_template_key: string;
   workflow_key: string;
-  requires_technical_visit: boolean;
   requires_quote: boolean;
   description: string;
   control_points: string;
@@ -38,7 +37,6 @@ export const DEFAULT_ADMIN_CEE_SHEET_FORM: AdminCeeSheetFormValue = {
   presentation_template_key: "",
   agreement_template_key: "",
   workflow_key: "",
-  requires_technical_visit: false,
   requires_quote: true,
   description: "",
   control_points: "",
@@ -58,7 +56,6 @@ export function formFromSheet(sheet: AdminCeeSheetListItem | null): AdminCeeShee
     presentation_template_key: sheet.presentationTemplateKey ?? "",
     agreement_template_key: sheet.agreementTemplateKey ?? "",
     workflow_key: sheet.workflowKey ?? "",
-    requires_technical_visit: sheet.requiresTechnicalVisit,
     requires_quote: sheet.requiresQuote,
     description: sheet.description ?? "",
     control_points: sheet.controlPoints ?? "",
@@ -102,7 +99,6 @@ export function CeeSheetForm({
         presentation_template_key: form.presentation_template_key,
         agreement_template_key: form.agreement_template_key,
         workflow_key: form.workflow_key || null,
-        requires_technical_visit: form.requires_technical_visit,
         requires_quote: form.requires_quote,
         description: form.description || null,
         control_points: form.control_points || null,
@@ -130,7 +126,10 @@ export function CeeSheetForm({
     <Card className="border-border/80 shadow-sm">
       <CardHeader>
         <CardTitle>{form.id ? "Éditer la fiche" : "Nouvelle fiche CEE"}</CardTitle>
-        <CardDescription>Configuration métier, simulateur, templates et comportement du workflow.</CardDescription>
+        <CardDescription>
+          Configuration métier, simulateur, templates présentation / accord et comportement du workflow. La visite
+          technique dynamique se configure dans le panneau dédié sous ce formulaire.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {feedback ? (
@@ -189,10 +188,6 @@ export function CeeSheetForm({
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.is_commercial_active} onChange={(e) => patch("is_commercial_active", e.target.checked)} />
             Fiche commercialement active
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.requires_technical_visit} onChange={(e) => patch("requires_technical_visit", e.target.checked)} />
-            Visite technique requise
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.requires_quote} onChange={(e) => patch("requires_quote", e.target.checked)} />

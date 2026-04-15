@@ -23,7 +23,6 @@ import {
 } from "@/features/cee-workflows/components/agent-prospect-form";
 
 export type AgentSimulatorLeadSession = { leadId: string } & AgentProspectFormValue;
-import { AgentSheetSelector } from "@/features/cee-workflows/components/agent-sheet-selector";
 import { AgentSimulatorContextCard } from "@/features/cee-workflows/components/agent-simulator-context-card";
 import { AgentSheetSimulatorPanel } from "@/features/cee-workflows/components/agent-sheet-simulator-panel";
 import { AgentWorkflowActivityPanel } from "@/features/cee-workflows/components/agent-workflow-activity-panel";
@@ -364,7 +363,7 @@ export function AgentWorkstation({
       return (
         <EmptyState
           title="Aucune fiche active"
-          description="Sélectionnez ou configurez une fiche CEE active pour commencer."
+          description="Impossible de résoudre une fiche CEE pour ce poste. Vérifiez l’affectation équipe ou rechargez la page."
           icon={<TriangleAlert className="size-6" />}
         />
       );
@@ -372,11 +371,6 @@ export function AgentWorkstation({
 
     return (
       <>
-        <div className="space-y-3">
-          <div className="text-sm font-medium text-foreground">Mes fiches autorisées</div>
-          <AgentSheetSelector sheets={sheets} activeSheetId={activeSheetId} onSelect={setActiveSheetId} />
-        </div>
-
         <AgentWorkflowActivityPanel activity={activity} onResume={handleResume} />
 
       <Dialog open={simulatorOpen} onOpenChange={handleDialogOpenChange}>
@@ -531,7 +525,7 @@ export function AgentWorkstation({
     <div className="space-y-6">
       <PageHeader
         title="Poste Agent"
-        description="Suivi commercial (rappels) et dossiers CEE : vos opportunités et le simulateur sur vos fiches autorisées."
+        description="Suivi commercial (rappels) et dossiers CEE : le simulateur oriente vers la fiche adaptée (déstrat ou PAC) à l’enregistrement."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant="secondary" onClick={openNewCallback} className="gap-1.5">

@@ -23,6 +23,7 @@ describe("classifyCloserQueue", () => {
           restToCharge: 200,
           recommendedModel: "generfeu",
           lastContactAt: null,
+          phoneRdvAt: null,
           nextFollowUpAt: null,
           closerNotes: null,
           confirmateurNotes: null,
@@ -46,6 +47,7 @@ describe("classifyCloserQueue", () => {
           restToCharge: 100,
           recommendedModel: "generfeu",
           lastContactAt: null,
+          phoneRdvAt: null,
           nextFollowUpAt: "2026-04-11T09:00:00.000Z",
           closerNotes: null,
           confirmateurNotes: null,
@@ -69,6 +71,7 @@ describe("classifyCloserQueue", () => {
           restToCharge: 0,
           recommendedModel: "generfeu",
           lastContactAt: null,
+          phoneRdvAt: null,
           nextFollowUpAt: null,
           closerNotes: null,
           confirmateurNotes: null,
@@ -92,6 +95,7 @@ describe("classifyCloserQueue", () => {
           restToCharge: 500,
           recommendedModel: "teddington_ds3",
           lastContactAt: null,
+          phoneRdvAt: null,
           nextFollowUpAt: null,
           closerNotes: null,
           confirmateurNotes: null,
@@ -107,5 +111,40 @@ describe("classifyCloserQueue", () => {
     expect(queue.followUps).toHaveLength(1);
     expect(queue.signed).toHaveLength(1);
     expect(queue.lost).toHaveLength(1);
+  });
+
+  it("treats an overdue RDV téléphone (callback_at) as relance when next_follow_up is empty", () => {
+    const queue = classifyCloserQueue(
+      [
+        {
+          workflowId: "wf-cb",
+          leadId: "lead-cb",
+          companyName: "Callback Co",
+          civility: null,
+          contactName: null,
+          phone: null,
+          email: null,
+          sheetCode: "DESTRAT-01",
+          sheetLabel: "Destrat",
+          workflowStatus: "to_close",
+          updatedAt: "2026-04-11T10:00:00.000Z",
+          score: 80,
+          savingEuro: 1000,
+          restToCharge: 200,
+          recommendedModel: "generfeu",
+          lastContactAt: null,
+          phoneRdvAt: "2026-04-11T08:00:00.000Z",
+          nextFollowUpAt: null,
+          closerNotes: null,
+          confirmateurNotes: null,
+          closerHandoverNotes: null,
+          lossReason: null,
+        },
+      ],
+      "2026-04-11T12:30:00.000Z",
+    );
+
+    expect(queue.followUps).toHaveLength(1);
+    expect(queue.followUps[0]?.workflowId).toBe("wf-cb");
   });
 });

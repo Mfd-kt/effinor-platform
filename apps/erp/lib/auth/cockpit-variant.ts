@@ -10,6 +10,7 @@ export type CockpitVariant =
   | "closer"
   | "confirmer"
   | "sales_agent"
+  | "technician"
   | "default";
 
 /** Manager d’équipe CEE actif (membre `cee_sheet_team_members` avec rôle manager). */
@@ -41,5 +42,6 @@ export async function resolveCockpitVariant(access: AccessContext): Promise<Cock
   if (codes.includes("confirmer")) return "confirmer";
   if (await userIsActiveCeeTeamManager(access.userId)) return "manager";
   if (codes.includes("sales_agent")) return "sales_agent";
+  if (codes.includes("technician")) return "technician";
   return "default";
 }

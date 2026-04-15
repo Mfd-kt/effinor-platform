@@ -44,6 +44,8 @@ export async function getAdminCeeSheetDetail(
     agreementTemplateKey: sheet.agreement_template_key ?? null,
     workflowKey: sheet.workflow_key ?? null,
     requiresTechnicalVisit: sheet.requires_technical_visit ?? false,
+    technicalVisitTemplateKey: sheet.technical_visit_template_key ?? null,
+    technicalVisitTemplateVersion: sheet.technical_visit_template_version ?? null,
     requiresQuote: sheet.requires_quote ?? true,
     description: sheet.description ?? null,
     controlPoints: sheet.control_points ?? null,

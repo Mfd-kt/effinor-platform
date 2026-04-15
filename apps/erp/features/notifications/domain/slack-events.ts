@@ -28,6 +28,8 @@ export const SlackEventType = {
   READY_TO_INVOICE: "slack.finance.ready_to_invoice",
   TREASURY_ALERT: "slack.finance.treasury_alert",
   VT_SCHEDULED: "slack.vt.scheduled",
+  /** Démarrage effectif sur le terrain (`started_at`). */
+  VT_STARTED: "slack.vt.started",
   /** Rappel interne (cron) J-1 / ~H-2 avant une VT planifiée — pas de contact client. */
   VT_REMINDER_CRON: "slack.vt.reminder_cron",
   VT_PERFORMED: "slack.vt.performed",

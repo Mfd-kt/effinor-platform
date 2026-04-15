@@ -58,6 +58,7 @@ export const sidebarNavigation: SidebarNavEntry[] = [
       { href: "/settings/roles", label: "Rôles et permissions" },
       { href: "/settings/cee", label: "Réglages CEE" },
       { href: "/admin/cee-sheets", label: "Fiches CEE" },
+      { href: "/admin/technical-visit-templates", label: "Templates VT (builder)" },
       { href: "/settings/products", label: "Produits" },
     ],
   },

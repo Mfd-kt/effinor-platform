@@ -3,6 +3,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ceeSheetVtConfigStatusLabel,
+  resolveCeeSheetVtConfigStatus,
+} from "@/features/cee-workflows/lib/cee-sheet-vt-config-status";
 import type { AdminCeeSheetListItem } from "@/features/cee-workflows/queries/get-admin-cee-sheets";
 
 export function CeeSheetList({
@@ -35,6 +39,7 @@ export function CeeSheetList({
         ) : (
           sheets.map((sheet) => {
             const active = sheet.id === selectedSheetId;
+            const vtStatus = resolveCeeSheetVtConfigStatus(sheet);
             return (
               <div
                 key={sheet.id}
@@ -61,11 +66,29 @@ export function CeeSheetList({
                     ) : (
                       <Badge variant="destructive">Sans équipe</Badge>
                     )}
+                    <Badge
+                      variant={
+                        vtStatus === "not_required"
+                          ? "secondary"
+                          : vtStatus === "configured"
+                            ? "default"
+                            : "destructive"
+                      }
+                    >
+                      {ceeSheetVtConfigStatusLabel(vtStatus)}
+                    </Badge>
                   </div>
                   <div className="mt-2 grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
                     <div>Présentation: {sheet.presentationTemplateKey || "—"}</div>
                     <div>Accord: {sheet.agreementTemplateKey || "—"}</div>
-                    <div>Visite technique: {sheet.requiresTechnicalVisit ? "Oui" : "Non"}</div>
+                    <div>
+                      VT:{" "}
+                      {sheet.requiresTechnicalVisit
+                        ? sheet.technicalVisitTemplateKey
+                          ? `${sheet.technicalVisitTemplateKey} v${sheet.technicalVisitTemplateVersion ?? "—"}`
+                          : "requis · template à choisir"
+                        : "non requis"}
+                    </div>
                     <div>Devis: {sheet.requiresQuote ? "Oui" : "Non"}</div>
                   </div>
                 </button>

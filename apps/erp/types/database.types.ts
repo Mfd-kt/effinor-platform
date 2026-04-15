@@ -838,6 +838,8 @@ export interface Database {
           presentation_template_key: string | null;
           agreement_template_key: string | null;
           requires_technical_visit: boolean;
+          technical_visit_template_key: string | null;
+          technical_visit_template_version: number | null;
           requires_quote: boolean;
           workflow_key: string | null;
           is_commercial_active: boolean;
@@ -863,6 +865,8 @@ export interface Database {
           presentation_template_key?: string | null;
           agreement_template_key?: string | null;
           requires_technical_visit?: boolean;
+          technical_visit_template_key?: string | null;
+          technical_visit_template_version?: number | null;
           requires_quote?: boolean;
           workflow_key?: string | null;
           is_commercial_active?: boolean;
@@ -888,6 +892,8 @@ export interface Database {
           presentation_template_key?: string | null;
           agreement_template_key?: string | null;
           requires_technical_visit?: boolean;
+          technical_visit_template_key?: string | null;
+          technical_visit_template_version?: number | null;
           requires_quote?: boolean;
           workflow_key?: string | null;
           is_commercial_active?: boolean;
@@ -2383,6 +2389,88 @@ export interface Database {
         };
         Relationships: [];
       };
+      technical_visit_templates: {
+        Row: {
+          id: string;
+          cee_sheet_id: string | null;
+          template_key: string;
+          label: string;
+          description: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          cee_sheet_id?: string | null;
+          template_key: string;
+          label: string;
+          description?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          cee_sheet_id?: string | null;
+          template_key?: string;
+          label?: string;
+          description?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "technical_visit_templates_cee_sheet_id_fkey";
+            columns: ["cee_sheet_id"];
+            isOneToOne: false;
+            referencedRelation: "cee_sheets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      technical_visit_template_versions: {
+        Row: {
+          id: string;
+          template_id: string;
+          version_number: number;
+          status: string;
+          schema_json: Json;
+          created_at: string;
+          updated_at: string;
+          published_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          version_number: number;
+          status?: string;
+          schema_json: Json;
+          created_at?: string;
+          updated_at?: string;
+          published_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          version_number?: number;
+          status?: string;
+          schema_json?: Json;
+          created_at?: string;
+          updated_at?: string;
+          published_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "technical_visit_template_versions_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "technical_visit_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       technical_visits: {
         Row: {
           id: string;
@@ -2391,6 +2479,15 @@ export interface Database {
           beneficiary_id: string | null;
           workflow_id: string | null;
           created_by_user_id: string | null;
+          visit_template_key: string | null;
+          visit_template_version: number | null;
+          visit_schema_snapshot_json: Json | null;
+          form_answers_json: Json;
+          started_at: string | null;
+          completed_at: string | null;
+          access_granted_at: string | null;
+          locked_at: string | null;
+          locked_by: string | null;
           status: TechnicalVisitStatus;
           scheduled_at: string | null;
           performed_at: string | null;
@@ -2419,6 +2516,15 @@ export interface Database {
           beneficiary_id?: string | null;
           workflow_id?: string | null;
           created_by_user_id?: string | null;
+          visit_template_key?: string | null;
+          visit_template_version?: number | null;
+          visit_schema_snapshot_json?: Json | null;
+          form_answers_json?: Json;
+          started_at?: string | null;
+          completed_at?: string | null;
+          access_granted_at?: string | null;
+          locked_at?: string | null;
+          locked_by?: string | null;
           status?: TechnicalVisitStatus;
           scheduled_at?: string | null;
           performed_at?: string | null;
@@ -2447,6 +2553,15 @@ export interface Database {
           beneficiary_id?: string | null;
           workflow_id?: string | null;
           created_by_user_id?: string | null;
+          visit_template_key?: string | null;
+          visit_template_version?: number | null;
+          visit_schema_snapshot_json?: Json | null;
+          form_answers_json?: Json;
+          started_at?: string | null;
+          completed_at?: string | null;
+          access_granted_at?: string | null;
+          locked_at?: string | null;
+          locked_by?: string | null;
           status?: TechnicalVisitStatus;
           scheduled_at?: string | null;
           performed_at?: string | null;
@@ -2467,6 +2582,162 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      technical_visit_alerts: {
+        Row: {
+          id: string;
+          technical_visit_id: string;
+          alert_type: string;
+          severity: string;
+          title: string;
+          message: string;
+          status: string;
+          metadata: Json | null;
+          created_at: string;
+          updated_at: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          technical_visit_id: string;
+          alert_type: string;
+          severity: string;
+          title: string;
+          message: string;
+          status?: string;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          technical_visit_id?: string;
+          alert_type?: string;
+          severity?: string;
+          title?: string;
+          message?: string;
+          status?: string;
+          metadata?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+        };
+        Relationships: [];
+      };
+      technical_visit_audio_notes: {
+        Row: {
+          id: string;
+          technical_visit_id: string;
+          created_by_user_id: string;
+          audio_storage_path: string | null;
+          audio_public_url: string | null;
+          mime_type: string;
+          duration_seconds: number | null;
+          transcription_text: string | null;
+          transcription_status: string;
+          transcription_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          technical_visit_id: string;
+          created_by_user_id: string;
+          audio_storage_path?: string | null;
+          audio_public_url?: string | null;
+          mime_type: string;
+          duration_seconds?: number | null;
+          transcription_text?: string | null;
+          transcription_status?: string;
+          transcription_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          technical_visit_id?: string;
+          created_by_user_id?: string;
+          audio_storage_path?: string | null;
+          audio_public_url?: string | null;
+          mime_type?: string;
+          duration_seconds?: number | null;
+          transcription_text?: string | null;
+          transcription_status?: string;
+          transcription_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      technical_visit_geo_proofs: {
+        Row: {
+          id: string;
+          technical_visit_id: string;
+          kind: string;
+          latitude: number | null;
+          longitude: number | null;
+          accuracy_m: number | null;
+          client_captured_at: string | null;
+          server_recorded_at: string;
+          provider_error_code: string | null;
+          distance_to_site_m: number | null;
+          coherence:
+            | "on_site"
+            | "near_site"
+            | "far_from_site"
+            | "site_coords_missing"
+            | "geo_unavailable"
+            | "geo_refused";
+          worksite_latitude_snapshot: number | null;
+          worksite_longitude_snapshot: number | null;
+        };
+        Insert: {
+          id?: string;
+          technical_visit_id: string;
+          kind?: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          accuracy_m?: number | null;
+          client_captured_at?: string | null;
+          server_recorded_at?: string;
+          provider_error_code?: string | null;
+          distance_to_site_m?: number | null;
+          coherence:
+            | "on_site"
+            | "near_site"
+            | "far_from_site"
+            | "site_coords_missing"
+            | "geo_unavailable"
+            | "geo_refused";
+          worksite_latitude_snapshot?: number | null;
+          worksite_longitude_snapshot?: number | null;
+        };
+        Update: {
+          id?: string;
+          technical_visit_id?: string;
+          kind?: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          accuracy_m?: number | null;
+          client_captured_at?: string | null;
+          server_recorded_at?: string;
+          provider_error_code?: string | null;
+          distance_to_site_m?: number | null;
+          coherence?:
+            | "on_site"
+            | "near_site"
+            | "far_from_site"
+            | "site_coords_missing"
+            | "geo_unavailable"
+            | "geo_refused";
+          worksite_latitude_snapshot?: number | null;
+          worksite_longitude_snapshot?: number | null;
         };
         Relationships: [];
       };

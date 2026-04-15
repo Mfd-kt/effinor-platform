@@ -38,6 +38,7 @@ import type { ConfirmateurQualificationInput } from "@/features/cee-workflows/sc
 import { extractWorkflowSimulationMetrics } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
 import { AGENT_PAC_CATALOG_PRODUCT_CODE, getRecommendedProductCodes } from "@/features/products/domain/recommend";
 import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
+import { WorkflowTechnicalVisitCta } from "@/features/technical-visits/components/workflow-technical-visit-cta";
 
 function qualificationFromWorkflow(detail: ConfirmateurWorkflowDetailData | null): ConfirmateurQualificationInput {
   const raw = detail?.workflow.qualification_data_json;
@@ -108,12 +109,18 @@ export function ConfirmateurWorkflowFocusPanel({
   fullLead,
   destratProducts,
   sheetFilterId,
+  activeTechnicalVisitId,
+  visitTemplateAvailable,
+  workflowStatusAllowsTechnicalVisit,
 }: {
   detail: ConfirmateurWorkflowDetailData;
   fullLead: LeadDetailRow | null;
   destratProducts: SimulatorProductCardViewModel[];
   /** Id fiche CEE actif dans l’URL (retour file avec le même filtre). */
   sheetFilterId: string | null;
+  activeTechnicalVisitId: string | null;
+  visitTemplateAvailable: boolean;
+  workflowStatusAllowsTechnicalVisit: boolean;
 }) {
   const router = useRouter();
   const backHref = buildConfirmateurQueuePath(sheetFilterId);
@@ -237,6 +244,19 @@ export function ConfirmateurWorkflowFocusPanel({
 
       <div className="space-y-5">
         <ConfirmateurWorkflowDetail detail={detail} recommendedProduct={recommendedProduct} />
+
+        <WorkflowTechnicalVisitCta
+          workflowId={detail.workflow.id}
+          activeTechnicalVisitId={activeTechnicalVisitId}
+          visitTemplateAvailable={visitTemplateAvailable}
+          workflowStatusAllowsTechnicalVisit={workflowStatusAllowsTechnicalVisit}
+          createBlocked={handoffLeadGaps.length > 0}
+          createBlockedReason={
+            handoffLeadGaps.length > 0
+              ? "Complétez d’abord le lead (encadré « À compléter avant envoi au closer »)."
+              : null
+          }
+        />
 
         {fullLead ? (
           <CollapsibleSection title="Simulateur commercial — détail du calcul" defaultOpen={false}>

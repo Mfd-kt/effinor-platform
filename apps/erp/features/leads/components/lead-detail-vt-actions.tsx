@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { createTechnicalVisitFromLead } from "@/features/leads/actions/create-technical-visit-from-lead";
 import type { TechnicalVisitRef } from "@/features/leads/queries/get-technical-visits-for-lead";
@@ -50,6 +51,18 @@ export function LeadDetailVtActions({
     startTransition(async () => {
       const result = await createTechnicalVisitFromLead(leadId);
       if (result.ok) {
+        if (result.creationMode === "dynamic") {
+          toast.success("Visite technique dynamique créée", {
+            description: "Formulaire lié à la fiche CEE du workflow actif.",
+          });
+          if (result.warnings?.length) {
+            toast.message("Attention", { description: result.warnings.join(" ") });
+          }
+        } else {
+          toast.success("Visite technique créée", {
+            description: "Mode standard (pas de formulaire dynamique pour cette fiche).",
+          });
+        }
         router.push(`/technical-visits/${result.technicalVisitId}`);
         router.refresh();
         return;
@@ -64,9 +77,9 @@ export function LeadDetailVtActions({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <p className="max-w-xl text-muted-foreground text-sm leading-relaxed">
-            Une seule visite en cours à la fois sur ce dossier. Après un refus ou une annulation, vous
-            pourrez en créer une nouvelle. Si aucun confirmateur n’est encore indiqué sur le lead, votre
-            compte sera utilisé lors de la création.
+            Une seule visite « en cours » à la fois sur ce dossier (avant validation). Après une visite
+            validée, un refus ou une annulation, vous pourrez en ouvrir une nouvelle. Si aucun
+            confirmateur n’est encore indiqué sur le lead, votre compte sera utilisé lors de la création.
           </p>
 
           {consultationReadOnly ? (

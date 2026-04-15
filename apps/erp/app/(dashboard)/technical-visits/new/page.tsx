@@ -6,6 +6,7 @@ import { buildTechnicalVisitDefaultsFromLead } from "@/features/leads/lib/lead-t
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessTechnicalVisitsDirectoryNav } from "@/lib/auth/module-access";
+import { isTechnicianWithoutDeskVisitPrivileges } from "@/features/technical-visits/access";
 import { createClient } from "@/lib/supabase/server";
 import { TechnicalVisitForm } from "@/features/technical-visits/components/technical-visit-form";
 import { getTechnicalVisitFormOptions } from "@/features/technical-visits/queries/get-technical-visit-form-options";
@@ -28,6 +29,9 @@ export default async function NewTechnicalVisitPage({ searchParams }: PageProps)
   const options = await getTechnicalVisitFormOptions(
     access.kind === "authenticated" ? access : undefined,
   );
+
+  const statusAndAssignmentReadOnly =
+    access.kind === "authenticated" && isTechnicianWithoutDeskVisitPrivileges(access);
 
   let defaultValues = undefined;
   let leadMissing = false;
@@ -75,7 +79,15 @@ export default async function NewTechnicalVisitPage({ searchParams }: PageProps)
           mode="create"
           options={options}
           defaultValues={defaultValues}
+          statusAndAssignmentReadOnly={statusAndAssignmentReadOnly}
           className="max-w-4xl"
+          /*
+           * Règle métier : /technical-visits/new est un flux legacy.
+           * Une VT dynamique (avec template) doit être créée depuis un contexte
+           * workflow / fiche CEE qui fournit workflow_id, visit_template_key,
+           * visit_template_version et visit_schema_snapshot_json.
+           * dynamicSchema est volontairement omis ici (null / undefined).
+           */
         />
       )}
     </div>

@@ -17,6 +17,8 @@ describe("formFromSheet", () => {
         agreementTemplateKey: "agreement_pac_v1",
         workflowKey: "workflow_pac",
         requiresTechnicalVisit: true,
+        technicalVisitTemplateKey: null,
+        technicalVisitTemplateVersion: null,
         requiresQuote: true,
         description: "Description",
         controlPoints: "Controle",
