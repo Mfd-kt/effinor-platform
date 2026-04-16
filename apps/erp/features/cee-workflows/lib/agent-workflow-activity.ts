@@ -34,6 +34,7 @@ export type AgentActivityItem = {
   civility: string | null;
   contactName: string | null;
   phone: string | null;
+  callbackAt: string | null;
   email: string | null;
   address: string | null;
   city: string | null;
@@ -83,6 +84,7 @@ export function mapWorkflowToAgentActivityItem(
     civility?: string | null;
     contactName?: string | null;
     phone?: string | null;
+    callbackAt?: string | null;
     email?: string | null;
     address?: string | null;
     city?: string | null;
@@ -104,6 +106,7 @@ export function mapWorkflowToAgentActivityItem(
     civility: leadExtras?.civility ?? null,
     contactName: leadExtras?.contactName ?? null,
     phone: leadExtras?.phone ?? null,
+    callbackAt: leadExtras?.callbackAt ?? null,
     email: leadExtras?.email ?? null,
     address: leadExtras?.address ?? null,
     city: leadExtras?.city ?? null,

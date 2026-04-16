@@ -12,6 +12,7 @@ export type AgentProspectFormValue = {
   civility: string;
   contactName: string;
   phone: string;
+  callbackAt: string;
   email: string;
   address: string;
   city: string;
@@ -24,6 +25,7 @@ export const DEFAULT_AGENT_PROSPECT_FORM: AgentProspectFormValue = {
   civility: "",
   contactName: "",
   phone: "",
+  callbackAt: "",
   email: "",
   address: "",
   city: "",
@@ -145,6 +147,15 @@ export function AgentProspectForm({
           onChange={(next) => patch("postalCode", next)}
           placeholder="69000"
         />
+        <div className="md:col-span-2">
+          <Field
+            id="agent-callback-at"
+            label="Date et heure de rappel *"
+            value={value.callbackAt}
+            onChange={(next) => patch("callbackAt", next)}
+            type="datetime-local"
+          />
+        </div>
         <div className="md:col-span-2 space-y-1.5">
           <Label htmlFor="agent-notes">Notes rapides</Label>
           <Textarea

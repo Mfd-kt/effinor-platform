@@ -21,6 +21,7 @@ export function canSwitchLeadCeeSheetByAppRole(roleCodes: readonly string[]): bo
   return (
     roleCodes.includes("super_admin") ||
     roleCodes.includes("confirmer") ||
+    roleCodes.includes("confirmateur") ||
     roleCodes.includes("closer")
   );
 }

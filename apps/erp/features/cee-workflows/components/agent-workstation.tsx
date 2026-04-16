@@ -40,6 +40,7 @@ import type { SimulatorProductCardViewModel } from "@/features/products/domain/t
 import { formatHeatingModeLabelFr } from "@/features/leads/simulator/schemas/simulator.schema";
 import { CommercialCallbackSheet } from "@/features/commercial-callbacks/components/commercial-callback-sheet";
 import { CommercialCallbacksSection } from "@/features/commercial-callbacks/components/commercial-callbacks-section";
+import { isoToDatetimeLocal } from "@/lib/utils/datetime";
 import type {
   CallbackPerformanceStats,
   CommercialCallbackKpis,
@@ -76,6 +77,7 @@ function prospectFromActivity(item: AgentActivityItem): AgentProspectFormValue {
     civility: item.civility ?? "",
     contactName: item.contactName ?? "",
     phone: item.phone ?? "",
+    callbackAt: isoToDatetimeLocal(item.callbackAt),
     email: item.email ?? "",
     address: item.address ?? "",
     city: item.city ?? "",
@@ -227,7 +229,13 @@ export function AgentWorkstation({
     return destratProducts.find((product) => product.code === recommendation.primary) ?? null;
   }, [destratProducts, previewResult, simulatorDefinition.kind]);
 
-  const canSaveDraft = Boolean(activeSheet && prospect.companyName.trim() && prospect.contactName.trim() && prospect.phone.trim());
+  const canSaveDraft = Boolean(
+    activeSheet &&
+      prospect.companyName.trim() &&
+      prospect.contactName.trim() &&
+      prospect.phone.trim() &&
+      prospect.callbackAt.trim(),
+  );
   const canValidate = canSaveDraft && Boolean(previewResult) && workflowStatus !== "to_confirm";
   const canSend = canValidate && workflowStatus !== "to_confirm";
 

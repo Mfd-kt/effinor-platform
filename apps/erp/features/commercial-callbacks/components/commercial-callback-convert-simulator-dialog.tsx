@@ -41,6 +41,14 @@ import type { SimulatorProductCardViewModel } from "@/features/products/domain/t
 import { formatHeatingModeLabelFr } from "@/features/leads/simulator/schemas/simulator.schema";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
 
+function callbackRowToDatetimeLocal(row: CommercialCallbackRow): string {
+  const date = row.callback_date?.trim();
+  if (!date) return "";
+  const timeRaw = row.callback_time?.trim() || "09:00:00";
+  const hhmm = timeRaw.slice(0, 5);
+  return `${date}T${hhmm}`;
+}
+
 function formatCurrencyEur(value: number): string {
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -66,6 +74,7 @@ function prospectFromCallback(row: CommercialCallbackRow): AgentProspectFormValu
     civility: "",
     contactName: row.contact_name,
     phone: row.phone,
+    callbackAt: callbackRowToDatetimeLocal(row),
     email: row.email ?? "",
     address: "",
     city: "",
@@ -148,7 +157,11 @@ export function CommercialCallbackConvertSimulatorDialog({
   }, [destratProducts, previewResult, simulatorDefinition.kind]);
 
   const canSaveDraft = Boolean(
-    activeSheet && prospect.companyName.trim() && prospect.contactName.trim() && prospect.phone.trim(),
+    activeSheet &&
+      prospect.companyName.trim() &&
+      prospect.contactName.trim() &&
+      prospect.phone.trim() &&
+      prospect.callbackAt.trim(),
   );
   const canValidate = canSaveDraft && Boolean(previewResult);
 

@@ -20,6 +20,25 @@ export function LeadRealtimeListener({ leadId }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    let pendingRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const EDITING_GRACE_MS = 3500;
+    const getLastInputAt = () => {
+      const g = globalThis as typeof globalThis & {
+        __effinorLeadFormLastInputAtByLeadId?: Record<string, number>;
+      };
+      return g.__effinorLeadFormLastInputAtByLeadId?.[leadId] ?? 0;
+    };
+    const triggerRefreshSafely = () => {
+      const elapsed = Date.now() - getLastInputAt();
+      if (elapsed < EDITING_GRACE_MS) {
+        if (pendingRefreshTimer) clearTimeout(pendingRefreshTimer);
+        pendingRefreshTimer = setTimeout(() => {
+          if (!cancelled) router.refresh();
+        }, EDITING_GRACE_MS - elapsed + 50);
+        return;
+      }
+      router.refresh();
+    };
     const supabaseRef: {
       current: Awaited<ReturnType<typeof createClient>> | null;
     } = { current: null };
@@ -53,7 +72,7 @@ export function LeadRealtimeListener({ leadId }: Props) {
               toast.info("Statut mis à jour", { description: label });
             }
 
-            router.refresh();
+            triggerRefreshSafely();
           },
         )
         .subscribe();
@@ -61,6 +80,10 @@ export function LeadRealtimeListener({ leadId }: Props) {
 
     return () => {
       cancelled = true;
+      if (pendingRefreshTimer) {
+        clearTimeout(pendingRefreshTimer);
+        pendingRefreshTimer = null;
+      }
       const ch = channelRef.current;
       const sb = supabaseRef.current;
       if (ch && sb) sb.removeChannel(ch);

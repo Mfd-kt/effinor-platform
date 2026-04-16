@@ -13,7 +13,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getPublicSupabaseUrl } from "@/lib/supabase/public-env";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
-const MAX_FILES = 5;
 
 /** Évite les abus (SSRF) : seuls les fichiers audio du lead dans le bucket média sont acceptés. */
 function validateRecordingUrlsForLead(urls: string[], leadId: string): string | null {
@@ -96,12 +95,15 @@ export async function generateRecordingNotesFromLeadAction(input: {
     return { ok: false, message: leadError?.message ?? "Lead introuvable." };
   }
 
-  const urls = recordingUrls.filter((u) => typeof u === "string" && u.trim().length > 0).slice(0, MAX_FILES);
+  const urls = recordingUrls.filter((u) => typeof u === "string" && u.trim().length > 0);
   if (!urls.length) {
     return { ok: false, message: "Ajoutez au moins un fichier audio dans « Enregistrements audio »." };
   }
+  // Anti-mélange : même si plusieurs URLs arrivent, on transcrit uniquement la plus récente.
+  const latestUrl = urls[urls.length - 1]!;
+  const urlsToProcess = [latestUrl];
 
-  const urlError = validateRecordingUrlsForLead(urls, leadId);
+  const urlError = validateRecordingUrlsForLead(urlsToProcess, leadId);
   if (urlError) {
     return { ok: false, message: urlError };
   }
@@ -110,8 +112,8 @@ export async function generateRecordingNotesFromLeadAction(input: {
 
   const transcriptParts: string[] = [];
 
-  for (let i = 0; i < urls.length; i++) {
-    const audioUrl = urls[i];
+  for (let i = 0; i < urlsToProcess.length; i++) {
+    const audioUrl = urlsToProcess[i];
     const res = await fetch(audioUrl);
     if (!res.ok) {
       return { ok: false, message: `Téléchargement impossible pour un fichier audio (${res.status}).` };
@@ -135,7 +137,7 @@ export async function generateRecordingNotesFromLeadAction(input: {
 
     const text = typeof transcription === "string" ? transcription : transcription.text;
     if (text?.trim()) {
-      transcriptParts.push(urls.length > 1 ? `--- Enregistrement ${i + 1} ---\n${text.trim()}` : text.trim());
+      transcriptParts.push(text.trim());
     }
   }
 
@@ -151,7 +153,7 @@ export async function generateRecordingNotesFromLeadAction(input: {
       { role: "system", content: RECORDING_CALL_ANALYSIS_SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Voici la transcription brute de l'appel (un ou plusieurs segments) :\n\n${fullTranscript}`,
+        content: `Voici la transcription brute du dernier enregistrement d'appel :\n\n${fullTranscript}`,
       },
     ],
     max_completion_tokens: 8192,

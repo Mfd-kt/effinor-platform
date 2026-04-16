@@ -56,6 +56,8 @@ type LeadMediaFilesFieldProps = {
   onChange: (urls: string[]) => void;
   onPersist?: (urls: string[]) => Promise<{ ok: true } | { ok: false; message: string }>;
   icon?: "image" | "cadastre" | "audio";
+  /** Si true, un nouvel ajout remplace la liste existante (mode fichier unique). */
+  replaceExistingOnAdd?: boolean;
 };
 
 function fileLabelFromUrl(url: string): string {
@@ -177,6 +179,7 @@ export function LeadMediaFilesField({
   onChange,
   onPersist,
   icon = "image",
+  replaceExistingOnAdd = false,
 }: LeadMediaFilesFieldProps) {
   const fileInputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -209,26 +212,35 @@ export function LeadMediaFilesField({
       setError("Aucun fichier ne correspond au type attendu pour ce champ.");
       return;
     }
-    if (value.length + filtered.length > MAX_FILES) {
+    const incoming = replaceExistingOnAdd ? [filtered[filtered.length - 1]!] : filtered;
+    if (!replaceExistingOnAdd && value.length + incoming.length > MAX_FILES) {
       setError(`Maximum ${MAX_FILES} fichiers.`);
       return;
     }
     setError(null);
     setUploading(true);
-    const { urls, error: upErr } = await uploadFilesToLeadMedia(leadId, kind, filtered);
+    const { urls, error: upErr } = await uploadFilesToLeadMedia(leadId, kind, incoming);
     setUploading(false);
     if (upErr) {
       setError(upErr);
       return;
     }
-    const nextValue = [...value, ...urls];
+    const nextValue = replaceExistingOnAdd ? urls : [...value, ...urls];
+    const previousValue = value;
     onChange(nextValue);
     if (onPersist) {
       const saved = await onPersist(nextValue);
       if (!saved.ok) {
-        onChange(value);
+        onChange(previousValue);
+        // Nettoyage best-effort des nouveaux fichiers si la persistance échoue.
+        await Promise.all(urls.map((url) => removeFileFromLeadMedia(url)));
         setError(saved.message);
+        return;
       }
+    }
+    if (replaceExistingOnAdd && previousValue.length > 0) {
+      // Remplacement confirmé : suppression best-effort des anciens fichiers du bucket.
+      await Promise.all(previousValue.map((url) => removeFileFromLeadMedia(url)));
     }
   }
 
@@ -242,7 +254,7 @@ export function LeadMediaFilesField({
   function onDragEnter(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (uploading || value.length >= MAX_FILES) return;
+    if (uploading || (!replaceExistingOnAdd && value.length >= MAX_FILES)) return;
     dragCounterRef.current += 1;
     if (e.dataTransfer.types?.includes("Files")) {
       setIsDragging(true);
@@ -262,7 +274,7 @@ export function LeadMediaFilesField({
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!uploading && value.length < MAX_FILES) {
+    if (!uploading && (replaceExistingOnAdd || value.length < MAX_FILES)) {
       e.dataTransfer.dropEffect = "copy";
     } else {
       e.dataTransfer.dropEffect = "none";
@@ -274,7 +286,7 @@ export function LeadMediaFilesField({
     e.stopPropagation();
     dragCounterRef.current = 0;
     setIsDragging(false);
-    if (uploading || value.length >= MAX_FILES) return;
+    if (uploading || (!replaceExistingOnAdd && value.length >= MAX_FILES)) return;
     const dropped = Array.from(e.dataTransfer.files ?? []);
     if (!dropped.length) return;
     await addFilesFromList(dropped);
@@ -337,8 +349,8 @@ export function LeadMediaFilesField({
             ref={inputRef}
             type="file"
             accept={accept}
-            multiple
-            disabled={uploading || value.length >= MAX_FILES}
+            multiple={!replaceExistingOnAdd}
+            disabled={uploading || (!replaceExistingOnAdd && value.length >= MAX_FILES)}
             onChange={onPickFiles}
             aria-label={`Choisir des fichiers pour ${label}`}
             className={cn(
@@ -371,9 +383,9 @@ export function LeadMediaFilesField({
             ref={inputRef}
             type="file"
             accept={accept}
-            multiple
+            multiple={!replaceExistingOnAdd}
             className="sr-only"
-            disabled={uploading || value.length >= MAX_FILES}
+            disabled={uploading || (!replaceExistingOnAdd && value.length >= MAX_FILES)}
             onChange={onPickFiles}
             aria-label={`Choisir des fichiers pour ${label}`}
           />
@@ -409,12 +421,20 @@ export function LeadMediaFilesField({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={uploading || value.length >= MAX_FILES}
+                disabled={uploading || (!replaceExistingOnAdd && value.length >= MAX_FILES)}
                 onClick={() => inputRef.current?.click()}
               >
-                {uploading ? "Téléversement…" : "Ajouter des fichiers"}
+                {uploading
+                  ? "Téléversement…"
+                  : replaceExistingOnAdd
+                    ? "Remplacer le fichier"
+                    : "Ajouter des fichiers"}
               </Button>
-              <p className="text-xs text-muted-foreground">Glisser-déposer ou bouton pour compléter la liste.</p>
+              <p className="text-xs text-muted-foreground">
+                {replaceExistingOnAdd
+                  ? "Glisser-déposer ou bouton pour remplacer le fichier actuel."
+                  : "Glisser-déposer ou bouton pour compléter la liste."}
+              </p>
             </div>
           </div>
         </>

@@ -29,6 +29,7 @@ import {
 } from "@/features/cee-workflows/lib/sync-agent-quick-note-to-internal-notes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { datetimeLocalToIso } from "@/lib/utils/datetime";
 import type { CeeSheetWorkflowRow } from "@/features/cee-workflows/types";
 import type { Json, Database } from "@/types/database.types";
 
@@ -89,6 +90,7 @@ async function upsertAgentLead(
       civility?: string;
       contactName: string;
       phone: string;
+      callbackAt: string;
       email?: string;
       address?: string;
       city?: string;
@@ -101,6 +103,10 @@ async function upsertAgentLead(
   const address = input.prospect.address?.trim() ?? "";
   const city = input.prospect.city?.trim() ?? "";
   const postalCode = input.prospect.postalCode?.trim() ?? "";
+  const callbackAtIso = datetimeLocalToIso(input.prospect.callbackAt);
+  if (!callbackAtIso) {
+    throw new Error("Date/heure de rappel invalide.");
+  }
 
   const leadPatch: Database["public"]["Tables"]["leads"]["Update"] = {
     company_name: input.prospect.companyName.trim(),
@@ -119,6 +125,7 @@ async function upsertAgentLead(
     cee_sheet_id: input.ceeSheetId,
     lead_channel: "phone",
     lead_origin: "agent_workstation",
+    callback_at: callbackAtIso,
     assigned_to: input.userId,
     owner_user_id: input.userId,
   };
@@ -154,6 +161,7 @@ async function upsertAgentLead(
     cee_sheet_id: input.ceeSheetId,
     lead_channel: "phone",
     lead_origin: "agent_workstation",
+    callback_at: callbackAtIso,
     company_name: input.prospect.companyName.trim(),
     contact_name: input.prospect.contactName.trim(),
     first_name: firstName,

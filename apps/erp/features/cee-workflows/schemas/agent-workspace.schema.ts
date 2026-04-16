@@ -16,6 +16,7 @@ export const AgentProspectSchema = z.object({
   civility: z.string().max(20).optional(),
   contactName: z.string().min(1, "Le nom du contact est obligatoire.").max(200),
   phone: z.string().min(1, "Le téléphone est obligatoire.").max(50),
+  callbackAt: z.string().min(1, "La date et heure de rappel est obligatoire."),
   email: z
     .string()
     .optional()

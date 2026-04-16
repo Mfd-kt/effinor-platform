@@ -21,6 +21,7 @@ import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import { canAccessCeeWorkflowsModule } from "@/lib/auth/module-access";
 import { isRestrictedAgentLeadConsultationReadOnly } from "@/lib/auth/restricted-agent-lead-edit";
 import { createClient } from "@/lib/supabase/server";
+import { isoToDatetimeLocal } from "@/lib/utils/datetime";
 import { cn } from "@/lib/utils";
 
 type AgentSimulatorLeadSession = { leadId: string } & AgentProspectFormValue;
@@ -32,6 +33,7 @@ function buildSimulatorSessionFromLead(lead: LeadDetailRow): AgentSimulatorLeadS
     civility: lead.civility ?? "",
     contactName: contactDisplayName(lead) ?? lead.contact_name?.trim() ?? "",
     phone: lead.phone ?? "",
+    callbackAt: isoToDatetimeLocal(lead.callback_at),
     email: lead.email ?? "",
     address: lead.worksite_address ?? "",
     city: lead.worksite_city ?? "",

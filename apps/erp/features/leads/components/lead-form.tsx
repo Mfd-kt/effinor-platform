@@ -127,6 +127,16 @@ export function LeadForm({
   const recordingFileUrls = stringArrayFromLeadJson(recordingFilesRaw as Json);
   const recordingNotesWatched = useWatch({ control, name: "recording_notes" }) ?? "";
 
+  useEffect(() => {
+    if (mode !== "edit" || !leadId || readOnly) return;
+    const g = globalThis as typeof globalThis & {
+      __effinorLeadFormLastInputAtByLeadId?: Record<string, number>;
+    };
+    const map = g.__effinorLeadFormLastInputAtByLeadId ?? {};
+    map[leadId] = Date.now();
+    g.__effinorLeadFormLastInputAtByLeadId = map;
+  }, [mode, leadId, readOnly, watchedValues]);
+
   /** Contenu sérialisé des `defaultValues` (props) — stable si les données ne changent pas, même si l’objet est recréé. */
   const serverSnapshotKey =
     mode === "edit" && defaultValues
@@ -327,8 +337,15 @@ export function LeadForm({
                     label="Enregistrements audio"
                     accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm,.opus,.aiff,.wma"
                     icon="audio"
+                    replaceExistingOnAdd
                     value={stringArrayFromLeadJson(field.value as Json)}
-                    onChange={field.onChange}
+                    onChange={(urls) => {
+                      field.onChange(urls);
+                      // Un nouvel audio invalide l'ancienne analyse : on repart proprement.
+                      setValue("recording_notes", "", { shouldDirty: true });
+                      setValue("ai_lead_summary", "", { shouldDirty: true });
+                      setValue("ai_lead_score", undefined, { shouldDirty: true });
+                    }}
                     onPersist={(urls) =>
                       updateLeadMediaFieldAction({
                         leadId,
@@ -353,9 +370,8 @@ export function LeadForm({
                 <div className="space-y-1">
                   <Label htmlFor="recording-notes-preview">Aperçu mis en page</Label>
                   <p className="text-xs text-muted-foreground">
-                    La synthèse propose de compléter les champs encore vides (coordonnées, adresses, intérêt,
-                    score, informations utiles pour la suite) à partir de ce qui est dit dans l’audio. Relancez
-                    l’analyse pour mettre à jour.
+                    Un seul audio est conservé : tout nouvel enregistrement remplace le précédent et remet
+                    l’analyse à zéro. Relancez ensuite l’analyse pour générer la transcription à jour.
                   </p>
                 </div>
                 {leadId && !readOnly ? (

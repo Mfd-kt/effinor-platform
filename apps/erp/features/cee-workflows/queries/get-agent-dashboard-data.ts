@@ -47,6 +47,7 @@ export async function getAgentDraftWorkflows(access: AccessContext) {
         ? (contactDisplayName(workflow.lead) ?? workflow.lead.contact_name?.trim() ?? null)
         : null,
       phone: workflow.lead?.phone ?? null,
+      callbackAt: workflow.lead?.callback_at ?? null,
       email: workflow.lead?.email ?? null,
       address: workflow.lead?.worksite_address ?? null,
       city: workflow.lead?.worksite_city ?? null,
@@ -75,6 +76,7 @@ export async function getAgentRecentValidatedWorkflows(access: AccessContext) {
           ? (contactDisplayName(workflow.lead) ?? workflow.lead.contact_name?.trim() ?? null)
           : null,
         phone: workflow.lead?.phone ?? null,
+        callbackAt: workflow.lead?.callback_at ?? null,
         email: workflow.lead?.email ?? null,
         address: workflow.lead?.worksite_address ?? null,
         city: workflow.lead?.worksite_city ?? null,
@@ -117,6 +119,7 @@ export async function getAgentDashboardData(
         ? (contactDisplayName(workflow.lead) ?? workflow.lead.contact_name?.trim() ?? null)
         : null,
       phone: workflow.lead?.phone ?? null,
+      callbackAt: workflow.lead?.callback_at ?? null,
       email: workflow.lead?.email ?? null,
       address: workflow.lead?.worksite_address ?? null,
       city: workflow.lead?.worksite_city ?? null,
