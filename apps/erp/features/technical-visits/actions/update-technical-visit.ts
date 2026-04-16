@@ -59,7 +59,7 @@ export async function updateTechnicalVisit(
   if (worksiteTouched) {
     const { data: existing, error: fetchErr } = await supabase
       .from("technical_visits")
-      .select("worksite_address, worksite_postal_code, worksite_city")
+      .select("worksite_address, worksite_postal_code, worksite_city, worksite_country, geocoding_attempts")
       .eq("id", id)
       .maybeSingle();
 
@@ -81,11 +81,22 @@ export async function updateTechnicalVisit(
           : existing.worksite_postal_code,
       worksite_city:
         rest.worksite_city !== undefined ? rest.worksite_city?.trim() || null : existing.worksite_city,
+      worksite_country: existing.worksite_country?.trim() || null,
     };
 
-    const { lat, lng } = await geocodeWorksiteForSave(merged);
+    if (!merged.worksite_country) {
+      merged.worksite_country = "France";
+      (patch as Record<string, unknown>).worksite_country = "France";
+    }
+
+    const { lat, lng, geocoding_status, geocoding_provider, geocoding_error } = await geocodeWorksiteForSave(merged);
     patch.worksite_latitude = lat;
     patch.worksite_longitude = lng;
+    (patch as Record<string, unknown>).geocoding_status = geocoding_status;
+    (patch as Record<string, unknown>).geocoding_provider = geocoding_provider;
+    (patch as Record<string, unknown>).geocoding_error = geocoding_error;
+    (patch as Record<string, unknown>).geocoding_updated_at = new Date().toISOString();
+    (patch as Record<string, unknown>).geocoding_attempts = (existing.geocoding_attempts ?? 0) + 1;
   }
 
   const pureTechnician =

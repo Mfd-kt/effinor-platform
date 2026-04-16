@@ -67,6 +67,15 @@ export default async function TechnicalVisitDetailPage({ params }: PageProps) {
   const [options, leadForWorksite, audioNotes, dynamicSchemaResolved] = await Promise.all([
     getTechnicalVisitFormOptions(auth, {
       visitTechnicianProfileId: row.technician_id,
+      visitId: row.id,
+      targetScheduledAt: row.scheduled_at,
+      targetTimeSlot: row.time_slot,
+      targetWorksiteLatitude: row.worksite_latitude,
+      targetWorksiteLongitude: row.worksite_longitude,
+      targetWorksiteAddress: row.worksite_address,
+      targetWorksitePostalCode: row.worksite_postal_code,
+      targetWorksiteCity: row.worksite_city,
+      targetWorksiteCountry: row.worksite_country,
     }),
     row.lead_id ? getLeadById(row.lead_id, auth) : Promise.resolve(null),
     !technicianRestricted ? getTechnicalVisitAudioNotes(row.id) : Promise.resolve([]),

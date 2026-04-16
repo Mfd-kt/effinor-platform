@@ -7,29 +7,50 @@ import {
   getTechnicalVisitFieldAccessLevelForAuthenticatedViewer,
   sanitizeTechnicalVisitDetailForRestrictedTechnician,
 } from "@/features/technical-visits/access";
-import { geocodeFranceAddressServer } from "@/features/technical-visits/lib/nominatim-geocode-server";
-import { computeOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
-import { buildWorksiteGeocodeFallbackQueriesFromFields } from "@/features/technical-visits/lib/worksite-geocode-query";
+import { ensureProfileGeocoded } from "@/features/technical-visits/lib/ensure-profile-geocoded";
+import { ensureVisitGeocoded } from "@/features/technical-visits/lib/ensure-visit-geocoded";
+import { getVisitLocationQuality } from "@/features/technical-visits/lib/location-validation";
+import {
+  getDistanceContextFromAccess,
+  getVisitDistanceForContext,
+  type TechnicianDistanceProfile,
+} from "@/features/technical-visits/lib/visit-distance-context";
 import { getLatestVisitStartGeoProof } from "@/features/technical-visits/queries/get-latest-visit-start-geo-proof";
 import type { TechnicalVisitDetailRow } from "@/features/technical-visits/types";
 
-async function hydrateOfficeDistance(row: TechnicalVisitDetailRow): Promise<TechnicalVisitDetailRow> {
-  const direct = computeOfficeDistanceKm(row.worksite_latitude, row.worksite_longitude);
-  if (direct != null) {
-    return { ...row, office_distance_km: direct };
-  }
-  const queries = buildWorksiteGeocodeFallbackQueriesFromFields({
-    worksite_address: row.worksite_address,
-    worksite_postal_code: row.worksite_postal_code,
-    worksite_city: row.worksite_city,
-  });
-  for (const q of queries) {
-    const coords = await geocodeFranceAddressServer(q);
-    if (coords) {
-      return { ...row, office_distance_km: computeOfficeDistanceKm(coords.lat, coords.lng) };
+async function hydrateContextDistance(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  row: TechnicalVisitDetailRow,
+  context: "technician" | "admin",
+  technician: TechnicianDistanceProfile,
+): Promise<TechnicalVisitDetailRow> {
+  let worksiteLat = row.worksite_latitude;
+  let worksiteLng = row.worksite_longitude;
+  if (worksiteLat == null || worksiteLng == null) {
+    const ensured = await ensureVisitGeocoded(supabase, row.id);
+    if (ensured.lat != null && ensured.lng != null) {
+      worksiteLat = ensured.lat;
+      worksiteLng = ensured.lng;
     }
   }
-  return { ...row, office_distance_km: null };
+  const distance = getVisitDistanceForContext({
+    context,
+    technician,
+    visit: { site_lat: worksiteLat, site_lng: worksiteLng },
+  });
+  return {
+    ...row,
+    worksite_latitude: worksiteLat,
+    worksite_longitude: worksiteLng,
+    distance_km: distance.distanceKm,
+    formatted_distance: distance.formattedDistance,
+    distance_origin_type: distance.originType,
+    visit_location_quality: getVisitLocationQuality({
+      ...row,
+      worksite_latitude: worksiteLat,
+      worksite_longitude: worksiteLng,
+    }),
+  };
 }
 
 export async function getTechnicalVisitById(
@@ -62,7 +83,19 @@ export async function getTechnicalVisitById(
   }
 
   const rowRaw = (data as unknown as TechnicalVisitDetailRow | null) ?? null;
-  const row = rowRaw ? await hydrateOfficeDistance(rowRaw) : null;
+  const context = getDistanceContextFromAccess(access);
+  const technician =
+    context === "technician" && access?.kind === "authenticated"
+      ? (await ensureProfileGeocoded(supabase, access.userId),
+        ((
+          await supabase
+            .from("profiles")
+            .select("address_line_1, postal_code, city, country, latitude, longitude")
+            .eq("id", access.userId)
+            .maybeSingle()
+        ).data ?? null))
+      : null;
+  const row = rowRaw ? await hydrateContextDistance(supabase, rowRaw, context, technician) : null;
   if (!row) {
     return null;
   }

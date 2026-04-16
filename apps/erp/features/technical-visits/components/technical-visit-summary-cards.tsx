@@ -10,7 +10,6 @@ import {
 import { buttonVariants } from "@/components/ui/button-variants";
 import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { formatOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
 
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
 import type { TechnicalVisitDetailRow } from "@/features/technical-visits/types";
@@ -31,11 +30,8 @@ export function TechnicalVisitSummaryCards({
     visit.technician?.email?.trim() ||
     null;
   const previewPlace = [visit.worksite_postal_code, visit.worksite_city].filter(Boolean).join(" ").trim();
-  const officeDistance = formatOfficeDistanceKm(
-    visit.worksite_latitude,
-    visit.worksite_longitude,
-    visit.office_distance_km,
-  );
+  const distanceLabel = visit.formatted_distance ?? "Distance indisponible";
+  const distanceTitle = visit.distance_origin_type === "technician" ? "Distance" : "Distance siège";
 
   return (
     <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -112,8 +108,9 @@ export function TechnicalVisitSummaryCards({
       </Card>
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <CardDescription>Distance bureau</CardDescription>
-          <CardTitle className="text-base font-normal">{officeDistance}</CardTitle>
+          <CardDescription>{distanceTitle}</CardDescription>
+          <CardTitle className="text-base font-normal">{distanceLabel}</CardTitle>
+          <p className="text-xs text-muted-foreground">Qualité localisation: {visit.visit_location_quality ?? "inconnu"}</p>
         </CardHeader>
       </Card>
     </div>

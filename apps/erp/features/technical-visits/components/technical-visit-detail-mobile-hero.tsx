@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
 import type { TechnicalVisitDetailRow } from "@/features/technical-visits/types";
-import { formatOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
 import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -23,11 +22,8 @@ export function TechnicalVisitDetailMobileHero({
   pilotageAlertSummary?: { openCount: number; criticalCount: number } | null;
 }) {
   const locality = [visit.worksite_postal_code, visit.worksite_city].filter(Boolean).join(" ").trim();
-  const officeDistance = formatOfficeDistanceKm(
-    visit.worksite_latitude,
-    visit.worksite_longitude,
-    visit.office_distance_km,
-  );
+  const distanceLabel = visit.formatted_distance ?? "Distance indisponible";
+  const distanceTitle = visit.distance_origin_type === "technician" ? "Distance" : "Distance siège";
 
   return (
     <header
@@ -73,7 +69,7 @@ export function TechnicalVisitDetailMobileHero({
             ) : null}
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">Distance bureau: {officeDistance}</p>
+        <p className="text-xs text-muted-foreground">{distanceTitle}: {distanceLabel}</p>
       </div>
 
       {footer ? <div className="pt-1">{footer}</div> : null}

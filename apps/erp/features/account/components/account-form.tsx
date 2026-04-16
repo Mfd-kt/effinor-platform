@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getProfileLocationQuality } from "@/features/technical-visits/lib/location-validation";
 
 export type AccountProfile = {
   email: string;
@@ -26,6 +27,13 @@ export type AccountProfile = {
   phone: string | null;
   job_title: string | null;
   avatar_url: string | null;
+  address_line_1: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  geocoding_status?: string | null;
 };
 
 export function AccountForm({ profile }: { profile: AccountProfile }) {
@@ -37,12 +45,29 @@ export function AccountForm({ profile }: { profile: AccountProfile }) {
   const [fullName, setFullName] = useState(profile.full_name ?? "");
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [jobTitle, setJobTitle] = useState(profile.job_title ?? "");
+  const [addressLine1, setAddressLine1] = useState(profile.address_line_1 ?? "");
+  const [postalCode, setPostalCode] = useState(profile.postal_code ?? "");
+  const [city, setCity] = useState(profile.city ?? "");
+  const [country, setCountry] = useState(profile.country ?? "France");
+  const locationQuality = getProfileLocationQuality(profile);
 
   useEffect(() => {
     setFullName(profile.full_name ?? "");
     setPhone(profile.phone ?? "");
     setJobTitle(profile.job_title ?? "");
-  }, [profile.full_name, profile.phone, profile.job_title]);
+    setAddressLine1(profile.address_line_1 ?? "");
+    setPostalCode(profile.postal_code ?? "");
+    setCity(profile.city ?? "");
+    setCountry(profile.country ?? "France");
+  }, [
+    profile.full_name,
+    profile.phone,
+    profile.job_title,
+    profile.address_line_1,
+    profile.postal_code,
+    profile.city,
+    profile.country,
+  ]);
 
   const [profileResult, profileAction, profilePending] = useActionState(
     async (_prev: UpdateMyProfileResult | null, formData: FormData) => {
@@ -168,6 +193,59 @@ export function AccountForm({ profile }: { profile: AccountProfile }) {
                 placeholder="Ex. Chargé d’affaires"
               />
             </div>
+            <div className="space-y-2 border-t pt-4">
+              <Label htmlFor="addressLine1">Adresse</Label>
+              <Input
+                id="addressLine1"
+                name="addressLine1"
+                value={addressLine1}
+                onChange={(e) => setAddressLine1(e.target.value)}
+                autoComplete="street-address"
+                placeholder="Ex. 1 Avenue de l'Europe"
+              />
+              <p className="text-xs text-muted-foreground">
+                Cette adresse sert de point de départ pour le calcul de distance côté technicien.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="postalCode">Code postal</Label>
+                <Input
+                  id="postalCode"
+                  name="postalCode"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  autoComplete="postal-code"
+                  placeholder="94320"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">Ville</Label>
+                <Input
+                  id="city"
+                  name="city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  autoComplete="address-level2"
+                  placeholder="Thiais"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Pays</Label>
+              <Input
+                id="country"
+                name="country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                autoComplete="country-name"
+                placeholder="France"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Qualité localisation:{" "}
+              <span className="font-medium text-foreground">{locationQuality}</span>
+            </p>
             {profileResult ? (
               <p
                 className={cn(

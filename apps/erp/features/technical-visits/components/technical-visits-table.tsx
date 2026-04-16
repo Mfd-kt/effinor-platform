@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TechnicalVisitAdminDeleteButton } from "@/features/technical-visits/components/technical-visit-admin-delete-button";
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
-import { formatOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
 import { isTechnicalVisitInProgress } from "@/features/technical-visits/lib/visit-in-progress";
 import type { TechnicalVisitListRow } from "@/features/technical-visits/types";
 
@@ -37,6 +36,7 @@ type TechnicalVisitsTableProps = {
    * Sinon tri par défaut sur la date de création.
    */
   preserveDataOrder?: boolean;
+  distanceHeaderLabel?: string;
   className?: string;
 };
 
@@ -44,6 +44,7 @@ export function TechnicalVisitsTable({
   data,
   canAdminDelete = false,
   preserveDataOrder = false,
+  distanceHeaderLabel = "Distance siège",
   className,
 }: TechnicalVisitsTableProps) {
   const router = useRouter();
@@ -145,17 +146,19 @@ export function TechnicalVisitsTable({
         ),
       },
       {
-        id: "distance_office",
-        header: "Km bureau",
-        enableSorting: false,
+        id: "distance",
+        header: distanceHeaderLabel,
+        accessorFn: (row) => row.distance_km ?? Number.POSITIVE_INFINITY,
+        sortingFn: "basic",
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-muted-foreground text-sm">
-            {formatOfficeDistanceKm(
-              row.original.worksite_latitude,
-              row.original.worksite_longitude,
-              row.original.office_distance_km,
-            )}
-          </span>
+          <div className="space-y-0.5">
+            <span className="whitespace-nowrap text-muted-foreground text-sm">
+              {row.original.formatted_distance ?? "Distance indisponible"}
+            </span>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
+              {row.original.visit_location_quality ?? "inconnu"}
+            </p>
+          </div>
         ),
       },
       {
@@ -168,7 +171,7 @@ export function TechnicalVisitsTable({
         ),
       },
     ],
-    [canAdminDelete],
+    [canAdminDelete, distanceHeaderLabel],
   );
 
   useEffect(() => {

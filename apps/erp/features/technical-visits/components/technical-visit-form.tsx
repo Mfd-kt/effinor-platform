@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { HeatingModeField } from "@/features/leads/components/heating-mode-field";
+import { applyRecommendedTechnicianAction } from "@/features/technical-visits/actions/apply-recommended-technician";
 import { createTechnicalVisit } from "@/features/technical-visits/actions/create-technical-visit";
 import { saveTechnicalVisitHybrid } from "@/features/technical-visits/actions/save-technical-visit-hybrid";
 import { TechnicalVisitAudioNotesSection } from "@/features/technical-visits/components/technical-visit-audio-notes-section";
@@ -40,6 +41,7 @@ import { DynamicVisitFormRenderer } from "@/features/technical-visits/dynamic/dy
 import type { DynamicAnswers } from "@/features/technical-visits/dynamic/visibility";
 import { regionFromWorksiteOrHeadOfficePostalCode } from "@/lib/fr-postal-region";
 import { cn } from "@/lib/utils";
+import type { ApplyRecommendedTechnicianInput } from "@/features/technical-visits/services/apply-recommended-technician.service";
 
 const selectClassName = cn(
   "flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm md:min-h-10 md:py-2",
@@ -80,8 +82,10 @@ export function TechnicalVisitForm({
   audioNotes,
 }: TechnicalVisitFormProps) {
   const router = useRouter();
+  const [applyRecommendedPending, startApplyRecommendedTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const dynamicAnswersRef = useRef<DynamicAnswers>(initialDynamicAnswers ?? {});
+  const autoSelectedRecommendedRef = useRef(false);
   const hasDynamic = Boolean(dynamicSchema);
 
   const form = useForm<TechnicalVisitInsertInput>({
@@ -112,6 +116,95 @@ export function TechnicalVisitForm({
     }
     return options.profiles.find((p) => p.id === id)?.label ?? id;
   }, [technicianIdWatched, options.profiles, options.technicianOrphanOption]);
+
+  const reco = options.recommendation;
+  const recommendedId = reco.recommendedTechnician?.technicianId ?? "";
+  const technicianFieldId = technicianIdWatched?.trim() ?? "";
+  const showRecommendedApplyButton = useMemo(() => {
+    if (readOnly || statusAndAssignmentReadOnly) return false;
+    if (reco.availabilityState !== "ready" || !recommendedId) return false;
+    if (mode === "create") {
+      return !technicianFieldId;
+    }
+    return reco.selectedTechnicianStatus?.reason !== "recommended";
+  }, [
+    readOnly,
+    statusAndAssignmentReadOnly,
+    reco.availabilityState,
+    reco.selectedTechnicianStatus?.reason,
+    recommendedId,
+    mode,
+    technicianFieldId,
+  ]);
+
+  const emphasizeRecommendedReplace = useMemo(
+    () => mode === "edit" && reco.selectedTechnicianStatus?.reason === "no_longer_eligible",
+    [mode, reco.selectedTechnicianStatus?.reason],
+  );
+
+  const showAlreadyRecommendedNote = useMemo(() => {
+    if (readOnly || statusAndAssignmentReadOnly) return false;
+    if (reco.availabilityState !== "ready" || !recommendedId) return false;
+    if (mode !== "create") return false;
+    return Boolean(technicianFieldId) && technicianFieldId === recommendedId;
+  }, [
+    readOnly,
+    statusAndAssignmentReadOnly,
+    reco.availabilityState,
+    recommendedId,
+    mode,
+    technicianFieldId,
+  ]);
+
+  const handleApplyRecommendedTechnician = useCallback(() => {
+    if (readOnly || statusAndAssignmentReadOnly) return;
+    if (mode === "edit" && !visitId) return;
+
+    startApplyRecommendedTransition(async () => {
+      const v = form.getValues();
+      const uiDisplayedRecommendedTechnicianId = reco.recommendedTechnician?.technicianId ?? null;
+      const base = {
+        scheduled_at: v.scheduled_at,
+        time_slot: v.time_slot,
+        worksite_address: v.worksite_address,
+        worksite_postal_code: v.worksite_postal_code,
+        worksite_city: v.worksite_city,
+        worksite_country: "France",
+        uiDisplayedRecommendedTechnicianId,
+      };
+      const input: ApplyRecommendedTechnicianInput =
+        mode === "create"
+          ? { mode: "create", ...base, currentFormTechnicianId: v.technician_id }
+          : { mode: "edit", visitId: visitId!, ...base };
+
+      const res = await applyRecommendedTechnicianAction(input);
+      if (!res.ok) {
+        toast.error(res.message);
+        if (res.status === "rejected_stale" || res.status === "rejected_no_recommendation") {
+          router.refresh();
+        }
+        return;
+      }
+      toast.success(res.message);
+      if (res.status === "validated_for_form" && res.technician?.id) {
+        form.setValue("technician_id", res.technician.id, { shouldDirty: true, shouldValidate: true });
+      }
+      if (res.status === "applied") {
+        if (res.technician?.id) {
+          form.setValue("technician_id", res.technician.id, { shouldDirty: true, shouldValidate: true });
+        }
+        router.refresh();
+      }
+    });
+  }, [
+    readOnly,
+    statusAndAssignmentReadOnly,
+    mode,
+    visitId,
+    form,
+    reco.recommendedTechnician,
+    router,
+  ]);
 
   /** Liaisons figées (édition ou création depuis une fiche lead) : champs masqués, valeurs inchangées à l’enregistrement. */
   const liaisonFieldsLocked =
@@ -159,6 +252,17 @@ export function TechnicalVisitForm({
       form.setValue("status", "to_schedule", { shouldDirty: true, shouldValidate: true });
     }
   }, [readOnly, statusAndAssignmentReadOnly, scheduledAtWatched, timeSlotValue, form]);
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    if (autoSelectedRecommendedRef.current) return;
+    const selected = (form.getValues("technician_id") ?? "").trim();
+    if (selected) return;
+    const rec = options.recommendation.recommendedTechnician;
+    if (!rec || options.recommendation.availabilityState !== "ready") return;
+    form.setValue("technician_id", rec.technicianId, { shouldDirty: true, shouldValidate: true });
+    autoSelectedRecommendedRef.current = true;
+  }, [mode, options.recommendation, form]);
 
   async function onSubmit(values: TechnicalVisitInsertInput) {
     setFormError(null);
@@ -314,6 +418,67 @@ export function TechnicalVisitForm({
               </div>
               <div className="space-y-2.5 md:space-y-2">
                 <Label htmlFor="technician_id">Technicien</Label>
+                <div
+                  className={cn(
+                    "rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground",
+                    emphasizeRecommendedReplace &&
+                      "border-amber-500/50 bg-amber-500/10 text-foreground dark:border-amber-400/40",
+                  )}
+                >
+                  {reco.availabilityState === "insufficient_context" ? (
+                    <p>{reco.message}</p>
+                  ) : reco.recommendedTechnician ? (
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">
+                        Technicien recommandé: {reco.recommendedTechnician.fullName}
+                      </p>
+                      <p>
+                        Score {reco.recommendedTechnician.score}
+                        {reco.recommendedTechnician.distanceKm != null
+                          ? ` · Domicile→chantier ${reco.recommendedTechnician.distanceKm.toLocaleString("fr-FR")} km`
+                          : ""}
+                        {reco.recommendedTechnician.conflictingVisitDistanceKm != null
+                          ? ` · Inter-visites ${reco.recommendedTechnician.conflictingVisitDistanceKm.toLocaleString("fr-FR")} km`
+                          : ""}
+                      </p>
+                      <p>{reco.recommendedTechnician.recommendationReason}</p>
+                    </div>
+                  ) : (
+                    <p>{reco.message ?? "Aucun technicien recommandé."}</p>
+                  )}
+                  {mode === "edit" && reco.selectedTechnicianStatus ? (
+                    <p className="mt-2">
+                      {reco.selectedTechnicianStatus.reason === "recommended"
+                        ? "Toujours recommandé."
+                        : reco.selectedTechnicianStatus.reason === "eligible_not_recommended"
+                          ? "Un technicien mieux classé est disponible."
+                          : reco.selectedTechnicianStatus.reason === "no_longer_eligible"
+                            ? "Le technicien affecté n’est plus éligible."
+                            : "Technicien actuel introuvable dans la liste."}
+                    </p>
+                  ) : null}
+                  {showAlreadyRecommendedNote ? (
+                    <p className="mt-2 text-foreground/80">
+                      Le technicien sélectionné correspond déjà au recommandé.
+                    </p>
+                  ) : null}
+                  {showRecommendedApplyButton ? (
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        variant={emphasizeRecommendedReplace ? "default" : "secondary"}
+                        size="sm"
+                        className={cn(emphasizeRecommendedReplace && "w-full sm:w-auto")}
+                        disabled={applyRecommendedPending}
+                        onClick={handleApplyRecommendedTechnician}
+                      >
+                        {mode === "create"
+                          ? "Affecter le technicien recommandé"
+                          : "Remplacer par le technicien recommandé"}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
                 <select
                   id="technician_id"
                   className={selectClassName}
@@ -326,11 +491,32 @@ export function TechnicalVisitForm({
                       {options.technicianOrphanOption.label} (pas rôle « Technicien »)
                     </option>
                   ) : null}
-                  {options.profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
+                  {options.profiles.map((p) => {
+                    const reasonLabel =
+                      p.eligibility_reason === "out_of_home_range"
+                        ? "Hors rayon domicile"
+                        : p.eligibility_reason === "blocked_by_unavailability"
+                          ? "Indisponible"
+                          : p.eligibility_reason === "too_far_from_same_day_visit"
+                            ? "Trop loin de l’autre visite du jour"
+                            : p.eligibility_reason === "missing_location"
+                              ? "Coordonnées manquantes"
+                              : p.eligibility_reason === "blocked_by_existing_visit"
+                                ? "Conflit avec visite existante"
+                                : "";
+                    const distanceInfo =
+                      p.distance_km != null ? ` · Domicile→chantier ${p.distance_km.toLocaleString("fr-FR")} km` : "";
+                    const conflictInfo =
+                      p.conflicting_visit_distance_km != null
+                        ? ` · Inter-visites ${p.conflicting_visit_distance_km.toLocaleString("fr-FR")} km`
+                        : "";
+                    const suffix = p.is_eligible === false ? ` (${reasonLabel})` : "";
+                    return (
+                      <option key={p.id} value={p.id} disabled={p.is_eligible === false}>
+                        {`${p.label}${suffix}${distanceInfo}${conflictInfo}`}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </>

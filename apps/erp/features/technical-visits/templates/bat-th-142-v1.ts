@@ -78,7 +78,8 @@ export const BAT_TH_142_V1: VisitTemplateSchema = {
           order: 7,
           readonly: true,
           editable: false,
-          hint: "Capturée automatiquement par le terminal",
+          hint:
+            "Capturée par le terminal ou préremplie depuis la fiche ; à l’enregistrement, les coordonnées sont recopiées sur la visite (distance / cartes). Format : latitude, longitude.",
         },
       ],
     },

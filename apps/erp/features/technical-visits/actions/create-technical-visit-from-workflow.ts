@@ -256,13 +256,19 @@ export async function createTechnicalVisitFromWorkflow(
     insertRow.technician_id = technicianId;
   }
 
-  const { lat, lng } = await geocodeWorksiteForSave({
+  const geo = await geocodeWorksiteForSave({
     worksite_address: insertRow.worksite_address,
     worksite_postal_code: insertRow.worksite_postal_code,
     worksite_city: insertRow.worksite_city,
+    worksite_country: insertRow.worksite_country,
   });
-  insertRow.worksite_latitude = lat;
-  insertRow.worksite_longitude = lng;
+  insertRow.worksite_latitude = geo.lat;
+  insertRow.worksite_longitude = geo.lng;
+  insertRow.geocoding_status = geo.geocoding_status;
+  insertRow.geocoding_provider = geo.geocoding_provider;
+  insertRow.geocoding_error = geo.geocoding_error;
+  insertRow.geocoding_updated_at = new Date().toISOString();
+  insertRow.geocoding_attempts = 1;
 
   const { data: vt, error: insertError } = await supabase
     .from("technical_visits")

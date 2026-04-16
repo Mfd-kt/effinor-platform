@@ -55,13 +55,19 @@ export async function createTechnicalVisit(
     .maybeSingle();
   row.workflow_id = leadRow?.current_workflow_id ?? null;
 
-  const { lat, lng } = await geocodeWorksiteForSave({
+  const geo = await geocodeWorksiteForSave({
     worksite_address: row.worksite_address,
     worksite_postal_code: row.worksite_postal_code,
     worksite_city: row.worksite_city,
+    worksite_country: row.worksite_country,
   });
-  row.worksite_latitude = lat;
-  row.worksite_longitude = lng;
+  row.worksite_latitude = geo.lat;
+  row.worksite_longitude = geo.lng;
+  row.geocoding_status = geo.geocoding_status;
+  row.geocoding_provider = geo.geocoding_provider;
+  row.geocoding_error = geo.geocoding_error;
+  row.geocoding_updated_at = new Date().toISOString();
+  row.geocoding_attempts = 1;
 
   const { data, error } = await supabase.from("technical_visits").insert(row).select().single();
 

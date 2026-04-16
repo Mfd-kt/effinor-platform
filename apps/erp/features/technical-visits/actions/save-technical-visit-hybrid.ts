@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { buildLegacyPatch } from "@/features/technical-visits/dynamic/legacy-sync";
 import { serverRecalculateAnswers } from "@/features/technical-visits/dynamic/server-recalculate";
 import { geocodeWorksiteForSave } from "@/features/technical-visits/lib/geocode-worksite-for-save";
+import { parseSiteGpsString } from "@/features/technical-visits/lib/parse-site-gps";
 import { clearLifecycleTimestampsWhenStatusMovesToPlanning } from "@/features/technical-visits/lib/lifecycle-save-sync";
 import { updateFromTechnicalVisitForm } from "@/features/technical-visits/lib/map-to-db";
 import { TechnicalVisitUpdateSchema } from "@/features/technical-visits/schemas/technical-visit.schema";
@@ -58,7 +59,9 @@ export async function saveTechnicalVisitHybrid(input: {
 
   const { data: beforeRow } = await supabase
     .from("technical_visits")
-    .select("status, vt_reference, scheduled_at, lead_id, technician_id, started_at")
+    .select(
+      "status, vt_reference, scheduled_at, lead_id, technician_id, started_at, worksite_address, worksite_postal_code, worksite_city, worksite_country, geocoding_attempts",
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -74,40 +77,77 @@ export async function saveTechnicalVisitHybrid(input: {
     }
   }
 
-  const worksiteTouched =
-    "worksite_address" in rest ||
-    "worksite_postal_code" in rest ||
-    "worksite_city" in rest;
-
-  if (worksiteTouched) {
-    const { data: existing, error: fetchErr } = await supabase
-      .from("technical_visits")
-      .select("worksite_address, worksite_postal_code, worksite_city")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (fetchErr) return { ok: false, message: fetchErr.message };
-    if (!existing) return { ok: false, message: "Visite technique introuvable." };
-
-    const merged = {
-      worksite_address: rest.worksite_address !== undefined ? rest.worksite_address?.trim() || null : existing.worksite_address,
-      worksite_postal_code: rest.worksite_postal_code !== undefined ? rest.worksite_postal_code?.trim() || null : existing.worksite_postal_code,
-      worksite_city: rest.worksite_city !== undefined ? rest.worksite_city?.trim() || null : existing.worksite_city,
-    };
-
-    const { lat, lng } = await geocodeWorksiteForSave(merged);
-    patch.worksite_latitude = lat;
-    patch.worksite_longitude = lng;
-  }
+  let recalculated: Record<string, unknown> | null = null;
+  const legacySyncPatch: Record<string, unknown> = {};
 
   if (dynamicSchema && dynamicAnswers) {
-    const recalculated = serverRecalculateAnswers(dynamicSchema, dynamicAnswers);
+    recalculated = serverRecalculateAnswers(dynamicSchema, dynamicAnswers);
     (patch as Record<string, unknown>).form_answers_json = recalculated as unknown as Json;
-
-    const legacySync = buildLegacyPatch(dynamicSchema, recalculated);
-    for (const [col, val] of Object.entries(legacySync)) {
+    Object.assign(legacySyncPatch, buildLegacyPatch(dynamicSchema, recalculated));
+    for (const [col, val] of Object.entries(legacySyncPatch)) {
       (patch as Record<string, unknown>)[col] = val;
     }
+  }
+
+  if (!beforeRow) {
+    return { ok: false, message: "Visite technique introuvable." };
+  }
+
+  const legacySyncTouchesWorksite = [
+    "worksite_address",
+    "worksite_postal_code",
+    "worksite_city",
+    "worksite_country",
+  ].some((k) => k in legacySyncPatch);
+
+  const worksiteTouchedForm =
+    "worksite_address" in rest || "worksite_postal_code" in rest || "worksite_city" in rest;
+  const worksiteTouched = worksiteTouchedForm || legacySyncTouchesWorksite;
+
+  const merged = {
+    worksite_address:
+      patch.worksite_address !== undefined
+        ? ((patch.worksite_address as string | null) ?? "").trim() || null
+        : beforeRow.worksite_address,
+    worksite_postal_code:
+      patch.worksite_postal_code !== undefined
+        ? ((patch.worksite_postal_code as string | null) ?? "").trim() || null
+        : beforeRow.worksite_postal_code,
+    worksite_city:
+      patch.worksite_city !== undefined
+        ? ((patch.worksite_city as string | null) ?? "").trim() || null
+        : beforeRow.worksite_city,
+    worksite_country:
+      patch.worksite_country !== undefined
+        ? ((patch.worksite_country as string | null) ?? "").trim() || null
+        : beforeRow.worksite_country,
+  };
+
+  if (!merged.worksite_country?.trim()) {
+    merged.worksite_country = "France";
+    (patch as Record<string, unknown>).worksite_country = "France";
+  }
+
+  const siteGpsParsed = parseSiteGpsString(recalculated?.site_gps ?? dynamicAnswers?.site_gps);
+
+  if (siteGpsParsed) {
+    patch.worksite_latitude = siteGpsParsed.lat;
+    patch.worksite_longitude = siteGpsParsed.lng;
+    (patch as Record<string, unknown>).geocoding_status = "complete_geocoded";
+    (patch as Record<string, unknown>).geocoding_provider = "site_gps";
+    (patch as Record<string, unknown>).geocoding_error = null;
+    (patch as Record<string, unknown>).geocoding_updated_at = new Date().toISOString();
+    (patch as Record<string, unknown>).geocoding_attempts = (beforeRow.geocoding_attempts ?? 0) + 1;
+  } else if (worksiteTouched) {
+    const { lat, lng, geocoding_status, geocoding_provider, geocoding_error } =
+      await geocodeWorksiteForSave(merged);
+    patch.worksite_latitude = lat;
+    patch.worksite_longitude = lng;
+    (patch as Record<string, unknown>).geocoding_status = geocoding_status;
+    (patch as Record<string, unknown>).geocoding_provider = geocoding_provider;
+    (patch as Record<string, unknown>).geocoding_error = geocoding_error;
+    (patch as Record<string, unknown>).geocoding_updated_at = new Date().toISOString();
+    (patch as Record<string, unknown>).geocoding_attempts = (beforeRow.geocoding_attempts ?? 0) + 1;
   }
 
   const pureTechnician =

@@ -23,6 +23,7 @@ import {
   getTechnicalVisitsRealtimeSubscriptionForList,
 } from "@/features/technical-visits/queries/get-technical-visits";
 import { canAdminSoftDeleteTechnicalVisit } from "@/features/technical-visits/access";
+import { getDistanceContextFromAccess } from "@/features/technical-visits/lib/visit-distance-context";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessTechnicalVisitsDirectoryNav } from "@/lib/auth/module-access";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -78,6 +79,7 @@ export default async function TechnicalVisitsPage({ searchParams }: PageProps) {
   };
   const hrefListView = buildTechnicalVisitsListUrl({ ...urlBase, view: "list" });
   const hrefMapView = buildTechnicalVisitsListUrl({ ...urlBase, view: "map" });
+  const distanceHeaderLabel = getDistanceContextFromAccess(access) === "technician" ? "Distance" : "Distance siège";
 
   let visits;
   try {
@@ -212,6 +214,7 @@ export default async function TechnicalVisitsPage({ searchParams }: PageProps) {
                   data={visitsForView}
                   canAdminDelete={canAdminDeleteVt}
                   preserveDataOrder={listBucket === "active"}
+                  distanceHeaderLabel={distanceHeaderLabel}
                 />
               </div>
             </>

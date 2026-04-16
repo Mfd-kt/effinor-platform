@@ -16,7 +16,7 @@ export default async function AccountPage() {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("email, full_name, phone, job_title, avatar_url")
+    .select("email, full_name, phone, job_title, avatar_url, address_line_1, postal_code, city, country, latitude, longitude, geocoding_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -35,7 +35,7 @@ export default async function AccountPage() {
     <div>
       <PageHeader
         title="Mon compte"
-        description="Photo, téléphone, nom et fonction — visibles dans l’application selon les écrans."
+        description="Photo, coordonnées et adresse technicien — utilisées pour le calcul de distance."
       />
       <AccountForm profile={profile} />
     </div>

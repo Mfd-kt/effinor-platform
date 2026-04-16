@@ -26,10 +26,6 @@ export default async function NewTechnicalVisitPage({ searchParams }: PageProps)
   if (access.kind !== "authenticated" || !(await canAccessTechnicalVisitsDirectoryNav(access))) {
     notFound();
   }
-  const options = await getTechnicalVisitFormOptions(
-    access.kind === "authenticated" ? access : undefined,
-  );
-
   const statusAndAssignmentReadOnly =
     access.kind === "authenticated" && isTechnicianWithoutDeskVisitPrivileges(access);
 
@@ -48,6 +44,20 @@ export default async function NewTechnicalVisitPage({ searchParams }: PageProps)
       leadMissing = true;
     }
   }
+
+  const options = await getTechnicalVisitFormOptions(
+    access.kind === "authenticated" ? access : undefined,
+    {
+      targetScheduledAt: defaultValues?.scheduled_at ?? null,
+      targetTimeSlot: defaultValues?.time_slot ?? null,
+      targetWorksiteLatitude: null,
+      targetWorksiteLongitude: null,
+      targetWorksiteAddress: defaultValues?.worksite_address ?? null,
+      targetWorksitePostalCode: defaultValues?.worksite_postal_code ?? null,
+      targetWorksiteCity: defaultValues?.worksite_city ?? null,
+      targetWorksiteCountry: "France",
+    },
+  );
 
   return (
     <div>

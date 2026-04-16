@@ -9,7 +9,6 @@ import { TechnicalVisitAccessBadge } from "@/features/technical-visits/component
 import { Badge } from "@/components/ui/badge";
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
 import { buildingTypePreviewFromFormAnswers } from "@/features/technical-visits/lib/building-type-preview";
-import { formatOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
 import { isTechnicalVisitInProgress } from "@/features/technical-visits/lib/visit-in-progress";
 import type { TechnicalVisitListRow } from "@/features/technical-visits/types";
 import { formatDateFr } from "@/lib/format";
@@ -28,11 +27,8 @@ export function TechnicalVisitMobileCard({
     (visit.surface_m2 != null ? `Surface ${visit.surface_m2} m²` : null);
   const isToday = isTechnicalVisitScheduledTodayParis(visit);
   const tech = visit.technician_label?.trim();
-  const officeDistance = formatOfficeDistanceKm(
-    visit.worksite_latitude,
-    visit.worksite_longitude,
-    visit.office_distance_km,
-  );
+  const distanceLabel = visit.formatted_distance ?? "Distance indisponible";
+  const distanceTitle = visit.distance_origin_type === "technician" ? "Distance" : "Distance siège";
 
   return (
     <article
@@ -91,7 +87,7 @@ export function TechnicalVisitMobileCard({
             {visit.region ? <span className="text-muted-foreground"> · {visit.region}</span> : null}
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">Distance bureau: {officeDistance}</p>
+        <p className="text-xs text-muted-foreground">{distanceTitle}: {distanceLabel}</p>
 
         {tech ? (
           <div className="flex items-center gap-2 text-muted-foreground">
