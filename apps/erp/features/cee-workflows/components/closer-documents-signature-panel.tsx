@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { Clock, Copy, Download, Eye, Mail, RefreshCw, Send, Stamp } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -134,7 +135,13 @@ export function CloserDocumentsSignaturePanel({
         workflowId: detail.workflow.id,
         leadId: detail.workflow.lead_id,
       });
-      setFeedback(result.ok ? "Pack commercial généré." : result.message);
+      if (result.ok) {
+        setFeedback("Pack commercial généré.");
+        toast.success("Pack commercial généré.");
+      } else {
+        setFeedback(result.message);
+        toast.error(result.message);
+      }
       if (result.ok) {
         onUpdated();
       }
@@ -191,7 +198,13 @@ export function CloserDocumentsSignaturePanel({
                   comment: "Relance closer depuis le panneau signature",
                 });
 
-      setFeedback(result.ok ? "Action enregistrée." : result.message);
+      if (result.ok) {
+        setFeedback("Action enregistrée.");
+        toast.success("Action enregistrée.");
+      } else {
+        setFeedback(result.message);
+        toast.error(result.message);
+      }
       if (result.ok) {
         onUpdated();
       }
@@ -220,6 +233,11 @@ export function CloserDocumentsSignaturePanel({
             {presentation || accord ? "Régénérer le pack commercial" : "Générer le pack commercial"}
           </Button>
         </div>
+        {feedback ? (
+          <div className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            {feedback}
+          </div>
+        ) : null}
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-lg border px-3 py-3">
             <div className="font-medium">Présentation</div>
@@ -326,9 +344,6 @@ export function CloserDocumentsSignaturePanel({
           La signature électronique n’est pas entièrement branchée : le flux utilise pour l’instant un fallback email tracé dans l’historique.
         </div>
 
-        {feedback ? (
-          <div className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">{feedback}</div>
-        ) : null}
       </CardContent>
     </Card>
   );

@@ -44,6 +44,18 @@ function humanizePdfError(message: string): string {
   return oneLine;
 }
 
+function toSafeStorageSlug(input: string): string {
+  const ascii = input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const cleaned = ascii
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+  return cleaned || "document";
+}
+
 async function uploadPdf(
   supabase: Awaited<ReturnType<typeof createClient>>,
   storagePath: string,
@@ -218,7 +230,7 @@ export async function generateLeadStudyPdf(
   }
 
   const supabase = await createClient();
-  const slug = lead.company_name.replaceAll(/\s+/g, "-").toLowerCase();
+  const slug = toSafeStorageSlug(lead.company_name);
 
   // ── Delete all previous documents for this lead ──
 
