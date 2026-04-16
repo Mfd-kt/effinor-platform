@@ -12,8 +12,6 @@ describe("SaveConfirmateurQualificationSchema", () => {
         coherence_simulation: true,
         technical_feasibility: true,
         missing_information: "",
-        confirmateur_notes: "RAS",
-        closer_handover_notes: "Client chaud",
         requires_technical_visit_override: null,
         quote_required_override: null,
       },

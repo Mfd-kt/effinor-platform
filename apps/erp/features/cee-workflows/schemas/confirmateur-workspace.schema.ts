@@ -15,8 +15,6 @@ const qualificationRecord = z.object({
   coherence_simulation: z.boolean(),
   technical_feasibility: z.boolean(),
   missing_information: z.string().max(5000).optional().nullable(),
-  confirmateur_notes: z.string().max(10000).optional().nullable(),
-  closer_handover_notes: z.string().max(10000).optional().nullable(),
   requires_technical_visit_override: z.boolean().nullable().optional(),
   quote_required_override: z.boolean().nullable().optional(),
 });

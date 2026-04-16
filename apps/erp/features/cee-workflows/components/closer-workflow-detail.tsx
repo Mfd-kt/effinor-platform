@@ -32,12 +32,6 @@ export function CloserWorkflowDetail({
       workflow.simulation_result_json,
     );
   }, [detail.leadDetail, workflow.simulation_result_json]);
-  const q =
-    workflow.qualification_data_json &&
-    typeof workflow.qualification_data_json === "object" &&
-    !Array.isArray(workflow.qualification_data_json)
-      ? (workflow.qualification_data_json as Record<string, unknown>)
-      : {};
   const missingInformationText = missingInformationForCloserDisplay(workflow.qualification_data_json);
 
   return (
@@ -103,22 +97,6 @@ export function CloserWorkflowDetail({
             <div className="font-medium">Informations manquantes (confirmateur)</div>
             <div className="text-muted-foreground whitespace-pre-wrap">
               {missingInformationText ?? "Aucune information manquante signalée."}
-            </div>
-          </div>
-          <div>
-            <div className="font-medium">Notes confirmateur</div>
-            <div className="text-muted-foreground whitespace-pre-wrap">
-              {typeof q.confirmateur_notes === "string" && q.confirmateur_notes.trim()
-                ? q.confirmateur_notes
-                : "Aucune note confirmateur."}
-            </div>
-          </div>
-          <div>
-            <div className="font-medium">Transmission closer</div>
-            <div className="text-muted-foreground whitespace-pre-wrap">
-              {typeof q.closer_handover_notes === "string" && q.closer_handover_notes.trim()
-                ? q.closer_handover_notes
-                : "Aucune note de transmission."}
             </div>
           </div>
         </CardContent>

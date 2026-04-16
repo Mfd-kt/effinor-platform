@@ -24,7 +24,6 @@ import {
   sendConfirmateurWorkflowToCloser,
 } from "@/features/cee-workflows/actions/confirmateur-actions";
 import {
-  buildConfirmateurHandoverDraftFromSimulation,
   isWorkflowQualificationDataEmpty,
   mergeLeadFormDefaultsFromWorkflowSimulation,
   simulationResultHasData,
@@ -45,7 +44,6 @@ function qualificationFromWorkflow(detail: ConfirmateurWorkflowDetailData | null
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     const wf = detail?.workflow;
     const simOk = wf ? simulationResultHasData(wf.simulation_result_json) : false;
-    const handover = wf ? buildConfirmateurHandoverDraftFromSimulation(wf) : "";
     return {
       ...DEFAULT_CONFIRMATEUR_QUALIFICATION,
       ...(simOk
@@ -54,7 +52,6 @@ function qualificationFromWorkflow(detail: ConfirmateurWorkflowDetailData | null
             technical_feasibility: true,
           }
         : {}),
-      ...(handover ? { closer_handover_notes: handover } : {}),
     };
   }
 
@@ -68,8 +65,6 @@ function qualificationFromWorkflow(detail: ConfirmateurWorkflowDetailData | null
     coherence_simulation: src.coherence_simulation === true,
     technical_feasibility: src.technical_feasibility === true,
     missing_information: typeof src.missing_information === "string" ? src.missing_information : "",
-    confirmateur_notes: typeof src.confirmateur_notes === "string" ? src.confirmateur_notes : "",
-    closer_handover_notes: typeof src.closer_handover_notes === "string" ? src.closer_handover_notes : "",
     requires_technical_visit_override:
       typeof src.requires_technical_visit_override === "boolean"
         ? src.requires_technical_visit_override
@@ -87,18 +82,7 @@ function qualificationFromWorkflow(detail: ConfirmateurWorkflowDetailData | null
       ...base,
       coherence_simulation: true,
       technical_feasibility: true,
-      closer_handover_notes:
-        base.closer_handover_notes?.trim() ||
-        (wf ? buildConfirmateurHandoverDraftFromSimulation(wf) : "") ||
-        base.closer_handover_notes,
     };
-  }
-
-  if (!base.closer_handover_notes?.trim() && wf && simOk) {
-    const draft = buildConfirmateurHandoverDraftFromSimulation(wf);
-    if (draft) {
-      return { ...base, closer_handover_notes: draft };
-    }
   }
 
   return base;

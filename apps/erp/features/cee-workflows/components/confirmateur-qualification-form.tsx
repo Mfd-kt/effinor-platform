@@ -12,8 +12,6 @@ export const DEFAULT_CONFIRMATEUR_QUALIFICATION: ConfirmateurQualificationInput 
   coherence_simulation: false,
   technical_feasibility: false,
   missing_information: "",
-  confirmateur_notes: "",
-  closer_handover_notes: "",
   requires_technical_visit_override: null,
   quote_required_override: null,
 };
@@ -133,24 +131,6 @@ export function ConfirmateurQualificationForm({
             value={value.missing_information ?? ""}
             onChange={(e) => patch("missing_information", e.target.value)}
             className="min-h-20"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="confirmateur-notes">Notes confirmateur</Label>
-          <Textarea
-            id="confirmateur-notes"
-            value={value.confirmateur_notes ?? ""}
-            onChange={(e) => patch("confirmateur_notes", e.target.value)}
-            className="min-h-24"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="closer-handover">Notes de transmission closer</Label>
-          <Textarea
-            id="closer-handover"
-            value={value.closer_handover_notes ?? ""}
-            onChange={(e) => patch("closer_handover_notes", e.target.value)}
-            className="min-h-24"
           />
         </div>
       </CardContent>

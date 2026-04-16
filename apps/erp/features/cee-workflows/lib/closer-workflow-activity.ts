@@ -22,8 +22,6 @@ export type CloserQueueItem = {
   phoneRdvAt: string | null;
   nextFollowUpAt: string | null;
   closerNotes: string | null;
-  confirmateurNotes: string | null;
-  closerHandoverNotes: string | null;
   lossReason: string | null;
 };
 
@@ -82,8 +80,6 @@ export function mapWorkflowToCloserQueueItem(
     phoneRdvAt: workflow.lead?.callback_at?.trim() ? workflow.lead.callback_at : null,
     nextFollowUpAt: getString(workflow.qualification_data_json, "next_follow_up_at"),
     closerNotes: getString(workflow.qualification_data_json, "closer_notes") ?? workflow.closer_notes ?? null,
-    confirmateurNotes: getString(workflow.qualification_data_json, "confirmateur_notes"),
-    closerHandoverNotes: getString(workflow.qualification_data_json, "closer_handover_notes"),
     lossReason: getString(workflow.qualification_data_json, "loss_reason"),
   };
 }

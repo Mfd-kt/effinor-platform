@@ -154,8 +154,6 @@ export async function sendConfirmateurWorkflowToCloser(
       workflowId: parsed.data.workflowId,
       actorUserId: access.userId,
       assignedCloserUserId: parsed.data.assignedCloserUserId,
-      closerNotes:
-        typeof qualification.closer_handover_notes === "string" ? qualification.closer_handover_notes : null,
     });
     workflow = await maybeAutoAssignAfterHandoff(supabase, workflow, "closer", access.userId);
 
