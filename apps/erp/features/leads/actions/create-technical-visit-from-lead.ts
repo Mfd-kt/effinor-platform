@@ -33,9 +33,8 @@ export type CreateTechnicalVisitFromLeadResult =
 /**
  * Crée une visite technique à partir d’un lead qualifié.
  *
- * - Si `current_workflow_id` est renseigné et que la fiche CEE du workflow est mappée vers un template
- *   (`resolveVisitTemplateForCeeSheet`), délègue à `createTechnicalVisitFromWorkflow` (VT dynamique).
- * - Sinon, comportement legacy : insert sans template, avec `workflow_id` du lead si présent.
+ * - Si `current_workflow_id` est renseigné : création dynamique obligatoire (template requis).
+ * - Sinon (pas de workflow actif), comportement legacy : insert sans template.
  *
  * Garde-fous communs : adresses, société, lead non terminal. Unicité VT active : par workflow en mode
  * dynamique ; globale sur le lead en mode legacy.
@@ -253,8 +252,7 @@ export async function createTechnicalVisitFromLead(
     }
 
     logVtFromLead({
-      step: "branch_chosen",
-      branch: "legacy_fallback",
+      step: "dynamic_required_template_missing",
       leadId: trimmedId,
       workflowId,
       reason: !wfRow
@@ -264,6 +262,16 @@ export async function createTechnicalVisitFromLead(
           : "mapping_unresolved",
       sheet_code: sheet?.code ?? null,
     });
+    const sheetCode = sheet?.code?.trim() || "inconnue";
+    return {
+      ok: false,
+      message:
+        wfRow == null
+          ? "Le workflow actif du lead est introuvable. Impossible de créer la visite technique."
+          : !wfRow.cee_sheet_id
+            ? "Le workflow actif n’est lié à aucune fiche CEE. Associez une fiche CEE puis réessayez."
+            : `Aucun formulaire de visite dynamique n’est publié pour la fiche CEE « ${sheetCode} ». Configurez la liaison template/version dans Réglages → fiches CEE avant de créer la visite.`,
+    };
   }
 
   const { data: existingActive, error: existingError } = await supabase

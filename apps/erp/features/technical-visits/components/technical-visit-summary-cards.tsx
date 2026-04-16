@@ -10,6 +10,7 @@ import {
 import { buttonVariants } from "@/components/ui/button-variants";
 import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { formatOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
 
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
 import type { TechnicalVisitDetailRow } from "@/features/technical-visits/types";
@@ -30,6 +31,11 @@ export function TechnicalVisitSummaryCards({
     visit.technician?.email?.trim() ||
     null;
   const previewPlace = [visit.worksite_postal_code, visit.worksite_city].filter(Boolean).join(" ").trim();
+  const officeDistance = formatOfficeDistanceKm(
+    visit.worksite_latitude,
+    visit.worksite_longitude,
+    visit.office_distance_km,
+  );
 
   return (
     <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -78,11 +84,15 @@ export function TechnicalVisitSummaryCards({
 
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <CardDescription>Passage</CardDescription>
+          <CardDescription>Passage / zone</CardDescription>
           <CardTitle className="text-base font-normal">
             {formatDateFr(visit.scheduled_at)}
           </CardTitle>
         </CardHeader>
+        <CardContent className="pt-0 text-sm text-muted-foreground">
+          <p>{previewPlace || "—"}</p>
+          <p>{visit.region || "—"}</p>
+        </CardContent>
       </Card>
 
       <Card className="border-border shadow-sm">
@@ -98,6 +108,12 @@ export function TechnicalVisitSummaryCards({
         <CardHeader className="pb-2">
           <CardDescription>Technicien</CardDescription>
           <CardTitle className="text-base font-normal">{techLabel ?? "—"}</CardTitle>
+        </CardHeader>
+      </Card>
+      <Card className="border-border shadow-sm">
+        <CardHeader className="pb-2">
+          <CardDescription>Distance bureau</CardDescription>
+          <CardTitle className="text-base font-normal">{officeDistance}</CardTitle>
         </CardHeader>
       </Card>
     </div>

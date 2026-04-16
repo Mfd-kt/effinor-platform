@@ -35,6 +35,7 @@ export type TechnicalVisitFieldAccessLevel = "full" | "technician_restricted";
 export type TechnicalVisitListRow = TechnicalVisitRow & {
   lead_company_name: string | null;
   technician_label: string | null;
+  office_distance_km?: number | null;
   /** Niveau d’accès champs sensibles pour le visiteur courant (liste / cartes terrain). */
   technician_field_access?: TechnicalVisitFieldAccessLevel;
 };
@@ -42,6 +43,7 @@ export type TechnicalVisitListRow = TechnicalVisitRow & {
 export type TechnicalVisitDetailRow = TechnicalVisitRow & {
   leads: LeadMini | null;
   technician: TechnicianMini | null;
+  office_distance_km?: number | null;
   start_geo_proof?: TechnicalVisitStartGeoProofSummary | null;
 };
 

@@ -148,6 +148,7 @@ export function LeadDetailVtActions({
                       className="font-mono text-foreground text-sm underline-offset-4 hover:underline"
                     >
                       {v.vt_reference}
+                      {v.deleted_at ? " (archivée)" : ""}
                     </Link>
                   </li>
                 ))}

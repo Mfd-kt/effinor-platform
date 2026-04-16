@@ -26,6 +26,28 @@ export function buildWorksiteGeocodeQueryFromFields(f: {
   return `${cpCity}, France`;
 }
 
+/**
+ * Variantes de requête géocode (ordre de précision décroissant) :
+ * 1) adresse complète
+ * 2) CP + ville
+ * 3) CP seul
+ */
+export function buildWorksiteGeocodeFallbackQueriesFromFields(f: {
+  worksite_address: string | null | undefined;
+  worksite_postal_code: string | null | undefined;
+  worksite_city: string | null | undefined;
+}): string[] {
+  const full = buildWorksiteGeocodeQueryFromFields(f);
+  const cp = f.worksite_postal_code?.trim() ?? "";
+  const city = f.worksite_city?.trim() ?? "";
+  const cpCity = [cp, city].filter(Boolean).join(" ").trim();
+  return [
+    full,
+    cpCity ? `${cpCity}, France` : "",
+    cp ? `${cp}, France` : "",
+  ].filter((q, i, arr) => Boolean(q) && arr.indexOf(q) === i);
+}
+
 export function buildWorksiteGeocodeQuery(
   row: Pick<TechnicalVisitListRow, "worksite_address" | "worksite_postal_code" | "worksite_city">,
 ): string {

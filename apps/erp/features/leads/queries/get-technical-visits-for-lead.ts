@@ -6,6 +6,7 @@ import { shouldRestrictTechnicalVisitsToCreatorOnly } from "@/lib/auth/data-scop
 export type TechnicalVisitRef = {
   id: string;
   vt_reference: string;
+  deleted_at: string | null;
 };
 
 export async function getTechnicalVisitRefsForLead(
@@ -16,9 +17,8 @@ export async function getTechnicalVisitRefsForLead(
 
   let q = supabase
     .from("technical_visits")
-    .select("id, vt_reference")
-    .eq("lead_id", leadId)
-    .is("deleted_at", null);
+    .select("id, vt_reference, deleted_at")
+    .eq("lead_id", leadId);
 
   if (access?.kind === "authenticated" && shouldRestrictTechnicalVisitsToCreatorOnly(access)) {
     q = q.eq("created_by_user_id", access.userId);

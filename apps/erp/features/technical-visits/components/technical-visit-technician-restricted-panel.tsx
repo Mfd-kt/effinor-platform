@@ -4,6 +4,7 @@ import { CheckCircle2, Info, MapPin, RefreshCw } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { TechnicalVisitAccessBadge } from "@/features/technical-visits/components/technical-visit-access-badge";
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
+import { formatOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
 import type { TechnicalVisitDetailRow } from "@/features/technical-visits/types";
 import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,11 @@ import { cn } from "@/lib/utils";
 export function TechnicalVisitTechnicianRestrictedPanel({ visit }: { visit: TechnicalVisitDetailRow }) {
   const locality = [visit.worksite_postal_code, visit.worksite_city].filter(Boolean).join(" ").trim();
   const isValidated = visit.status === "validated";
+  const officeDistance = formatOfficeDistanceKm(
+    visit.worksite_latitude,
+    visit.worksite_longitude,
+    visit.office_distance_km,
+  );
 
   return (
     <div className="mx-auto max-w-lg space-y-4 md:max-w-4xl">
@@ -98,6 +104,7 @@ export function TechnicalVisitTechnicianRestrictedPanel({ visit }: { visit: Tech
             <div>
               <p className="font-medium text-foreground">{locality || "Lieu à préciser"}</p>
               {visit.region ? <p className="text-muted-foreground">{visit.region}</p> : null}
+              <p className="text-muted-foreground">Distance bureau: {officeDistance}</p>
             </div>
           </div>
 

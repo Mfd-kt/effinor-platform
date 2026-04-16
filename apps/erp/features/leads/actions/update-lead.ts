@@ -35,7 +35,7 @@ export async function updateLead(input: unknown): Promise<UpdateLeadResult> {
   const supabase = await createClient();
   const { data: existingRow, error: fetchError } = await supabase
     .from("leads")
-    .select("id, created_by_agent_id, confirmed_by_user_id")
+    .select("id, created_by_agent_id, confirmed_by_user_id, lead_status")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -102,8 +102,25 @@ export async function updateLead(input: unknown): Promise<UpdateLeadResult> {
     return { ok: false, message: "Lead introuvable ou déjà supprimé." };
   }
 
+  const transitionedToLost =
+    existingRow.lead_status !== "lost" &&
+    typeof data.lead_status === "string" &&
+    data.lead_status === "lost";
+  if (transitionedToLost) {
+    const now = new Date().toISOString();
+    const { error: vtArchiveErr } = await supabase
+      .from("technical_visits")
+      .update({ deleted_at: now })
+      .eq("lead_id", id)
+      .is("deleted_at", null);
+    if (vtArchiveErr) {
+      return { ok: false, message: vtArchiveErr.message };
+    }
+  }
+
   revalidatePath("/leads");
   revalidatePath(`/leads/${id}`);
+  revalidatePath("/technical-visits");
   revalidatePath("/confirmateur");
   revalidatePath("/closer");
   return { ok: true, data };

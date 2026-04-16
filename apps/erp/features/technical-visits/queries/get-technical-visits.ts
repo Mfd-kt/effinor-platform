@@ -11,6 +11,9 @@ import {
   getTechnicalVisitFieldAccessLevelForAuthenticatedViewer,
   sanitizeTechnicalVisitListRowForRestrictedTechnician,
 } from "@/features/technical-visits/access";
+import { geocodeFranceAddressServer } from "@/features/technical-visits/lib/nominatim-geocode-server";
+import { computeOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
+import { buildWorksiteGeocodeFallbackQueriesFromFields } from "@/features/technical-visits/lib/worksite-geocode-query";
 import type { TechnicalVisitListRow, TechnicalVisitRow } from "@/features/technical-visits/types";
 import type { TechnicalVisitStatus } from "@/types/database.types";
 
@@ -157,6 +160,45 @@ function normalize(raw: RawRow): TechnicalVisitListRow {
   };
 }
 
+async function withOfficeDistanceFallback(rows: TechnicalVisitListRow[]): Promise<TechnicalVisitListRow[]> {
+  const out = rows.map((r) => ({
+    ...r,
+    office_distance_km: computeOfficeDistanceKm(r.worksite_latitude, r.worksite_longitude),
+  }));
+  const misses = out.filter((r) => r.office_distance_km == null);
+  if (misses.length === 0) return out;
+
+  const cache = new Map<string, number | null>();
+  const NOMINATIM_DELAY_MS = 300;
+
+  for (const row of misses) {
+    const queries = buildWorksiteGeocodeFallbackQueriesFromFields({
+      worksite_address: row.worksite_address,
+      worksite_postal_code: row.worksite_postal_code,
+      worksite_city: row.worksite_city,
+    });
+    let km: number | null = null;
+    for (let i = 0; i < queries.length; i++) {
+      const q = queries[i]!;
+      if (cache.has(q)) {
+        km = cache.get(q) ?? null;
+        if (km != null) break;
+        continue;
+      }
+      if (i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, NOMINATIM_DELAY_MS));
+      }
+      const coords = await geocodeFranceAddressServer(q);
+      km = coords ? computeOfficeDistanceKm(coords.lat, coords.lng) : null;
+      cache.set(q, km);
+      if (km != null) break;
+    }
+    row.office_distance_km = km;
+  }
+
+  return out;
+}
+
 export async function getTechnicalVisits(
   filters?: TechnicalVisitListFilters,
   access?: AccessContext,
@@ -242,7 +284,8 @@ export async function getTechnicalVisits(
     throw new Error(`Impossible de charger les visites techniques : ${error.message}`);
   }
 
-  const rows = (data as unknown as RawRow[] | null)?.map(normalize) ?? [];
+  const rowsBase = (data as unknown as RawRow[] | null)?.map(normalize) ?? [];
+  const rows = await withOfficeDistanceFallback(rowsBase);
 
   if (access?.kind !== "authenticated") {
     return rows;

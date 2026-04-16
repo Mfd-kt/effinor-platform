@@ -37,7 +37,7 @@ export function TechnicalVisitAdminDeleteButton({
       e.preventDefault();
     }
     const confirmed = window.confirm(
-      `Supprimer la visite « ${vtReference} » ?\n\nLa fiche sera archivée (soft delete) et disparaîtra des listes ; les données restent en base pour l’audit.`,
+      `Supprimer définitivement la visite « ${vtReference} » ?\n\nCette action est irréversible : la visite et ses données liées seront supprimées.`,
     );
     if (!confirmed) return;
 
@@ -47,7 +47,7 @@ export function TechnicalVisitAdminDeleteButton({
         toast.error(res.message);
         return;
       }
-      toast.success("Visite archivée.");
+      toast.success("Visite supprimée définitivement.");
       if (redirectAfterDelete) {
         router.push(redirectAfterDelete);
       }
@@ -66,10 +66,10 @@ export function TechnicalVisitAdminDeleteButton({
         className,
       )}
       onClick={onClick}
-      aria-label={`Archiver la visite ${vtReference}`}
+      aria-label={`Supprimer définitivement la visite ${vtReference}`}
     >
       <Trash2 className="size-4 shrink-0" aria-hidden />
-      <span className="hidden sm:inline">{pending ? "…" : "Archiver"}</span>
+      <span className="hidden sm:inline">{pending ? "…" : "Supprimer"}</span>
     </Button>
   );
 }

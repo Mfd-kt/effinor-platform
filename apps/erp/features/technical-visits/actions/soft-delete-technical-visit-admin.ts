@@ -32,19 +32,14 @@ export async function softDeleteTechnicalVisitAdminAction(
   if (!row) {
     return { ok: false, message: "Visite technique introuvable." };
   }
-  if (row.deleted_at) {
-    return { ok: false, message: "Cette visite est déjà archivée." };
-  }
 
-  const now = new Date().toISOString();
-  const { error: upErr } = await supabase
+  const { error: delErr } = await supabase
     .from("technical_visits")
-    .update({ deleted_at: now })
-    .eq("id", id)
-    .is("deleted_at", null);
+    .delete()
+    .eq("id", id);
 
-  if (upErr) {
-    return { ok: false, message: upErr.message };
+  if (delErr) {
+    return { ok: false, message: delErr.message };
   }
 
   revalidatePath("/technical-visits");

@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TechnicalVisitAdminDeleteButton } from "@/features/technical-visits/components/technical-visit-admin-delete-button";
 import { TechnicalVisitStatusBadge } from "@/features/technical-visits/components/technical-visit-status-badge";
+import { formatOfficeDistanceKm } from "@/features/technical-visits/lib/office-distance";
 import { isTechnicalVisitInProgress } from "@/features/technical-visits/lib/visit-in-progress";
 import type { TechnicalVisitListRow } from "@/features/technical-visits/types";
 
@@ -56,7 +57,7 @@ export function TechnicalVisitsTable({
         ? [
             {
               id: "admin_actions",
-              header: () => <span className="sr-only">Archiver (admin)</span>,
+              header: () => <span className="sr-only">Supprimer (admin)</span>,
               enableSorting: false,
               cell: ({ row }) => (
                 <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
@@ -129,6 +130,31 @@ export function TechnicalVisitsTable({
         cell: ({ row }) => (
           <span className="max-w-[140px] truncate text-muted-foreground text-sm">
             {row.original.technician_label ?? "—"}
+          </span>
+        ),
+      },
+      {
+        id: "zone",
+        header: "Région",
+        accessorFn: (row) => row.region ?? "",
+        cell: ({ row }) => (
+          <span className="max-w-[210px] truncate text-muted-foreground text-sm">
+            {row.original.region || "—"}
+            {row.original.worksite_postal_code ? ` (${row.original.worksite_postal_code})` : ""}
+          </span>
+        ),
+      },
+      {
+        id: "distance_office",
+        header: "Km bureau",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-muted-foreground text-sm">
+            {formatOfficeDistanceKm(
+              row.original.worksite_latitude,
+              row.original.worksite_longitude,
+              row.original.office_distance_km,
+            )}
           </span>
         ),
       },

@@ -204,8 +204,8 @@ export default async function TechnicalVisitDetailPage({ params }: PageProps) {
             {canAdminSoftDeleteTechnicalVisit(access) ? (
               <div className="mt-4 flex flex-col gap-3 rounded-md border border-destructive/25 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="max-w-xl text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">Administrateur :</span> archiver cette visite (elle
-                  disparaît des listes ; données conservées pour l’audit).
+                  <span className="font-medium text-foreground">Administrateur :</span> supprimer définitivement cette
+                  visite (action irréversible).
                 </p>
                 <TechnicalVisitAdminDeleteButton
                   visitId={row.id}
