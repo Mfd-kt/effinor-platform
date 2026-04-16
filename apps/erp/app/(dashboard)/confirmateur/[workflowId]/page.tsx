@@ -2,11 +2,13 @@ import { notFound } from "next/navigation";
 
 import { ConfirmateurWorkflowFocusPanel } from "@/features/cee-workflows/components/confirmateur-workflow-focus-panel";
 import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
+import { getAdminCeeSheets } from "@/features/cee-workflows/queries/get-admin-cee-sheets";
 import { getConfirmateurWorkflowDetail } from "@/features/cee-workflows/queries/get-confirmateur-workflow-detail";
 import { getLeadSheetWorkflowsForLead } from "@/features/cee-workflows/queries/get-lead-sheet-workflows";
 import { LeadCrmRightRail } from "@/features/leads/components/lead-crm-right-rail";
 import { LeadRealtimeListener } from "@/features/leads/components/lead-realtime-listener";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
+import { canUserSwitchLeadCeeSheetOnLead } from "@/lib/auth/switch-cee-sheet-eligibility";
 import { canAccessConfirmateurWorkspace } from "@/lib/auth/module-access";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { getActiveTechnicalVisitIdForWorkflow } from "@/features/technical-visits/queries/get-active-technical-visit-for-workflow";
@@ -54,6 +56,19 @@ export default async function ConfirmateurWorkflowPage({ params, searchParams }:
   const wfStatusParsed = parseWorkflowStatusForTransitions(detail.workflow.workflow_status);
   const workflowStatusAllowsTechnicalVisit =
     wfStatusParsed != null && canAdvanceWorkflowToTechnicalVisitPending(wfStatusParsed);
+  const canSwitchLeadCeeSheet =
+    fullLead == null
+      ? false
+      : await canUserSwitchLeadCeeSheetOnLead(supabase, access, {
+          id: fullLead.id,
+          created_by_agent_id: fullLead.created_by_agent_id,
+          confirmed_by_user_id: fullLead.confirmed_by_user_id,
+        });
+  const ceeSheetSwitchOptions = canSwitchLeadCeeSheet
+    ? (await getAdminCeeSheets())
+        .filter((s) => s.isCommercialActive)
+        .map((s) => ({ id: s.id, code: s.code, name: s.name }))
+    : [];
 
   return (
     <div>
@@ -74,6 +89,8 @@ export default async function ConfirmateurWorkflowPage({ params, searchParams }:
             activeTechnicalVisitId={activeTechnicalVisitId}
             visitTemplateAvailable={visitTemplateAvailable}
             workflowStatusAllowsTechnicalVisit={workflowStatusAllowsTechnicalVisit}
+            canSwitchCeeSheet={canSwitchLeadCeeSheet}
+            ceeSheetSwitchOptions={ceeSheetSwitchOptions}
           />
         </div>
         {fullLead ? (

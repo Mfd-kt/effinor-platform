@@ -38,6 +38,10 @@ import { extractWorkflowSimulationMetrics } from "@/features/leads/study-pdf/dom
 import { AGENT_PAC_CATALOG_PRODUCT_CODE, getRecommendedProductCodes } from "@/features/products/domain/recommend";
 import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 import { WorkflowTechnicalVisitCta } from "@/features/technical-visits/components/workflow-technical-visit-cta";
+import {
+  LeadSwitchCeeSheetPanel,
+  type CeeSheetSwitchOption,
+} from "@/features/cee-workflows/components/lead-switch-cee-sheet-panel";
 
 function qualificationFromWorkflow(detail: ConfirmateurWorkflowDetailData | null): ConfirmateurQualificationInput {
   const raw = detail?.workflow.qualification_data_json;
@@ -96,6 +100,8 @@ export function ConfirmateurWorkflowFocusPanel({
   activeTechnicalVisitId,
   visitTemplateAvailable,
   workflowStatusAllowsTechnicalVisit,
+  canSwitchCeeSheet = false,
+  ceeSheetSwitchOptions = [],
 }: {
   detail: ConfirmateurWorkflowDetailData;
   fullLead: LeadDetailRow | null;
@@ -105,6 +111,8 @@ export function ConfirmateurWorkflowFocusPanel({
   activeTechnicalVisitId: string | null;
   visitTemplateAvailable: boolean;
   workflowStatusAllowsTechnicalVisit: boolean;
+  canSwitchCeeSheet?: boolean;
+  ceeSheetSwitchOptions?: CeeSheetSwitchOption[];
 }) {
   const router = useRouter();
   const backHref = buildConfirmateurQueuePath(sheetFilterId);
@@ -224,6 +232,15 @@ export function ConfirmateurWorkflowFocusPanel({
             </ul>
           </CardContent>
         </Card>
+      ) : null}
+
+      {fullLead && canSwitchCeeSheet && ceeSheetSwitchOptions.length > 0 ? (
+        <LeadSwitchCeeSheetPanel
+          leadId={fullLead.id}
+          currentCeeSheetId={fullLead.cee_sheet_id}
+          sheetOptions={ceeSheetSwitchOptions}
+          readOnly={false}
+        />
       ) : null}
 
       <div className="space-y-5">
