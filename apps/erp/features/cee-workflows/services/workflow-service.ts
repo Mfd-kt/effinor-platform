@@ -74,7 +74,17 @@ type WorkflowDocumentCarryover = Pick<
 
 function documentFieldsCarryoverFromPrev(prev: CeeSheetWorkflowRow | null): WorkflowDocumentCarryover {
   if (!prev) {
-    return {};
+    return {
+      presentation_document_id: null,
+      agreement_document_id: null,
+      quote_document_id: null,
+      agreement_signature_status: null,
+      agreement_signature_provider: null,
+      agreement_signature_request_id: null,
+      agreement_sent_at: null,
+      agreement_signed_at: null,
+      closer_notes: null,
+    };
   }
   return {
     presentation_document_id: prev.presentation_document_id,

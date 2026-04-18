@@ -224,6 +224,7 @@ export async function detectSlaBreaches(admin: Admin, now: Date): Promise<Detect
         if (rule.code === "cb_due_today_eod") {
           if (!isCallbackDueToday(cb.status, cb.callback_date, cb.callback_time, now)) continue;
           callbackDate = cb.callback_date;
+          if (!callbackDate) continue;
           anchor = new Date(firstInstantOfParisYmd(callbackDate));
         } else if (rule.code === "cb_critical_2h") {
           anchor = new Date(cb.created_at);

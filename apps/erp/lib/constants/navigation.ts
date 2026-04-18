@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   FolderKanban,
   Headset,
+  Inbox,
   LayoutDashboard,
   LayoutGrid,
   LayoutTemplate,
@@ -17,11 +18,17 @@ import {
   Radar,
   ScrollText,
   Settings,
+  SlidersHorizontal,
+  Upload,
   ShieldCheck,
   UserRound,
   UserRoundX,
   Users,
   KeyRound,
+  BarChart3,
+  Brain,
+  Table2,
+  Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -38,12 +45,22 @@ export type NavGroupSubItem = {
   icon: LucideIcon;
 };
 
+/** Sous-groupe (sous-onglet) : regroupe plusieurs liens sous un libellé de rôle / domaine. */
+export type NavGroupSectionItem = {
+  kind: "section";
+  id: string;
+  label: string;
+  items: NavGroupSubItem[];
+};
+
+export type NavGroupChild = NavGroupSubItem | NavGroupSectionItem;
+
 export type NavGroupItem = {
   kind: "group";
   id: string;
   label: string;
   icon: LucideIcon;
-  items: NavGroupSubItem[];
+  items: NavGroupChild[];
 };
 
 export type SidebarNavEntry = NavLinkItem | NavGroupItem;
@@ -83,6 +100,7 @@ export const sidebarNavigation: SidebarNavEntry[] = [
     items: [
       { href: "/leads", label: "Fiches prospects", icon: FolderKanban },
       { href: "/leads/lost", label: "Prospects perdus", icon: UserRoundX },
+      { href: "/lead-generation/my-queue", label: "Mes fiches Lead Gen", icon: Inbox },
     ],
   },
   {
@@ -108,6 +126,32 @@ export const sidebarNavigation: SidebarNavEntry[] = [
       { href: "/settings/cee", label: "Réglages CEE", icon: BadgeEuro },
       { href: "/admin/cee-sheets", label: "Fiches CEE", icon: FileSpreadsheet },
       { href: "/admin/technical-visit-templates", label: "Templates visite technique", icon: LayoutTemplate },
+      {
+        kind: "section",
+        id: "lead-gen-ops",
+        label: "Lead generation · pilotage",
+        items: [
+          { href: "/lead-generation", label: "Vue d’ensemble", icon: LayoutDashboard },
+          { href: "/lead-generation/stock", label: "Stock complet", icon: Table2 },
+          { href: "/lead-generation/automation", label: "Automatisations", icon: Zap },
+          { href: "/lead-generation/settings", label: "Réglages métier", icon: SlidersHorizontal },
+        ],
+      },
+      {
+        kind: "section",
+        id: "lead-gen-acquisition",
+        label: "Lead generation · acquisition",
+        items: [{ href: "/lead-generation/imports", label: "Imports & lots", icon: Upload }],
+      },
+      {
+        kind: "section",
+        id: "lead-gen-performance",
+        label: "Lead generation · performance",
+        items: [
+          { href: "/lead-generation/analytics", label: "Analytics", icon: BarChart3 },
+          { href: "/lead-generation/learning", label: "Learning loop", icon: Brain },
+        ],
+      },
       { href: "/settings/products", label: "Produits", icon: Package },
     ],
   },

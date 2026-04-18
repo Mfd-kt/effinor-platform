@@ -1,6 +1,14 @@
 import type { Database } from "@/types/database.types";
 
-export type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
+/** Suivi d’appel manuel (sans sync Aircall automatique). */
+export type LeadCallTraceFields = {
+  last_call_status: string | null;
+  last_call_at: string | null;
+  last_call_note: string | null;
+  last_call_recording_url: string | null;
+};
+
+export type LeadRow = Database["public"]["Tables"]["leads"]["Row"] & LeadCallTraceFields;
 
 /** Lead liste prospects : jointure optionnelle sur le référentiel fiches CEE. */
 export type LeadListRow = LeadRow & {

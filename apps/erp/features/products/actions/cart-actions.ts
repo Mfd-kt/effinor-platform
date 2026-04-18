@@ -10,7 +10,7 @@ import {
 } from "@/features/products/domain/repository";
 import { toCartViewModel } from "@/features/products/domain/mappers";
 import { getCartById } from "@/features/products/domain/repository";
-import type { CartViewModel } from "@/features/products/domain/types";
+import type { CartViewModel, CartWithItems } from "@/features/products/domain/types";
 import { notifyProductAddedToCart } from "@/features/notifications/services/notification-service";
 
 type ActionResult<T = void> =
@@ -53,7 +53,9 @@ export async function addToCart(
         leadLabel = leadRow.company_name.trim();
       }
     }
-    const addedItem = cart.items.filter((i) => i.product_id === productId).pop();
+    const addedItem = cart.items
+      .filter((i: CartWithItems["items"][number]) => i.product_id === productId)
+      .pop();
     const productName = addedItem?.product.name ?? "Produit";
     const qty = addedItem?.quantity ?? quantity;
     void notifyProductAddedToCart({

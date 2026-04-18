@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import type { ConfirmateurWorkflowDetail as ConfirmateurWorkflowDetailData } from "@/features/cee-workflows/queries/get-confirmateur-workflow-detail";
 import { AgentSimulationResultCard } from "@/features/cee-workflows/components/agent-simulation-result-card";
-import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
+import type { CartWithItems, SimulatorProductCardViewModel } from "@/features/products/domain/types";
 
 export function ConfirmateurWorkflowDetail({
   detail,
@@ -61,7 +61,7 @@ export function ConfirmateurWorkflowDetail({
             <CardTitle>Panier / produit recommandé</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {detail.cart.items.map((item) => (
+            {detail.cart.items.map((item: CartWithItems["items"][number]) => (
               <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
                 <div>
                   <div className="font-medium">{item.product.name}</div>

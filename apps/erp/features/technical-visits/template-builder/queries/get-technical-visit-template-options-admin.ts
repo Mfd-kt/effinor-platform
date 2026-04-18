@@ -86,7 +86,12 @@ export async function getTechnicalVisitTemplateOptionsForAdmin(
     if (!m) continue;
     const key = m.template_key?.trim();
     if (!key) continue;
-    const entry = dbByKey.get(key) ?? { label: m.label?.trim() || key, versions: [] };
+    const entry =
+      dbByKey.get(key) ??
+      ({
+        label: m.label?.trim() || key,
+        versions: [] as { version: number; label: string }[],
+      } satisfies { label: string; versions: { version: number; label: string }[] });
     entry.versions.push({
       version: row.version_number,
       label: `v${row.version_number} — ${m.label?.trim() || key}`,

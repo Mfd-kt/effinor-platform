@@ -188,6 +188,37 @@ export function canAccessAdminCeeSheets(access: AccessContext): boolean {
   );
 }
 
+/**
+ * Impersonation (super_admin → commercial) : le compte réel peut ouvrir la file / une fiche
+ * même si le sujet n’a pas le rôle `sales_agent` (support).
+ */
+export function canBypassLeadGenMyQueueAsImpersonationActor(access: AccessContext): boolean {
+  if (access.kind !== "authenticated" || !access.impersonation) {
+    return false;
+  }
+  const ar = access.actorRoleCodes;
+  return ar.includes("super_admin") || ar.includes("admin") || ar.includes("sales_director");
+}
+
+/**
+ * File opérationnelle « Mes fiches » (lead generation) : agents commerciaux + accès back-office déjà autorisés ailleurs.
+ */
+export function canAccessLeadGenerationMyQueue(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (canAccessAdminCeeSheets(access)) {
+    return true;
+  }
+  if (access.roleCodes.includes("sales_agent")) {
+    return true;
+  }
+  if (canBypassLeadGenMyQueueAsImpersonationActor(access)) {
+    return true;
+  }
+  return false;
+}
+
 /** Centre de commande direction : super_admin et directeur commercial uniquement. */
 export function canAccessCommandCockpit(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {

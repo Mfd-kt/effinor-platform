@@ -10,21 +10,21 @@ import {
 import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
 import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
 import { getLeadSheetWorkflowsForLead } from "@/features/cee-workflows/queries/get-lead-sheet-workflows";
+import type { AgentSimulatorLeadSession } from "@/features/cee-workflows/types/agent-simulator-lead-session";
 import { LeadCrmRightRail } from "@/features/leads/components/lead-crm-right-rail";
 import { LeadRealtimeListener } from "@/features/leads/components/lead-realtime-listener";
-import type { AgentProspectFormValue } from "@/features/cee-workflows/components/agent-prospect-form";
+import { buildAgentSimulatorSessionFromLeadGenerationStock } from "@/features/lead-generation/lib/build-agent-simulator-session-from-lg-stock";
+import { getLeadGenerationStockDetailForAgent } from "@/features/lead-generation/queries/get-lead-generation-stock-for-agent";
 import { contactDisplayName } from "@/features/leads/lib/contact-map";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import type { LeadDetailRow } from "@/features/leads/types";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
-import { canAccessCeeWorkflowsModule } from "@/lib/auth/module-access";
+import { canAccessCeeWorkflowsModule, canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
 import { isRestrictedAgentLeadConsultationReadOnly } from "@/lib/auth/restricted-agent-lead-edit";
 import { createClient } from "@/lib/supabase/server";
 import { isoToDatetimeLocal } from "@/lib/utils/datetime";
 import { cn } from "@/lib/utils";
-
-type AgentSimulatorLeadSession = { leadId: string } & AgentProspectFormValue;
 
 function buildSimulatorSessionFromLead(lead: LeadDetailRow): AgentSimulatorLeadSession {
   return {
@@ -43,7 +43,7 @@ function buildSimulatorSessionFromLead(lead: LeadDetailRow): AgentSimulatorLeadS
 }
 
 type PageProps = {
-  searchParams?: Promise<{ lead?: string; simulator?: string }>;
+  searchParams?: Promise<{ lead?: string; simulator?: string; lgStock?: string }>;
 };
 
 export default async function AgentPage({ searchParams }: PageProps) {
@@ -57,6 +57,13 @@ export default async function AgentPage({ searchParams }: PageProps) {
   const openSimulator =
     typeof sp?.simulator === "string" &&
     (sp.simulator === "1" || sp.simulator.toLowerCase() === "true");
+  const lgStockParam =
+    typeof sp?.lgStock === "string" && sp.lgStock.trim() ? sp.lgStock.trim() : undefined;
+
+  const lgDetail =
+    lgStockParam && canAccessLeadGenerationMyQueue(access)
+      ? await getLeadGenerationStockDetailForAgent(lgStockParam, access.userId)
+      : null;
 
   const [dashboard, destratProducts, commercialCallbacks, leadForSheet] = await Promise.all([
     getAgentDashboardData(access, undefined, {
@@ -81,8 +88,18 @@ export default async function AgentPage({ searchParams }: PageProps) {
         })
       : null;
 
-  const initialSimulatorSession =
-    leadForSheet != null && openSimulator ? buildSimulatorSessionFromLead(leadForSheet) : null;
+  let initialSimulatorSession: AgentSimulatorLeadSession | null = null;
+  if (
+    lgDetail?.stock &&
+    !lgDetail.stock.converted_lead_id &&
+    lgDetail.stock.current_assignment_id
+  ) {
+    initialSimulatorSession = buildAgentSimulatorSessionFromLeadGenerationStock(lgDetail.stock);
+  } else if (leadForSheet != null && openSimulator) {
+    initialSimulatorSession = buildSimulatorSessionFromLead(leadForSheet);
+  }
+
+  const lgStockInvalid = Boolean(lgStockParam && canAccessLeadGenerationMyQueue(access) && !lgDetail);
 
   const callbackKpis = computeCommercialCallbackKpis(commercialCallbacks);
   const callbackPerformance = computeCallbackPerformanceStats(commercialCallbacks);
@@ -98,6 +115,11 @@ export default async function AgentPage({ searchParams }: PageProps) {
               "lg:pr-[calc(28rem+2rem)] xl:pr-[calc(31rem+2.25rem)] 2xl:pr-[calc(34rem+2.5rem)]",
           )}
         >
+          {lgStockInvalid ? (
+            <p className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Fiche prospection introuvable, déjà convertie ou non attribuée à votre compte.
+            </p>
+          ) : null}
           <AgentWorkstation
             sheets={dashboard.sheets}
             activity={dashboard.activity}

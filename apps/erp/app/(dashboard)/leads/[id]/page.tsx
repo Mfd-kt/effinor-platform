@@ -9,6 +9,7 @@ import { getLeadSheetWorkflowsForLead } from "@/features/cee-workflows/queries/g
 import { LeadDetailVtActions } from "@/features/leads/components/lead-detail-vt-actions";
 import { LeadSimulationResults } from "@/features/leads/components/lead-simulation-results";
 import { DeleteLeadButton } from "@/features/leads/components/delete-lead-button";
+import { LeadAircallCallSection } from "@/features/leads/components/lead-aircall-call-section";
 import { LeadForm } from "@/features/leads/components/lead-form";
 import { LeadCrmRightRail } from "@/features/leads/components/lead-crm-right-rail";
 import { LeadStatusBadge } from "@/features/leads/components/lead-status-badge";
@@ -327,6 +328,20 @@ export default async function LeadDetailPage({ params }: PageProps) {
               formId={`lead-form-${lead.id}`}
               readOnly={agentConsultationReadOnly}
               simplifiedAgentView={isAgentLeadExperience}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Appel (Aircall)" defaultOpen>
+            <LeadAircallCallSection
+              leadId={lead.id}
+              phone={lead.phone}
+              readOnly={agentConsultationReadOnly}
+              initial={{
+                last_call_status: lead.last_call_status ?? null,
+                last_call_at: lead.last_call_at ?? null,
+                last_call_note: lead.last_call_note ?? null,
+                last_call_recording_url: lead.last_call_recording_url ?? null,
+              }}
             />
           </CollapsibleSection>
 

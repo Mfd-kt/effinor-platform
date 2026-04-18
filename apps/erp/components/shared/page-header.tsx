@@ -7,9 +7,11 @@ type PageHeaderProps = {
   description?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  /** Classes appliquées au &lt;h1&gt; (ex. pages « hero »). */
+  titleClassName?: string;
 };
 
-export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, className, titleClassName }: PageHeaderProps) {
   return (
     <div
       className={cn(
@@ -18,7 +20,7 @@ export function PageHeader({ title, description, actions, className }: PageHeade
       )}
     >
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className={cn("text-2xl font-semibold tracking-tight text-foreground", titleClassName)}>{title}</h1>
         {description ? (
           <div className="max-w-3xl text-sm text-muted-foreground">{description}</div>
         ) : null}

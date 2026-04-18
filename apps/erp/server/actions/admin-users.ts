@@ -15,6 +15,25 @@ import { isSuperAdmin } from "@/lib/auth/role-codes";
 import { sendNewUserCredentialsEmail } from "@/lib/email/send-new-user-credentials-email";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+function roleCodeFromRolesJoin(roles: unknown): string | null {
+  if (!roles) {
+    return null;
+  }
+  if (Array.isArray(roles)) {
+    const x = roles[0];
+    if (x && typeof x === "object" && "code" in x) {
+      const c = (x as { code?: unknown }).code;
+      return typeof c === "string" && c ? c : null;
+    }
+    return null;
+  }
+  if (typeof roles === "object" && "code" in roles) {
+    const c = (roles as { code?: unknown }).code;
+    return typeof c === "string" && c ? c : null;
+  }
+  return null;
+}
+
 const createUserSchema = z.object({
   email: z.string().email("E-mail invalide."),
   password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères."),
@@ -168,11 +187,13 @@ export async function getAdminUserProfileById(userId: string): Promise<AdminUser
     .select("roles ( code )")
     .eq("user_id", userId);
 
-  const role_codes = [...new Set(
-    (urRows ?? [])
-      .map((r) => (r.roles as { code: string } | null)?.code)
-      .filter((c): c is string => !!c),
-  )].sort();
+  const role_codes = [
+    ...new Set(
+      (urRows ?? [])
+        .map((r) => roleCodeFromRolesJoin(r.roles))
+        .filter((c): c is string => !!c),
+    ),
+  ].sort();
 
   return { ...(data as Omit<AdminUserProfileForEdit, "role_codes">), role_codes };
 }
@@ -498,7 +519,7 @@ export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
 
   const byUser = new Map<string, string[]>();
   for (const row of urRows ?? []) {
-    const code = (row.roles as { code: string } | null)?.code;
+    const code = roleCodeFromRolesJoin(row.roles);
     if (!code) {
       continue;
     }
@@ -517,6 +538,99 @@ export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
 }
 
 const BAN_PAUSED = "876000h" as const;
+
+type DisableAgentImpactSummary = {
+  recycledAssignments: number;
+  resetStockRows: number;
+  unassignedOpenLeads: number;
+};
+
+/**
+ * Désactivation d'agent: aucune suppression.
+ * - recycle les assignations lead-generation actives en attente
+ * - remet les fiches stock associées dans le circuit (`ready`, sans assignation courante)
+ * - désassigne les leads CRM ouverts (`assigned_to = null`)
+ */
+async function handleAgentDisabledImpact(
+  admin: ReturnType<typeof createAdminClient>,
+  targetUserId: string,
+): Promise<DisableAgentImpactSummary> {
+  const activeStatuses = ["assigned", "opened", "in_progress"];
+  const nowIso = new Date().toISOString();
+  const summary: DisableAgentImpactSummary = {
+    recycledAssignments: 0,
+    resetStockRows: 0,
+    unassignedOpenLeads: 0,
+  };
+
+  const { data: activeRows, error: listErr } = await admin
+    .from("lead_generation_assignments")
+    .select("id, stock_id")
+    .eq("agent_id", targetUserId)
+    .in("assignment_status", activeStatuses)
+    .eq("outcome", "pending");
+
+  if (listErr) {
+    throw new Error(`Réallocation lead-generation impossible (lecture assignations): ${listErr.message}`);
+  }
+
+  const assignments = (activeRows ?? []) as { id: string; stock_id: string }[];
+  const assignmentIds = assignments.map((r) => r.id);
+  const stockIds = [...new Set(assignments.map((r) => r.stock_id).filter(Boolean))];
+
+  if (assignmentIds.length > 0) {
+    const { data: recycledRows, error: recycleErr } = await admin
+      .from("lead_generation_assignments")
+      .update({
+        recycle_status: "recycled",
+        assignment_status: "recycled",
+        last_recycled_at: nowIso,
+        recycle_reason: "agent_disabled",
+        last_activity_at: nowIso,
+      })
+      .in("id", assignmentIds)
+      .select("id");
+
+    if (recycleErr) {
+      throw new Error(`Réallocation lead-generation impossible (recyclage assignations): ${recycleErr.message}`);
+    }
+    summary.recycledAssignments = (recycledRows ?? []).length;
+  }
+
+  if (stockIds.length > 0) {
+    const { data: stockRows, error: stockErr } = await admin
+      .from("lead_generation_stock")
+      .update({
+        current_assignment_id: null,
+        stock_status: "ready",
+        dispatch_queue_status: "review",
+        dispatch_queue_reason: "agent_disabled_recycle",
+        dispatch_queue_evaluated_at: null,
+      })
+      .in("id", stockIds)
+      .in("stock_status", ["assigned", "in_progress", "ready"])
+      .select("id");
+
+    if (stockErr) {
+      throw new Error(`Réallocation lead-generation impossible (mise à jour stock): ${stockErr.message}`);
+    }
+    summary.resetStockRows = (stockRows ?? []).length;
+  }
+
+  const { data: leadRows, error: leadErr } = await admin
+    .from("leads")
+    .update({ assigned_to: null })
+    .eq("assigned_to", targetUserId)
+    .not("lead_status", "in", "(lost,converted)")
+    .select("id");
+
+  if (leadErr) {
+    throw new Error(`Désassignation des leads CRM impossible: ${leadErr.message}`);
+  }
+  summary.unassignedOpenLeads = (leadRows ?? []).length;
+
+  return summary;
+}
 
 async function guardSuperAdminNotSelf(targetUserId: string): Promise<AdminUserMutationResult | null> {
   const access = await getAccessContext();
@@ -625,9 +739,21 @@ export async function setUserPausedAsAdmin(
     return { ok: false, error: profErr.message };
   }
 
+  let disableSummary: DisableAgentImpactSummary | null = null;
+  if (paused) {
+    try {
+      disableSummary = await handleAgentDisabledImpact(admin, targetUserId);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Erreur de remise en circuit.";
+      return { ok: false, error: message };
+    }
+  }
+
   revalidatePath("/settings/users");
   return {
     ok: true,
-    message: paused ? "Utilisateur mis en pause (connexion bloquée)." : "Utilisateur réactivé.",
+    message: paused
+      ? `Utilisateur mis en pause (connexion bloquée). Réaffectation: ${disableSummary?.recycledAssignments ?? 0} assignation(s) lead-generation recyclée(s), ${disableSummary?.resetStockRows ?? 0} fiche(s) remises en ready, ${disableSummary?.unassignedOpenLeads ?? 0} lead(s) CRM ouvert(s) désassigné(s).`
+      : "Utilisateur réactivé.",
   };
 }

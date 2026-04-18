@@ -8,6 +8,7 @@ import { hasFullCeeWorkflowAccess } from "./cee-workflows-scope";
 import {
   canAccessAdminCeeSheets,
   canAccessCeeWorkflowsModule,
+  canAccessLeadGenerationMyQueue,
   canAccessCloserWorkspace,
   canAccessCockpitRoute,
   canAccessConfirmateurWorkspace,
@@ -45,6 +46,16 @@ export async function buildAllowedNavHrefs(
   if (canAccessAdminCeeSheets(access)) {
     extra.push("/admin/cee-sheets");
     extra.push("/admin/technical-visit-templates");
+    extra.push("/lead-generation");
+    extra.push("/lead-generation/settings");
+    extra.push("/lead-generation/imports");
+    extra.push("/lead-generation/stock");
+    extra.push("/lead-generation/automation");
+    extra.push("/lead-generation/analytics");
+    extra.push("/lead-generation/learning");
+  }
+  if (canAccessLeadGenerationMyQueue(access)) {
+    extra.push("/lead-generation/my-queue");
   }
   if (canAccessLeadsDirectoryNav(access)) {
     extra.push("/leads");

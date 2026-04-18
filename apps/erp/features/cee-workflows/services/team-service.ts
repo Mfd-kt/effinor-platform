@@ -68,7 +68,9 @@ export async function getSheetMembersByRole(
   if (!team) {
     return [];
   }
-  return team.members.filter((member) => member.role_in_team === role && member.is_active);
+  return team.members.filter(
+    (member: CeeSheetTeamMemberWithProfile) => member.role_in_team === role && member.is_active,
+  );
 }
 
 export async function getWorkflowRoleBucket(
@@ -79,10 +81,18 @@ export async function getWorkflowRoleBucket(
   const members = team?.members ?? [];
 
   return {
-    agent: members.filter((member) => member.role_in_team === "agent" && member.is_active),
-    confirmateur: members.filter((member) => member.role_in_team === "confirmateur" && member.is_active),
-    closer: members.filter((member) => member.role_in_team === "closer" && member.is_active),
-    manager: members.filter((member) => member.role_in_team === "manager" && member.is_active),
+    agent: members.filter(
+      (member: CeeSheetTeamMemberWithProfile) => member.role_in_team === "agent" && member.is_active,
+    ),
+    confirmateur: members.filter(
+      (member: CeeSheetTeamMemberWithProfile) => member.role_in_team === "confirmateur" && member.is_active,
+    ),
+    closer: members.filter(
+      (member: CeeSheetTeamMemberWithProfile) => member.role_in_team === "closer" && member.is_active,
+    ),
+    manager: members.filter(
+      (member: CeeSheetTeamMemberWithProfile) => member.role_in_team === "manager" && member.is_active,
+    ),
   };
 }
 
@@ -106,7 +116,7 @@ export async function prefillWorkflowAssignments(
   }
 
   const assignments = prefillWorkflowAssignmentsFromMembers(
-    team.members.map((member) => ({
+    team.members.map((member: CeeSheetTeamMemberWithProfile) => ({
       userId: member.user_id,
       roleInTeam: member.role_in_team as CeeTeamRole,
       isActive: member.is_active,

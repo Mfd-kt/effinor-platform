@@ -9,12 +9,16 @@ import {
 } from "@/features/cee-workflows/components/lead-workflow-assignments-editor";
 import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 
+type WorkflowTeamMember = NonNullable<
+  NonNullable<WorkflowScopedListRow["cee_sheet_team"]>["cee_sheet_team_members"]
+>[number];
+
 function profileLabel(profile: { full_name: string | null; email: string } | null): string {
   return profile?.full_name?.trim() || profile?.email || "Non affecté";
 }
 
 function workflowTeamManagerLabel(w: WorkflowScopedListRow): string | null {
-  const members = w.cee_sheet_team?.cee_sheet_team_members ?? [];
+  const members: WorkflowTeamMember[] = w.cee_sheet_team?.cee_sheet_team_members ?? [];
   const m = members.find((x) => x.role_in_team === "manager" && x.is_active);
   const p = m?.profile;
   if (!p) return null;

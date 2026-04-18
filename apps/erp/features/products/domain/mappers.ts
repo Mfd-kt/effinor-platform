@@ -205,7 +205,10 @@ export function toCartViewModel(cart: CartWithItems): CartViewModel {
     totalQuantity: cart.total_quantity,
     subtotalHt: cart.subtotal_ht,
     items: cart.items
-      .sort((a, b) => a.display_order - b.display_order)
+      .sort(
+        (a: CartWithItems["items"][number], b: CartWithItems["items"][number]) =>
+          a.display_order - b.display_order,
+      )
       .map(toCartItemViewModel),
   };
 }

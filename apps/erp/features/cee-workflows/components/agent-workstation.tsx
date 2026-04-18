@@ -21,12 +21,12 @@ import {
   DEFAULT_AGENT_PROSPECT_FORM,
   type AgentProspectFormValue,
 } from "@/features/cee-workflows/components/agent-prospect-form";
-
-export type AgentSimulatorLeadSession = { leadId: string } & AgentProspectFormValue;
 import { AgentSimulatorContextCard } from "@/features/cee-workflows/components/agent-simulator-context-card";
 import { AgentSheetSimulatorPanel } from "@/features/cee-workflows/components/agent-sheet-simulator-panel";
 import { AgentWorkflowActivityPanel } from "@/features/cee-workflows/components/agent-workflow-activity-panel";
 import { saveAgentWorkflowDraft, sendAgentWorkflowToConfirmateur, validateAgentWorkflowSimulation } from "@/features/cee-workflows/actions/agent-actions";
+import type { AgentSimulatorLeadSession } from "@/features/cee-workflows/types/agent-simulator-lead-session";
+import { attachLeadGenerationConversionAction } from "@/features/lead-generation/actions/attach-lead-generation-conversion-action";
 import { DEFAULT_AGENT_DESTRAT_STATE, computeAgentDestratPreview, extractAgentDestratStateFromJson, type AgentDestratFormState } from "@/features/cee-workflows/lib/agent-destrat-simulator";
 import type { AgentActivityBuckets, AgentActivityItem, AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
 import { resolveAgentInitialSheetId } from "@/features/cee-workflows/lib/agent-workflow-activity";
@@ -70,6 +70,8 @@ function makeEmptyMessage(message: string) {
     </div>
   );
 }
+
+export type { AgentSimulatorLeadSession };
 
 function prospectFromActivity(item: AgentActivityItem): AgentProspectFormValue {
   return {
@@ -125,11 +127,17 @@ export function AgentWorkstation({
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [callbackSheetOpen, setCallbackSheetOpen] = useState(false);
   const [callbackEditing, setCallbackEditing] = useState<CommercialCallbackRow | null>(null);
+  const [leadGenStockId, setLeadGenStockId] = useState<string | null>(null);
   const simulatorBootstrapRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const key = initialSimulatorSession?.leadId ?? null;
-    if (!initialSimulatorSession || !key) {
+    if (!initialSimulatorSession) {
+      return;
+    }
+    const sessionLeadId = initialSimulatorSession.leadId ?? null;
+    const sessionLg = initialSimulatorSession.leadGenerationStockId ?? null;
+    const key = sessionLeadId ? `lead:${sessionLeadId}` : sessionLg ? `lg:${sessionLg}` : null;
+    if (!key) {
       return;
     }
     if (simulatorBootstrapRef.current === key) {
@@ -137,15 +145,34 @@ export function AgentWorkstation({
     }
     simulatorBootstrapRef.current = key;
     skipDraftHydrate.current = true;
-    const { leadId: sessionLeadId, ...prospectVals } = initialSimulatorSession;
-    setLeadId(sessionLeadId);
-    setWorkflowId(undefined);
-    setWorkflowStatus("draft");
-    setProspect(prospectVals);
-    setDestratState(DEFAULT_AGENT_DESTRAT_STATE);
-    setDestratUiStep(1);
-    setFeedback(null);
-    queueMicrotask(() => setSimulatorOpen(true));
+    const prospectVals: AgentProspectFormValue = {
+      companyName: initialSimulatorSession.companyName,
+      civility: initialSimulatorSession.civility,
+      contactName: initialSimulatorSession.contactName,
+      phone: initialSimulatorSession.phone,
+      callbackAt: initialSimulatorSession.callbackAt,
+      email: initialSimulatorSession.email,
+      address: initialSimulatorSession.address,
+      city: initialSimulatorSession.city,
+      postalCode: initialSimulatorSession.postalCode,
+      notes: initialSimulatorSession.notes,
+    };
+    queueMicrotask(() => {
+      if (sessionLg) {
+        setLeadGenStockId(sessionLg);
+        setLeadId(undefined);
+      } else {
+        setLeadGenStockId(null);
+        setLeadId(sessionLeadId ?? undefined);
+      }
+      setWorkflowId(undefined);
+      setWorkflowStatus("draft");
+      setProspect(prospectVals);
+      setDestratState(DEFAULT_AGENT_DESTRAT_STATE);
+      setDestratUiStep(1);
+      setFeedback(null);
+      setSimulatorOpen(true);
+    });
   }, [initialSimulatorSession]);
 
   useEffect(() => {
@@ -270,6 +297,7 @@ export function AgentWorkstation({
     skipDraftHydrate.current = true;
     setWorkflowId(undefined);
     setLeadId(undefined);
+    setLeadGenStockId(null);
     setWorkflowStatus("draft");
     setProspect(DEFAULT_AGENT_PROSPECT_FORM);
     setDestratState(DEFAULT_AGENT_DESTRAT_STATE);
@@ -282,11 +310,13 @@ export function AgentWorkstation({
     setSimulatorOpen(open);
     if (!open) {
       skipDraftHydrate.current = false;
+      setLeadGenStockId(null);
     }
   }
 
   function handleResume(item: AgentActivityItem) {
     skipDraftHydrate.current = false;
+    setLeadGenStockId(null);
     const sheet = sheets.find((candidate) => candidate.code === item.sheetCode);
     if (sheet) {
       setActiveSheetId(sheet.id);
@@ -323,6 +353,23 @@ export function AgentWorkstation({
               ? `${result.message} Lead existant: ${result.duplicateLeadId}.`
               : result.message,
         });
+        return;
+      }
+
+      if (leadGenStockId && (mode === "validate" || mode === "send")) {
+        const attach = await attachLeadGenerationConversionAction({
+          stockId: leadGenStockId,
+          leadId: result.leadId,
+        });
+        if (!attach.ok) {
+          setFeedback({ type: "err", text: attach.error });
+          return;
+        }
+        setLeadGenStockId(null);
+        skipDraftHydrate.current = false;
+        setSimulatorOpen(false);
+        router.refresh();
+        router.push(`/leads/${result.leadId}`);
         return;
       }
 

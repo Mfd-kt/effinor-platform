@@ -10,7 +10,7 @@ import type { CloserWorkflowDetail as CloserWorkflowDetailData } from "@/feature
 import { missingInformationForCloserDisplay } from "@/features/cee-workflows/lib/missing-information-for-closer-display";
 import { formatHeatingModesDisplay } from "@/features/leads/lib/heating-modes";
 import { mergeLeadDetailWithWorkflowSimulationResult } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
-import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
+import type { CartWithItems, SimulatorProductCardViewModel } from "@/features/products/domain/types";
 
 export function CloserWorkflowDetail({
   detail,
@@ -108,7 +108,7 @@ export function CloserWorkflowDetail({
             <CardTitle>Panier projet</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {detail.cart.items.map((item) => (
+            {detail.cart.items.map((item: CartWithItems["items"][number]) => (
               <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
                 <div>
                   <div className="font-medium">{item.product.name}</div>

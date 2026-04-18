@@ -173,7 +173,20 @@ export async function startImpersonation(targetUserId: string): Promise<StartImp
     .select("role_id, roles!inner(code)")
     .eq("user_id", tid);
 
-  const targetRoles = [...new Set((ur ?? []).map((r) => (r.roles as { code: string }).code))];
+  const targetRoles = [
+    ...new Set(
+      (ur ?? []).flatMap((r) => {
+        const roles = r.roles as unknown;
+        if (Array.isArray(roles)) {
+          return roles.map((x) => String((x as { code?: string }).code ?? ""));
+        }
+        if (roles && typeof roles === "object" && "code" in roles) {
+          return [String((roles as { code?: string }).code ?? "")];
+        }
+        return [];
+      }),
+    ),
+  ].filter(Boolean);
   if (targetRoles.includes("super_admin")) {
     return { ok: false, error: "Impossible d’imiter un super administrateur." };
   }

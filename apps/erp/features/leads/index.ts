@@ -4,6 +4,10 @@ export {
   type CreateTechnicalVisitFromLeadResult,
 } from "./actions/create-technical-visit-from-lead";
 export { updateLead, type UpdateLeadResult } from "./actions/update-lead";
+export {
+  updateLeadCallTraceAction,
+  type UpdateLeadCallTraceResult,
+} from "./actions/update-lead-call-trace-action";
 export { LeadForm } from "./components/lead-form";
 export { LeadsTable } from "./components/leads-table";
 export { LeadStatusBadge } from "./components/lead-status-badge";
