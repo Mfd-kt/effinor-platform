@@ -22,7 +22,7 @@ import {
 import { getUnifiedPipelineLockState } from "@/features/lead-generation/queries/get-unified-pipeline-lock-state";
 import { getLeadGenerationClosingCockpitMetrics } from "@/features/lead-generation/queries/get-lead-generation-closing-cockpit-metrics";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export const maxDuration = 300;
 
 export default async function LeadGenerationPage() {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

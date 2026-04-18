@@ -38,7 +38,7 @@ import { LeadGenerationManualReviewPanel } from "@/features/lead-generation/comp
 import { getLeadGenerationManualReviews } from "@/features/lead-generation/queries/get-lead-generation-manual-reviews";
 import { getLeadGenerationStockById } from "@/features/lead-generation/queries/get-lead-generation-stock-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { formatDateTimeFr } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -63,7 +63,7 @@ async function getAssignmentAgentId(assignmentId: string | null): Promise<string
 
 export default async function LeadGenerationStockDetailPage({ params }: PageProps) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

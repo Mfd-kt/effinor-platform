@@ -11,7 +11,7 @@ import { ManualCsvImportPanel } from "@/features/lead-generation/components/manu
 import { buildImportBatchesListUrl, type ImportBatchesListSearchState } from "@/features/lead-generation/lib/build-import-batches-list-url";
 import { getLeadGenerationImportBatches } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ type PageProps = {
 
 export default async function LeadGenerationImportsPage({ searchParams }: PageProps) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

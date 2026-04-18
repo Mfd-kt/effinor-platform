@@ -10,14 +10,14 @@ import {
   type LeadGenerationAutomationRunListItem,
 } from "@/features/lead-generation/queries/get-lead-generation-automation-runs";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeadGenerationAutomationPage() {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

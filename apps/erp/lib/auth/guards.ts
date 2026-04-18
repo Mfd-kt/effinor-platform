@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 
+import { isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
+
 import type { AccessContext } from "./access-context";
 import { getAccessContext } from "./access-context";
 import { isSalesDirector, isSuperAdmin } from "./role-codes";
@@ -28,4 +30,21 @@ export async function requireCeeAdminAccess(): Promise<Extract<AccessContext, { 
     notFound();
   }
   return access;
+}
+
+/**
+ * Réglages « Utilisateurs » : super administrateur ou manager d’équipe CEE actif (création d’utilisateurs encadrée côté actions).
+ */
+export async function requireUsersSettingsAccess(): Promise<Extract<AccessContext, { kind: "authenticated" }>> {
+  const access = await getAccessContext();
+  if (access.kind !== "authenticated") {
+    notFound();
+  }
+  if (isSuperAdmin(access.roleCodes)) {
+    return access;
+  }
+  if (await isCeeTeamManager(access.userId)) {
+    return access;
+  }
+  notFound();
 }

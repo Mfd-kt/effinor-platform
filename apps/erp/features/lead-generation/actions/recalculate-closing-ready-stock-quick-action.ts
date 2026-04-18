@@ -1,7 +1,7 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 import { recalculateLeadGenerationClosingReadinessBatch } from "../closing/recalculate-closing-readiness";
 import type { LeadGenerationActionResult } from "../lib/action-result";
@@ -13,7 +13,7 @@ export async function recalculateClosingReadyStockQuickAction(
   input: unknown,
 ): Promise<LeadGenerationActionResult<{ processed: number; failed: string[]; selected: number }>> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     return { ok: false, error: "Accès réservé aux utilisateurs autorisés." };
   }
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 import { getYellowPagesActorId } from "../apify/client";
 import type { SimpleCreateLeadsMapsResult } from "../domain/main-actions-result";
@@ -19,7 +19,7 @@ export async function simpleCreateLeadsMapsAction(
   input: unknown,
 ): Promise<LeadGenerationActionResult<SimpleCreateLeadsMapsResult>> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     return { ok: false, error: "Accès réservé à l’administration." };
   }
 

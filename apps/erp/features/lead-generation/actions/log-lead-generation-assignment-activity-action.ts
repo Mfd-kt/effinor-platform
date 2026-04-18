@@ -1,7 +1,7 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import { logLeadGenerationAssignmentActivityActionInputSchema } from "../schemas/lead-generation-actions.schema";
@@ -43,7 +43,7 @@ export async function logLeadGenerationAssignmentActivityAction(
       ...rest,
       nextActionAt: nextActionAtIso,
       actorUserId: access.userId,
-      allowAsAdmin: canAccessAdminCeeSheets(access),
+      allowAsAdmin: await canAccessLeadGenerationHub(access),
     });
     return { ok: true, data };
   } catch (e) {

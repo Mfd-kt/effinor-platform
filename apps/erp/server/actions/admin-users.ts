@@ -10,8 +10,10 @@ import {
   avatarObjectPath,
   isAllowedAvatarMime,
 } from "@/features/account/lib/avatar-storage";
+import type { AccessContext } from "@/lib/auth/access-context";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { isSuperAdmin } from "@/lib/auth/role-codes";
+import { getManagedTeamsContext, isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
 import { sendNewUserCredentialsEmail } from "@/lib/email/send-new-user-credentials-email";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -34,6 +36,38 @@ function roleCodeFromRolesJoin(roles: unknown): string | null {
   return null;
 }
 
+const CEE_MANAGER_CREATABLE_ROLE_CODES = new Set(["sales_agent", "confirmer", "closer"]);
+
+type UsersSettingsActor =
+  | { kind: "none" }
+  | { kind: "super_admin" }
+  | { kind: "team_manager"; teamIds: string[]; memberUserIds: Set<string> };
+
+async function resolveUsersSettingsActor(
+  access: Extract<AccessContext, { kind: "authenticated" }>,
+): Promise<UsersSettingsActor> {
+  if (isSuperAdmin(access.roleCodes)) {
+    return { kind: "super_admin" };
+  }
+  if (await isCeeTeamManager(access.userId)) {
+    const ctx = await getManagedTeamsContext(access.userId);
+    if (!ctx) {
+      return { kind: "none" };
+    }
+    const memberUserIds = new Set(ctx.members.map((m) => m.userId));
+    memberUserIds.add(access.userId);
+    return { kind: "team_manager", teamIds: ctx.teamIds, memberUserIds };
+  }
+  return { kind: "none" };
+}
+
+function appRoleCodeToCeeTeamMemberRole(roleCode: string): "agent" | "confirmateur" | "closer" {
+  if (roleCode === "sales_agent") return "agent";
+  if (roleCode === "confirmer") return "confirmateur";
+  if (roleCode === "closer") return "closer";
+  return "agent";
+}
+
 const createUserSchema = z.object({
   email: z.string().email("E-mail invalide."),
   password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères."),
@@ -47,7 +81,11 @@ export type CreateUserWithRoleResult =
 
 export async function createUserWithRole(formData: FormData): Promise<CreateUserWithRoleResult> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !isSuperAdmin(access.roleCodes)) {
+  if (access.kind !== "authenticated") {
+    return { ok: false, error: "Accès refusé." };
+  }
+  const actor = await resolveUsersSettingsActor(access);
+  if (actor.kind === "none") {
     return { ok: false, error: "Accès refusé." };
   }
 
@@ -113,6 +151,37 @@ export async function createUserWithRole(formData: FormData): Promise<CreateUser
 
   if (fullName) {
     await admin.from("profiles").update({ full_name: fullName }).eq("id", userId);
+  }
+
+  if (actor.kind === "team_manager") {
+    const roleInTeam = appRoleCodeToCeeTeamMemberRole(roleCode);
+    for (const teamId of actor.teamIds) {
+      const { error: memErr } = await admin.from("cee_sheet_team_members").insert({
+        cee_sheet_team_id: teamId,
+        user_id: userId,
+        role_in_team: roleInTeam,
+        is_active: true,
+      });
+      if (
+        memErr &&
+        !/duplicate key|unique constraint|cee_sheet_team_members_unique/i.test(memErr.message ?? "")
+      ) {
+        try {
+          await admin.from("user_roles").delete().eq("user_id", userId);
+        } catch {
+          /* best effort */
+        }
+        try {
+          await admin.auth.admin.deleteUser(userId);
+        } catch {
+          /* best effort */
+        }
+        return {
+          ok: false,
+          error: `Utilisateur créé mais rattachement à l’équipe a échoué : ${memErr.message}`,
+        };
+      }
+    }
   }
 
   const emailResult = await sendNewUserCredentialsEmail({
@@ -476,7 +545,11 @@ export type AdminUserMutationResult = { ok: true; message: string } | { ok: fals
  */
 export async function listRolesForAdmin(): Promise<RoleCatalogRow[]> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !isSuperAdmin(access.roleCodes)) {
+  if (access.kind !== "authenticated") {
+    return [];
+  }
+  const actor = await resolveUsersSettingsActor(access);
+  if (actor.kind === "none") {
     return [];
   }
 
@@ -487,7 +560,10 @@ export async function listRolesForAdmin(): Promise<RoleCatalogRow[]> {
     return [];
   }
 
-  return data;
+  if (actor.kind === "super_admin") {
+    return data;
+  }
+  return data.filter((r) => CEE_MANAGER_CREATABLE_ROLE_CODES.has(r.code));
 }
 
 /**
@@ -495,17 +571,24 @@ export async function listRolesForAdmin(): Promise<RoleCatalogRow[]> {
  */
 export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !isSuperAdmin(access.roleCodes)) {
+  if (access.kind !== "authenticated") {
+    return [];
+  }
+  const actor = await resolveUsersSettingsActor(access);
+  if (actor.kind === "none") {
     return [];
   }
 
   const admin = createAdminClient();
 
-  const { data: profiles, error: profErr } = await admin
+  let profilesQuery = admin
     .from("profiles")
     .select("id, email, full_name, is_active")
-    .is("deleted_at", null)
-    .order("email", { ascending: true });
+    .is("deleted_at", null);
+  if (actor.kind === "team_manager") {
+    profilesQuery = profilesQuery.in("id", [...actor.memberUserIds]);
+  }
+  const { data: profiles, error: profErr } = await profilesQuery.order("email", { ascending: true });
 
   if (profErr || !profiles?.length) {
     return [];

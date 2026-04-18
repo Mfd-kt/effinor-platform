@@ -1,7 +1,7 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import type { StartLinkedInEnrichmentOk } from "../services/start-linkedin-enrichment-apify-import";
@@ -11,7 +11,7 @@ export async function startLinkedInEnrichmentApifyImportAction(): Promise<
   LeadGenerationActionResult<StartLinkedInEnrichmentOk>
 > {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     return { ok: false, error: "Accès réservé à l’administration." };
   }
 

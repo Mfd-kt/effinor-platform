@@ -14,9 +14,17 @@ type AdminUserRowActionsProps = {
   email: string;
   isActive: boolean;
   isSelf: boolean;
+  /** Faux pour les managers d’équipe (pas de profil / pause / suppression). */
+  showPrivilegedActions?: boolean;
 };
 
-export function AdminUserRowActions({ userId, email, isActive, isSelf }: AdminUserRowActionsProps) {
+export function AdminUserRowActions({
+  userId,
+  email,
+  isActive,
+  isSelf,
+  showPrivilegedActions = true,
+}: AdminUserRowActionsProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -53,6 +61,10 @@ export function AdminUserRowActions({ userId, email, isActive, isSelf }: AdminUs
     } else {
       window.alert(r.error);
     }
+  }
+
+  if (!showPrivilegedActions) {
+    return <span className="text-muted-foreground">—</span>;
   }
 
   return (

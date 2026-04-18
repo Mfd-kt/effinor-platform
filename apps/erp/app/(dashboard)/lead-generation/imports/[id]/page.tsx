@@ -10,7 +10,7 @@ import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/
 import { humanizeLeadGenerationActionError } from "@/features/lead-generation/lib/humanize-lead-generation-action-error";
 import { getLeadGenerationImportBatchById } from "@/features/lead-generation/queries/get-lead-generation-import-batch-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 export default async function LeadGenerationImportBatchDetailPage({ params }: PageProps) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

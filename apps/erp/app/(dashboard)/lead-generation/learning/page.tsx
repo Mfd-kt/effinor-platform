@@ -7,14 +7,14 @@ import { LeadGenerationLearningInsightsList } from "@/features/lead-generation/c
 import { LeadGenerationMetricCard } from "@/features/lead-generation/components/lead-generation-metric-card";
 import { getLeadGenerationLearningInsights } from "@/features/lead-generation/learning/get-lead-generation-learning-insights";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeadGenerationLearningPage() {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

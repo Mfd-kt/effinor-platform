@@ -13,14 +13,14 @@ import { LeadGenerationMetricCard } from "@/features/lead-generation/components/
 import { LeadGenerationSourceMetricsTable } from "@/features/lead-generation/components/lead-generation-source-metrics-table";
 import { LeadGenerationStatusBreakdown } from "@/features/lead-generation/components/lead-generation-status-breakdown";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeadGenerationAnalyticsPage() {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

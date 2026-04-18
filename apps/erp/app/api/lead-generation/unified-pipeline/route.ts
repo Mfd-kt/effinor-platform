@@ -5,7 +5,7 @@ import { humanizeLeadGenerationActionError } from "@/features/lead-generation/li
 import { unifiedLeadGenerationPipelineBodySchema } from "@/features/lead-generation/schemas/lead-generation-actions.schema";
 import { runUnifiedLeadGenerationPipeline } from "@/features/lead-generation/services/run-unified-lead-generation-pipeline";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 export const dynamic = "force-dynamic";
 /** Parcours unifié : plusieurs minutes d’attente Apify (Maps, PJ, LinkedIn) — aligné sur `unifiedPipelineApifyWaitMs`. */
@@ -13,7 +13,7 @@ export const maxDuration = 900;
 
 export async function POST(req: Request) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     return NextResponse.json({ ok: false, error: "Accès réservé à l’administration." }, { status: 403 });
   }
 

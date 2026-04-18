@@ -1,7 +1,7 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 import type { PremiumAutoDispatchLeadsResult } from "../domain/main-actions-result";
 import type { LeadGenerationActionResult } from "../lib/action-result";
@@ -18,7 +18,7 @@ export async function autoDispatchPremiumLeadsAction(
   input: unknown,
 ): Promise<LeadGenerationActionResult<PremiumAutoDispatchLeadsResult>> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     return { ok: false, error: "Accès réservé à l’administration." };
   }
 

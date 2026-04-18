@@ -1,7 +1,7 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import { runManualCsvLeadGenerationImportActionInputSchema } from "../schemas/lead-generation-actions.schema";
@@ -14,7 +14,7 @@ export async function runManualCsvLeadGenerationImportAction(
   input: unknown,
 ): Promise<LeadGenerationActionResult<ManualCsvLeadGenerationImportResult>> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     return { ok: false, error: "Accès refusé." };
   }
 

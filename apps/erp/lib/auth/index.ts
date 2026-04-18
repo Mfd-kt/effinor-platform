@@ -51,7 +51,7 @@ export {
 } from "./table-scope";
 export { hasPermission, hasPermissionOrLegacy } from "./permission-resolve";
 export { buildAllowedNavHrefs } from "./navigation";
-export { requireSuperAdmin } from "./guards";
+export { requireSuperAdmin, requireUsersSettingsAccess } from "./guards";
 export { canDeleteLead, canReassignLeadCreator } from "./lead-permissions";
 export {
   APP_ROLE_CODES,

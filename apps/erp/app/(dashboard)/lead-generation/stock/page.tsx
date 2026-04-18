@@ -19,7 +19,7 @@ import {
 } from "@/features/lead-generation/queries/get-lead-generation-stock-summary";
 import { countDispatchableReadyNowPoolWithFilters } from "@/features/lead-generation/services/auto-dispatch-lead-generation-stock-round-robin";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessAdminCeeSheets } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ type PageProps = {
 
 export default async function LeadGenerationStockPage({ searchParams }: PageProps) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessAdminCeeSheets(access)) {
+  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
     notFound();
   }
 

@@ -189,6 +189,20 @@ export function canAccessAdminCeeSheets(access: AccessContext): boolean {
 }
 
 /**
+ * Pilotage lead generation (pages / actions hors file « Mes fiches ») :
+ * même périmètre que les fiches CEE admin, ou manager d’équipe CEE actif.
+ */
+export async function canAccessLeadGenerationHub(access: AccessContext): Promise<boolean> {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (canAccessAdminCeeSheets(access)) {
+    return true;
+  }
+  return isCeeTeamManager(access.userId);
+}
+
+/**
  * Impersonation (super_admin → commercial) : le compte réel peut ouvrir la file / une fiche
  * même si le sujet n’a pas le rôle `sales_agent` (support).
  */

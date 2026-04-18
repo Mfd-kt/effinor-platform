@@ -30,10 +30,13 @@ export function AdminUsersPanel({
   initialUsers,
   currentUserId,
   roleCatalog,
+  teamManagerOnly = false,
 }: {
   initialUsers: AdminUserRow[];
   currentUserId: string;
   roleCatalog: RoleCatalogRow[];
+  /** Manager d’équipe CEE : pas d’édition profil / pause / suppression. */
+  teamManagerOnly?: boolean;
 }) {
   const router = useRouter();
   const [result, formAction] = useActionState(
@@ -142,12 +145,16 @@ export function AdminUsersPanel({
                 initialUsers.map((u) => (
                   <tr key={u.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/settings/users/${u.id}`}
-                        className="text-primary underline-offset-4 hover:underline"
-                      >
-                        {u.email}
-                      </Link>
+                      {teamManagerOnly ? (
+                        <span className="text-foreground">{u.email}</span>
+                      ) : (
+                        <Link
+                          href={`/settings/users/${u.id}`}
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          {u.email}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{u.full_name ?? "—"}</td>
                     <td className="px-4 py-3">
@@ -164,6 +171,7 @@ export function AdminUsersPanel({
                         email={u.email}
                         isActive={u.is_active}
                         isSelf={u.id === currentUserId}
+                        showPrivilegedActions={!teamManagerOnly}
                       />
                     </td>
                   </tr>

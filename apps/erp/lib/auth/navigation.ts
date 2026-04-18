@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database.types";
 
+import { isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
+
 import type { AccessContext } from "./access-context";
 import { canAccessInstallationsPage } from "./installations-access";
 import { hasFullCeeWorkflowAccess } from "./cee-workflows-scope";
@@ -30,6 +32,7 @@ export async function buildAllowedNavHrefs(
   const rc = access.roleCodes;
   const base = [...CORE_HREFS];
   const extra: string[] = [];
+  const ceeTeamManager = await isCeeTeamManager(access.userId);
 
   if (canAccessCeeWorkflowsModule(access)) {
     extra.push("/agent");
@@ -46,6 +49,8 @@ export async function buildAllowedNavHrefs(
   if (canAccessAdminCeeSheets(access)) {
     extra.push("/admin/cee-sheets");
     extra.push("/admin/technical-visit-templates");
+  }
+  if (canAccessAdminCeeSheets(access) || ceeTeamManager) {
     extra.push("/lead-generation");
     extra.push("/lead-generation/settings");
     extra.push("/lead-generation/imports");
@@ -75,6 +80,9 @@ export async function buildAllowedNavHrefs(
 
   if (rc.includes("super_admin")) {
     return [...base, ...extra, "/settings/users", "/settings/roles", "/settings/cee", "/settings/products"];
+  }
+  if (ceeTeamManager) {
+    return [...base, ...extra, "/settings/users"];
   }
   return [...base, ...extra];
 }
