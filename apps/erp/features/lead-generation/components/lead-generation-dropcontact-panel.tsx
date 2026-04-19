@@ -94,10 +94,13 @@ export function LeadGenerationDropcontactPanel({
           ) : null}
           {dropcontactStatus === "pending" ? (
             <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200">
-              Le résultat arrive par webhook : l’URL doit être joignable depuis Internet (pas{" "}
-              <span className="font-mono text-[11px]">localhost</span> sans tunnel). Sinon le statut reste sur « En
-              cours ». Configurez <span className="font-mono text-[11px]">DROPCONTACT_WEBHOOK_CALLBACK_URL</span> ou un
-              déploiement public.
+              En attente de la réponse Dropcontact sur le serveur (webhook). Si cela dure plus de quelques minutes,
+              vérifiez côté hébergeur : URL exacte{" "}
+              <span className="font-mono text-[11px]">/api/dropcontact/webhook</span>, variables{" "}
+              <span className="font-mono text-[11px]">DROPCONTACT_WEBHOOK_CALLBACK_URL</span> ou{" "}
+              <span className="font-mono text-[11px]">NEXT_PUBLIC_APP_URL</span>,{" "}
+              <span className="font-mono text-[11px]">SUPABASE_SERVICE_ROLE_KEY</span>, et les logs des requêtes POST
+              webhook. En local sans URL publique, le webhook n’arrive pas.
             </p>
           ) : null}
           {dropcontactStatus === "completed" ? (

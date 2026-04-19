@@ -10,6 +10,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
+/**
+ * Le navigateur ouvre l’URL en GET : sans ce handler on obtient 405, ce qui prête à confusion.
+ * Dropcontact appelle en POST avec un corps JSON.
+ */
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    message: "Webhook Dropcontact actif. Les livraisons se font en POST (pas depuis la barre d’adresse).",
+  });
+}
+
 type EnrichWebhookPayload = {
   id?: string;
   event_type?: string;
