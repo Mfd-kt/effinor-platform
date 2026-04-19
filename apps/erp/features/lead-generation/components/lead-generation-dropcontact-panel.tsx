@@ -67,7 +67,7 @@ export function LeadGenerationDropcontactPanel({
   const [pending, startTransition] = useTransition();
   const [resetPending, startResetTransition] = useTransition();
   const [pullPending, startPullTransition] = useTransition();
-  const [flash, setFlash] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const [flash, setFlash] = useState<{ tone: "ok" | "err" | "warn"; text: string } | null>(null);
 
   const isPending = dropcontactStatus === "pending";
   const busy = pending || resetPending || isPending;
@@ -82,8 +82,9 @@ export function LeadGenerationDropcontactPanel({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Enrichissement</CardTitle>
         <CardDescription>
-          Une requête part vers Dropcontact ; le résultat revient d’habitude via webhook serveur. Si le statut reste bloqué,
-          utilisez « Récupérer le résultat » : le serveur interroge alors directement l’API Dropcontact.
+          Après le clic, le serveur envoie un POST à Dropcontact puis interroge l’API en GET (comme un flow n8n) jusqu’à
+          obtention du résultat ou fin de la fenêtre de polling. Le bouton « Récupérer le résultat » relance un GET si
+          besoin.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">
@@ -109,12 +110,8 @@ export function LeadGenerationDropcontactPanel({
           ) : null}
           {dropcontactStatus === "pending" ? (
             <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200">
-              En attente du webhook ou du traitement Dropcontact. Essayez d’abord « Récupérer le résultat » ci-dessous.
-              Si le blocage persiste, vérifiez côté hébergeur :{" "}
-              <span className="font-mono text-[11px]">/api/dropcontact/webhook</span>,{" "}
-              <span className="font-mono text-[11px]">DROPCONTACT_WEBHOOK_CALLBACK_URL</span> ou{" "}
-              <span className="font-mono text-[11px]">NEXT_PUBLIC_APP_URL</span>, et{" "}
-              <span className="font-mono text-[11px]">SUPABASE_SERVICE_ROLE_KEY</span>.
+              Traitement Dropcontact en cours ou fenêtre de polling dépassée : utilisez « Récupérer le résultat » pour un
+              nouveau GET sur le même request_id.
             </p>
           ) : null}
           {dropcontactStatus === "completed" ? (
@@ -136,7 +133,10 @@ export function LeadGenerationDropcontactPanel({
               setFlash(null);
               startTransition(async () => {
                 const res = await enrichLeadWithDropcontactAction(stockId);
-                setFlash({ tone: res.ok ? "ok" : "err", text: res.message });
+                setFlash({
+                  tone: res.ok ? (res.variant === "warn" ? "warn" : "ok") : "err",
+                  text: res.message,
+                });
                 router.refresh();
               });
             }}
@@ -212,7 +212,11 @@ export function LeadGenerationDropcontactPanel({
           <p
             className={cn(
               "text-sm",
-              flash.tone === "ok" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive",
+              flash.tone === "ok"
+                ? "text-emerald-700 dark:text-emerald-400"
+                : flash.tone === "warn"
+                  ? "text-amber-900 dark:text-amber-100"
+                  : "text-destructive",
             )}
           >
             {flash.text}

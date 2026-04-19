@@ -7,6 +7,7 @@ export type DropcontactLogStage =
   | "enrich"
   | "webhook"
   | "pull"
+  | "poll"
   | "client_post"
   | "client_get"
   | "revalidate"

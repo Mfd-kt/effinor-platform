@@ -8,14 +8,18 @@ import {
   buildDropcontactEnrichmentPayload,
   isEligibleForDropcontactEnrichment,
 } from "../dropcontact/build-dropcontact-request";
+import { finalizeDropcontactFromGetContacts } from "../dropcontact/finalize-dropcontact-from-get-contacts";
 import { logDropcontact } from "../dropcontact/dropcontact-log";
+import { pollDropcontactUntilReady } from "../dropcontact/poll-dropcontact-with-get";
 import { summarizeDropcontactPayloadForLog } from "../dropcontact/payload-log-summary";
 import { revalidateLeadStockDropcontactPaths } from "../dropcontact/revalidate-lead-stock-dropcontact-paths";
 import { getDropcontactApiKey, sendDropcontactEnrichmentRequest } from "../dropcontact/client";
 import type { LeadGenerationStockRow } from "../domain/stock-row";
 import { lgTable } from "../lib/lg-db";
 
-export type EnrichLeadWithDropcontactResult = { ok: true; message: string } | { ok: false; message: string };
+export type EnrichLeadWithDropcontactResult =
+  | { ok: true; message: string; variant?: "success" | "warn" }
+  | { ok: false; message: string };
 
 export async function canUseDropcontactOnStock(
   accessUserId: string,
@@ -33,7 +37,8 @@ export async function canUseDropcontactOnStock(
 }
 
 /**
- * Lance un enrichissement Dropcontact pour une fiche (résultat asynchrone via webhook).
+ * POST Dropcontact → enregistrement request_id → polling GET serveur (comme n8n).
+ * Le webhook reste optionnel pour accélérer la mise à jour si configuré.
  */
 export async function enrichLeadWithDropcontactAction(stockId: string): Promise<EnrichLeadWithDropcontactResult> {
   const id = stockId?.trim();
@@ -163,10 +168,7 @@ export async function enrichLeadWithDropcontactAction(stockId: string): Promise<
     return { ok: false, message: post.message };
   }
 
-  logDropcontact("enrich", "POST Dropcontact OK, persistance request_id", {
-    leadId: id,
-    requestId: post.request_id,
-  });
+  logDropcontact("enrich", "POST OK, request_id reçu", { leadId: id, requestId: post.request_id });
 
   const { error: ridErr } = await stockTable
     .update({
@@ -181,13 +183,99 @@ export async function enrichLeadWithDropcontactAction(stockId: string): Promise<
       requestId: post.request_id,
       message: ridErr.message,
     });
+    await stockTable
+      .update({
+        dropcontact_status: "failed",
+        dropcontact_last_error: "Enregistrement du request_id impossible.",
+        enrichment_status: "failed",
+        enrichment_error: "Enregistrement du request_id impossible.",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    revalidateLeadStockDropcontactPaths(id, "enrich_request_id_persist_failed");
+    return { ok: false, message: "Enregistrement du request_id impossible." };
   }
 
   revalidateLeadStockDropcontactPaths(id, "enrich_request_id_saved");
-  logDropcontact("enrich", "Flux clic terminé (en attente webhook ou GET)", {
-    leadId: id,
-    requestId: post.request_id,
-  });
 
-  return { ok: true, message: "Enrichissement en cours…" };
+  const pollOutcome = await pollDropcontactUntilReady(post.request_id, { leadId: id });
+
+  const { data: freshRow, error: freshErr } = await stockTable.select("*").eq("id", id).maybeSingle();
+  if (freshErr || !freshRow) {
+    logDropcontact("enrich", "Relecture fiche impossible après polling", { leadId: id });
+    return { ok: false, message: "Fiche introuvable après traitement Dropcontact." };
+  }
+  const fresh = freshRow as LeadGenerationStockRow;
+
+  if (fresh.dropcontact_status !== "pending") {
+    logDropcontact("enrich", "Finalisation déjà faite (webhook ou concurrence)", {
+      leadId: id,
+      dropcontact_status: fresh.dropcontact_status,
+    });
+    revalidateLeadStockDropcontactPaths(id, "enrich_skip_poll_already_final");
+    if (fresh.dropcontact_status === "completed") {
+      return { ok: true, message: "Fiche enrichie avec succès.", variant: "success" };
+    }
+    if (fresh.dropcontact_status === "failed") {
+      return {
+        ok: false,
+        message: fresh.dropcontact_last_error ?? "Dropcontact n’a pas trouvé de données exploitables.",
+      };
+    }
+    return { ok: true, message: "État Dropcontact déjà à jour.", variant: "success" };
+  }
+
+  if (pollOutcome.outcome === "failed") {
+    logDropcontact("enrich", "Polling : GET définitivement en erreur", { leadId: id, message: pollOutcome.message });
+    await stockTable
+      .update({
+        dropcontact_status: "failed",
+        dropcontact_last_error: pollOutcome.message,
+        enrichment_status: "failed",
+        enrichment_error: pollOutcome.message,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    revalidateLeadStockDropcontactPaths(id, "enrich_poll_get_failed");
+    return { ok: false, message: pollOutcome.message };
+  }
+
+  if (pollOutcome.outcome === "timeout") {
+    logDropcontact("enrich", "Polling : fenêtre dépassée, fiche laissée en pending", { leadId: id });
+    await stockTable
+      .update({
+        dropcontact_last_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    revalidateLeadStockDropcontactPaths(id, "enrich_poll_timeout");
+    return {
+      ok: true,
+      message: "Résultat pas encore prêt, réessayez dans quelques instants.",
+      variant: "warn",
+    };
+  }
+
+  const done = await finalizeDropcontactFromGetContacts(
+    stockTable,
+    id,
+    fresh,
+    pollOutcome.contacts,
+    {
+      requestId: post.request_id,
+      leadId: id,
+      revalidateOrigin: "enrich_poll_success",
+      logStage: "enrich",
+    },
+  );
+
+  if (!done.ok) {
+    return { ok: false, message: done.message };
+  }
+
+  return {
+    ok: true,
+    message: done.message,
+    variant: done.hasUsefulData ? "success" : "warn",
+  };
 }

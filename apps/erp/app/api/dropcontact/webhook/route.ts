@@ -12,6 +12,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 
 /**
+ * Webhook Dropcontact (secondaire) : peut finaliser une fiche avant la fin du polling GET serveur.
+ * Le flux principal repose sur POST → request_id → polling GET dans `enrichLeadWithDropcontactAction` (aligné n8n).
+ * Ne pas dépendre du webhook pour débloquer les fiches.
+ *
  * Le navigateur ouvre l’URL en GET : sans ce handler on obtient 405, ce qui prête à confusion.
  * Dropcontact appelle en POST avec un corps JSON.
  */
