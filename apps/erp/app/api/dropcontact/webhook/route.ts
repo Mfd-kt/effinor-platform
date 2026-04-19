@@ -34,7 +34,10 @@ function readLeadIdFromContact(contact: Record<string, unknown>): string | null 
   const cf = contact.custom_fields;
   if (cf && typeof cf === "object" && !Array.isArray(cf)) {
     const id = (cf as Record<string, unknown>).lead_id;
-    if (typeof id === "string" && id.trim()) return id.trim();
+    if (id != null && (typeof id === "string" || typeof id === "number")) {
+      const s = String(id).trim();
+      if (s.length > 0) return s;
+    }
   }
   return null;
 }
@@ -101,8 +104,11 @@ export async function POST(req: Request) {
       continue;
     }
 
-    if (row.dropcontact_request_id !== requestId) {
-      console.warn("[dropcontact/webhook] request_id incohérent", { stockId: row.id, requestId });
+    /** Tant que `request_id` n’est pas encore persisté (entre verrou « pending » et retour API), accepter le `request_id` du webhook. */
+    const storedRid =
+      typeof row.dropcontact_request_id === "string" ? row.dropcontact_request_id.trim() : "";
+    if (storedRid.length > 0 && storedRid !== requestId) {
+      console.warn("[dropcontact/webhook] request_id incohérent", { stockId: row.id, requestId, storedRid });
       continue;
     }
 
