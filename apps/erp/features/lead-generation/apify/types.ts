@@ -8,19 +8,10 @@ export type RunGoogleMapsApifyImportInput = {
   /** Libellé métier (lot / traçabilité), non envoyé tel quel à l’actor. */
   campaignName?: string;
   campaignSector?: string;
-  /** Batch coordinateur multi-source : ingestion différée jusqu’à fusion Maps + YP. */
-  multiSourceCoordinatorBatchId?: string;
-  multiSourceDeferIngest?: boolean;
-  /**
-   * Multi-source : ne pas lancer Pages Jaunes tout de suite ; ingestion Maps seule puis overlay YP (parcours unifié).
-   * Ignoré si pas de coordinateur / pas d’actor YP configuré.
-   */
-  deferYellowPages?: boolean;
-};
-
-/** Import Pages Jaunes — même surface de recherche que Maps (adapter l’actor Apify si besoin). */
-export type RunYellowPagesApifyImportInput = RunGoogleMapsApifyImportInput & {
-  maxYellowPagesResults?: number;
+  /** Rattachement métier (rempli côté serveur après validation fiche ↔ équipe). */
+  ceeSheetId?: string;
+  ceeSheetCode?: string;
+  targetTeamId?: string;
 };
 
 /** @deprecated Import synchrone (étape 7) — conservé pour typage historique. */
@@ -52,7 +43,6 @@ export type SyncGoogleMapsApifyImportPhase =
   | "running"
   | "failed"
   | "completed"
-  | "completed_deferred"
   | "already_completed"
   | "batch_failed"
   | "ingesting_elsewhere"
@@ -69,6 +59,8 @@ export type SyncGoogleMapsApifyImportResult = {
   acceptedCount?: number;
   duplicateCount?: number;
   rejectedCount?: number;
+  /** Run Apify en échec (ex. ABORTED) mais dataset non vide ingéré. */
+  partialApifyDatasetRecovery?: boolean;
   message?: string;
   error?: string;
 };

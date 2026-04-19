@@ -13,6 +13,7 @@ import { LeadGenerationRecycleToolbar } from "@/features/lead-generation/compone
 import { getLeadGenerationStockMetrics } from "@/features/lead-generation/analytics/get-lead-generation-stock-metrics";
 import { buildLeadGenerationStockQuickFiltreUrl } from "@/features/lead-generation/lib/build-lead-generation-list-url";
 import { getLeadGenerationAssignableAgentsWithStock } from "@/features/lead-generation/queries/get-lead-generation-assignable-agents-with-stock";
+import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import { getLeadGenerationImportBatches } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import type { LeadGenerationImportBatchListItem } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import {
@@ -22,11 +23,11 @@ import {
 import { getUnifiedPipelineLockState } from "@/features/lead-generation/queries/get-unified-pipeline-lock-state";
 import { getLeadGenerationClosingCockpitMetrics } from "@/features/lead-generation/queries/get-lead-generation-closing-cockpit-metrics";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub, canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-/** Génération multi-source + Apify peut dépasser le timeout par défaut des server actions. */
+/** Génération Apify (Google Maps) peut dépasser le timeout par défaut des server actions. */
 export const maxDuration = 300;
 
 export default async function LeadGenerationPage() {
@@ -97,13 +98,19 @@ export default async function LeadGenerationPage() {
   let closingMetrics: Awaited<ReturnType<typeof getLeadGenerationClosingCockpitMetrics>> = {
     closingHighCount: 0,
     withDecisionMakerCount: 0,
-    withLinkedInCount: 0,
     premiumReadyCount: 0,
   };
   try {
     closingMetrics = await getLeadGenerationClosingCockpitMetrics();
   } catch {
     /* défaut */
+  }
+
+  let ceeImportScope: Awaited<ReturnType<typeof getLeadGenerationCeeImportScope>> = { sheets: [], teams: [] };
+  try {
+    ceeImportScope = await getLeadGenerationCeeImportScope();
+  } catch {
+    ceeImportScope = { sheets: [], teams: [] };
   }
 
   const cockpitAgentRows = [...agents]
@@ -127,6 +134,17 @@ export default async function LeadGenerationPage() {
         }
         actions={
           <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {canAccessLeadGenerationMyQueue(access) ? (
+              <Link
+                href="/lead-generation/my-queue"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Ma file
+              </Link>
+            ) : null}
             <Link
               href="/lead-generation/stock"
               className={cn(
@@ -149,7 +167,7 @@ export default async function LeadGenerationPage() {
         }
       />
 
-      <LeadGenerationSimpleCockpit metrics={stockMetricsTotals} agents={cockpitAgentRows} />
+      <LeadGenerationSimpleCockpit metrics={stockMetricsTotals} agents={cockpitAgentRows} ceeScope={ceeImportScope} />
 
       <section aria-label="Métriques du carnet" className="rounded-xl border border-border/60 bg-muted/15 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -207,12 +225,14 @@ export default async function LeadGenerationPage() {
           <LeadGenerationUnifiedJourneyPanel
             pipelineLock={pipelineLock}
             assignableAgentsCount={agents.length}
+            ceeScope={ceeImportScope}
           />
 
           <LeadGenerationMainActions
             pipelineSnapshot={pipelineSnapshot}
             assignableAgentsCount={agents.length}
             syncingImportBatches={syncingImportBatches}
+            ceeScope={ceeImportScope}
           />
 
           <LeadGenerationImproveLeadsPanel />

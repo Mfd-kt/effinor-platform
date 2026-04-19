@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { AutoDispatchLeadsResult } from "../domain/main-actions-result";
 import { buildDispatchLeadGenerationStockClaimRpcParams } from "../lib/build-dispatch-lead-generation-rpc-params";
-import { computeAgentActiveStock } from "../lib/compute-agent-active-stock";
+import { computeAgentActiveStock, computeAgentActiveStockForCeeSheet } from "../lib/compute-agent-active-stock";
 import { lgTable } from "../lib/lg-db";
 import { applyLeadGenerationStockFilters } from "../queries/apply-lead-generation-stock-filters";
 import type { LeadGenerationAssignableAgent } from "../queries/get-lead-generation-assignable-agents";
@@ -32,6 +32,26 @@ export async function countDispatchableReadyNowPoolWithFilters(
   filters: GetLeadGenerationStockFilters | undefined,
 ): Promise<number> {
   const supabase = await createClient();
+  let effectiveFilters = filters;
+  if (filters?.cee_sheet_id?.trim()) {
+    const sheetId = filters.cee_sheet_id.trim();
+    const { data: batches, error: bErr } = await supabase
+      .from("lead_generation_import_batches")
+      .select("id")
+      .eq("cee_sheet_id", sheetId);
+    if (bErr) {
+      throw new Error(bErr.message);
+    }
+    const ids = (batches ?? []).map((b) => b.id as string).filter(Boolean);
+    if (ids.length === 0) {
+      return 0;
+    }
+    const rest = { ...filters };
+    delete rest.cee_sheet_id;
+    delete rest.import_batch_ids;
+    effectiveFilters = { ...rest, import_batch_ids: ids };
+  }
+
   const stock = lgTable(supabase, "lead_generation_stock");
   let q = stock.select("*", { count: "exact", head: true });
   q = q
@@ -40,7 +60,7 @@ export async function countDispatchableReadyNowPoolWithFilters(
     .eq("phone_status", "found")
     .is("current_assignment_id", null)
     .eq("dispatch_queue_status", "ready_now");
-  q = applyLeadGenerationStockFilters(q, filters);
+  q = applyLeadGenerationStockFilters(q, effectiveFilters);
   const { count, error } = await q;
 
   if (error) {
@@ -107,8 +127,12 @@ export async function autoDispatchLeadGenerationStockRoundRobin(input: {
 
   type AgentState = { agent: LeadGenerationAssignableAgent; need: number };
   const states: AgentState[] = [];
+  const ceeForCap = effectiveFilters?.cee_sheet_id?.trim() ?? null;
+
   for (const agent of agents) {
-    const { count: active } = await computeAgentActiveStock(supabase, agent.id);
+    const { count: active } = ceeForCap
+      ? await computeAgentActiveStockForCeeSheet(supabase, agent.id, ceeForCap)
+      : await computeAgentActiveStock(supabase, agent.id);
     const need = Math.max(0, cap - active);
     if (need > 0) {
       states.push({ agent, need });

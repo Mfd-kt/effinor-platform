@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { Json } from "../domain/json";
 import { mapCsvTextToLeadGenerationRawStockInputs } from "../import-sources/csv";
+import { leadGenerationBatchCeeInsertColumns } from "../lib/lead-generation-batch-cee-columns";
+import type { LeadGenerationBatchCeeColumns } from "../lib/lead-generation-batch-cee-columns";
 import { lgTable } from "../lib/lg-db";
 import { ingestLeadGenerationStock } from "./ingest-lead-generation-stock";
 
@@ -9,6 +11,7 @@ export type RunManualCsvLeadGenerationImportInput = {
   csvText: string;
   filename?: string | null;
   sourceLabel?: string | null;
+  cee: LeadGenerationBatchCeeColumns;
 };
 
 export type ManualCsvLeadGenerationImportResult =
@@ -75,6 +78,8 @@ export async function runManualCsvLeadGenerationImport(
     ...(input.filename?.trim() ? { filename: input.filename.trim() } : {}),
   };
 
+  const ceeCols = leadGenerationBatchCeeInsertColumns(input.cee);
+
   const { data: inserted, error: insErr } = await batches
     .insert({
       source: "csv_manual",
@@ -82,7 +87,8 @@ export async function runManualCsvLeadGenerationImport(
       status: "running",
       started_at: now,
       metadata_json: baseMetadata as unknown as Json,
-    })
+      ...ceeCols,
+    } as never)
     .select("id")
     .single();
 

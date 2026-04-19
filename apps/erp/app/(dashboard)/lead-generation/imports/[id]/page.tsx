@@ -5,11 +5,20 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ImportBatchCeeTeamEditor } from "@/features/lead-generation/components/import-batch-cee-team-editor";
+import { ImportBatchRetrySyncButton } from "@/features/lead-generation/components/import-batch-retry-sync-button";
 import { ImportBatchSyncButton } from "@/features/lead-generation/components/import-batch-sync-button";
 import { LeadGenerationEnrichmentToolbar } from "@/features/lead-generation/components/lead-generation-enrichment-toolbar";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
+import { formatMyQueueCeeSheetOptionLabel } from "@/features/lead-generation/lib/my-queue-cee-sheet-option";
 import { buildLeadGenerationStockPageUrl, type LeadGenerationListSearchState } from "@/features/lead-generation/lib/build-lead-generation-list-url";
+import {
+  formatApifyPartialRecoveryUiMessage,
+  readApifyPartialDatasetRecoveryMeta,
+} from "@/features/lead-generation/lib/apify-partial-dataset-recovery";
+import { assessLeadGenerationImportSyncRetryEligibility } from "@/features/lead-generation/lib/lead-generation-import-sync-retry-eligibility";
 import { humanizeLeadGenerationActionError } from "@/features/lead-generation/lib/humanize-lead-generation-action-error";
+import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import { getLeadGenerationImportBatchById } from "@/features/lead-generation/queries/get-lead-generation-import-batch-by-id";
 import { getLeadGenerationStock } from "@/features/lead-generation/queries/get-lead-generation-stock";
 import { getLeadGenerationStockIdsByImportBatch } from "@/features/lead-generation/queries/get-lead-generation-stock-ids-by-import-batch";
@@ -63,19 +72,6 @@ function importDetailPath(id: string, page: number): string {
   return `/lead-generation/imports/${id}?page=${page}`;
 }
 
-/** Lot enfant Maps / Pages Jaunes : l’ingestion SQL est différée vers le batch `apify_multi_source`. */
-function getDeferredIngestCoordinatorBatchId(metadata: Record<string, unknown> | null | undefined): string | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const ms = metadata.multiSource;
-  if (!ms || typeof ms !== "object" || Array.isArray(ms)) return null;
-  const m = ms as Record<string, unknown>;
-  if (m.deferIngest !== true) return null;
-  const cid = m.coordinatorBatchId;
-  return typeof cid === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cid)
-    ? cid
-    : null;
-}
-
 export default async function LeadGenerationImportBatchDetailPage({ params, searchParams }: PageProps) {
   const access = await getAccessContext();
   if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
@@ -91,9 +87,25 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
     notFound();
   }
 
+  let ceeImportScope: Awaited<ReturnType<typeof getLeadGenerationCeeImportScope>> | null = null;
+  try {
+    ceeImportScope = await getLeadGenerationCeeImportScope();
+  } catch {
+    ceeImportScope = null;
+  }
+
   const metaJson = JSON.stringify(batch.metadata_json ?? {}, null, 2);
   const title = batch.source_label?.trim() || formatLeadGenerationSourceLabel(batch.source);
+  const campaignName =
+    typeof batch.metadata_json === "object" &&
+    batch.metadata_json !== null &&
+    !Array.isArray(batch.metadata_json) &&
+    typeof (batch.metadata_json as Record<string, unknown>).campaignName === "string"
+      ? ((batch.metadata_json as Record<string, unknown>).campaignName as string).trim()
+      : "";
   const runRef = batch.external_run_id ?? batch.job_reference ?? "—";
+  const apifyPartialMeta = readApifyPartialDatasetRecoveryMeta(batch.metadata_json);
+  const syncRetryEligibility = assessLeadGenerationImportSyncRetryEligibility(batch);
   const errorHuman = batch.error_summary
     ? humanizeLeadGenerationActionError(batch.error_summary)
     : "";
@@ -104,17 +116,14 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
 
   const stockFilters = { import_batch_id: id };
   const linkBase: LeadGenerationListSearchState = { import_batch: id };
-  const deferredCoordinatorId = getDeferredIngestCoordinatorBatchId(batch.metadata_json);
-
   let stockRows: Awaited<ReturnType<typeof getLeadGenerationStock>> = [];
   let stockSummary: Awaited<ReturnType<typeof getLeadGenerationStockSummary>> | null = null;
-  let coordinatorStockSummary: Awaited<ReturnType<typeof getLeadGenerationStockSummary>> | null = null;
   let readyPoolCount = 0;
   let allStockIds: string[] = [];
   let stockLoadError: string | null = null;
 
   try {
-    [stockRows, stockSummary, readyPoolCount, allStockIds, coordinatorStockSummary] = await Promise.all([
+    [stockRows, stockSummary, readyPoolCount, allStockIds] = await Promise.all([
       getLeadGenerationStock({
         filters: stockFilters,
         limit: IMPORT_DETAIL_PAGE_SIZE,
@@ -123,9 +132,6 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
       getLeadGenerationStockSummary(stockFilters),
       countDispatchableReadyNowPoolWithFilters(stockFilters),
       getLeadGenerationStockIdsByImportBatch(id),
-      deferredCoordinatorId
-        ? getLeadGenerationStockSummary({ import_batch_id: deferredCoordinatorId })
-        : Promise.resolve(null),
     ]);
   } catch (e) {
     stockLoadError = e instanceof Error ? e.message : "Impossible de charger les fiches de cet import.";
@@ -172,14 +178,72 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
         ) : null}
       </div>
 
+      {apifyPartialMeta ? (
+        <div
+          className="rounded-lg border border-amber-500/45 bg-amber-500/[0.12] px-4 py-3 text-sm text-amber-950 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-50"
+          role="status"
+        >
+          <p className="font-medium leading-snug">{formatApifyPartialRecoveryUiMessage(apifyPartialMeta)}</p>
+        </div>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Vue d’ensemble</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="space-y-4 text-sm">
           <dl className="space-y-2">
             <DetailRow label="Libellé" value={batch.source_label ?? "—"} />
             <DetailRow label="Source" value={formatLeadGenerationSourceLabel(batch.source)} />
+            <DetailRow
+              label="Campagne (métadonnées)"
+              value={campaignName.length > 0 ? campaignName : "—"}
+            />
+          </dl>
+          {ceeImportScope ? (
+            <ImportBatchCeeTeamEditor
+              batchId={batch.id}
+              initialCeeSheetId={batch.cee_sheet_id}
+              initialTargetTeamId={batch.target_team_id}
+              scope={ceeImportScope}
+              displayFallbacks={{
+                ceeSheetCode: batch.cee_sheet_resolved_code ?? batch.cee_sheet_code,
+                ceeSheetLabel: batch.cee_sheet_resolved_label,
+                targetTeamName: batch.target_team_resolved_name,
+              }}
+            />
+          ) : (
+            <div className="space-y-2">
+              <dl className="space-y-2">
+                <DetailRow
+                  label="Fiche CEE"
+                  value={
+                    batch.cee_sheet_id
+                      ? formatMyQueueCeeSheetOptionLabel({
+                          id: batch.cee_sheet_id,
+                          code: batch.cee_sheet_resolved_code ?? batch.cee_sheet_code ?? "",
+                          label: batch.cee_sheet_resolved_label ?? batch.cee_sheet_code ?? "",
+                        })
+                      : "—"
+                  }
+                />
+                <DetailRow
+                  label="Équipe cible"
+                  value={
+                    batch.target_team_resolved_name?.trim()
+                      ? batch.target_team_resolved_name.trim()
+                      : batch.target_team_id
+                        ? shortRef(batch.target_team_id)
+                        : "—"
+                  }
+                />
+              </dl>
+              <p className="text-xs text-destructive">
+                Impossible de charger le référentiel CEE : l’édition du rattachement est indisponible.
+              </p>
+            </div>
+          )}
+          <dl className="space-y-2">
             <DetailRow label="Référence run Apify" value={runRef} />
             <DetailRow label="Jeu de données (dataset)" value={batch.external_dataset_id ?? "—"} />
             <DetailRow
@@ -205,48 +269,10 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
         </CardContent>
       </Card>
 
-      {deferredCoordinatorId ? (
-        <Card className="border-border bg-muted/40">
-          <CardHeader>
-            <CardTitle className="text-base text-foreground">
-              Import multi-source (ingestion sur le lot coordinateur)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-            <p>
-              Le nombre <strong className="font-semibold text-foreground">Importées</strong> ({batch.imported_count}) correspond aux
-              lieux lus depuis le jeu de données Apify pour ce lot {formatLeadGenerationSourceLabel(batch.source)}. En
-              parcours multi-source, ces lignes ne sont <strong className="font-semibold text-foreground">pas</strong> écrites dans{" "}
-              <code className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-foreground">
-                lead_generation_stock
-              </code>{" "}
-              sous cet identifiant : la fusion et la création des fiches se font sur le{" "}
-              <strong className="font-semibold text-foreground">lot coordinateur</strong> (UUID différent).
-            </p>
-            {coordinatorStockSummary && coordinatorStockSummary.totalMatching > 0 ? (
-              <p>
-                Fiches stock actuellement rattachées au coordinateur :{" "}
-                <strong className="font-semibold text-foreground">{coordinatorStockSummary.totalMatching}</strong>. Ouvrez ce lot pour
-                la liste, l&apos;enrichissement et la distribution.
-              </p>
-            ) : (
-              <p>
-                Si le coordinateur n&apos;a encore aucune fiche, poursuivez la synchronisation / le parcours unifié
-                jusqu&apos;à l&apos;étape de fusion des imports.
-              </p>
-            )}
-            <Link
-              href={`/lead-generation/imports/${deferredCoordinatorId}`}
-              className={cn(buttonVariants({ variant: "default", size: "sm" }), "w-fit")}
-            >
-              Ouvrir le lot coordinateur →
-            </Link>
-          </CardContent>
-        </Card>
-      ) : !stockLoadError &&
-        stockSummary &&
-        stockSummary.totalMatching === 0 &&
-        batch.imported_count > 0 ? (
+      {!stockLoadError &&
+      stockSummary &&
+      stockSummary.totalMatching === 0 &&
+      batch.imported_count > 0 ? (
         <Card className="border-border bg-muted/20">
           <CardHeader>
             <CardTitle className="text-base">Aucune fiche stock pour cet ID d&apos;import</CardTitle>
@@ -340,6 +366,15 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
             Relance la récupération des résultats Apify vers le stock lorsque le scraping est terminé.
           </p>
           <ImportBatchSyncButton batchId={batch.id} />
+          {batch.status === "failed" ? (
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground">
+                Lot en erreur : vous pouvez retenter une récupération depuis Apify si la référence du run est encore
+                enregistrée sur ce lot.
+              </p>
+              <ImportBatchRetrySyncButton batchId={batch.id} eligibility={syncRetryEligibility} />
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

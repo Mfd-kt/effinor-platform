@@ -1,35 +1,20 @@
-import { createClient } from "@/lib/supabase/server";
-
-import type { Json } from "../domain/json";
-import { getYellowPagesActorId, resolveYellowPagesApifyInputProfile } from "../apify/client";
-import type { RunYellowPagesApifyImportInput } from "../apify/types";
+import type { RunGoogleMapsApifyImportInput } from "../apify/types";
+import { startGoogleMapsApifyImport } from "../apify/start-google-maps-apify-import";
 import { syncGoogleMapsApifyImport } from "../apify/sync-google-maps-apify-import";
-import { startYellowPagesApifyImport } from "../apify/start-yellow-pages-apify-import";
-import { syncYellowPagesApifyImport } from "../apify/sync-yellow-pages-apify-import";
-import { lgTable } from "../lib/lg-db";
+import { isEligibleForVerifiedLeadGenerationEnrichment } from "../enrichment/verified-enrichment-eligibility";
+import { extractVerifiedLeadGenerationEnrichment } from "../firecrawl/extract-verified-enrichment";
 import { getLeadGenerationImportBatchById } from "../queries/get-lead-generation-import-batch-by-id";
+import { getLeadGenerationStockFirecrawlCandidatesForBatch } from "../queries/get-lead-generation-stock-firecrawl-candidates-for-batch";
 import { getLeadGenerationStockIdsByImportBatch } from "../queries/get-lead-generation-stock-ids-by-import-batch";
+import { getLeadGenerationSettings } from "../settings/get-lead-generation-settings";
 import { recalculateLeadGenerationCommercialScoreBatch } from "../scoring/recalculate-lead-generation-commercial-score-batch";
-import { applyYellowPagesDatasetToLot } from "./apply-yellow-pages-dataset-to-lot";
-import { runMultiSourceLeadGeneration } from "./run-multi-source-lead-generation";
-import { startLinkedInEnrichmentApifyImport } from "./start-linkedin-enrichment-apify-import";
-import { syncLinkedInEnrichmentApifyImport } from "./sync-linkedin-enrichment-apify-import";
-import {
-  finalizeDeferredMultiSourceCoordinator,
-  syncMultiSourceCoordinatorImport,
-} from "./sync-multi-source-coordinator-import";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function childSyncDone(phase: string): boolean {
-  return phase === "completed" || phase === "already_completed" || phase === "completed_deferred";
-}
-
 const POLL_MS = 3000;
 
-/** Délai max par étape Apify (Maps / Pages Jaunes) dans le parcours unifié — 4 min était trop court pour gros lots. */
 const DEFAULT_UNIFIED_APIFY_WAIT_MS = 600_000;
 
 function unifiedPipelineApifyWaitMs(): number {
@@ -41,37 +26,8 @@ function unifiedPipelineApifyWaitMs(): number {
   return DEFAULT_UNIFIED_APIFY_WAIT_MS;
 }
 
-const LINKEDIN_WAIT_MS = 180_000;
-
-async function patchCoordinatorYellowChild(coordinatorBatchId: string, yellowPagesBatchId: string): Promise<void> {
-  const supabase = await createClient();
-  const batches = lgTable(supabase, "lead_generation_import_batches");
-  const row = await getLeadGenerationImportBatchById(coordinatorBatchId);
-  if (!row) return;
-  const metaRoot =
-    typeof row.metadata_json === "object" && row.metadata_json !== null && !Array.isArray(row.metadata_json)
-      ? { ...(row.metadata_json as Record<string, unknown>) }
-      : {};
-  const prevMs =
-    typeof metaRoot.multiSource === "object" && metaRoot.multiSource !== null && !Array.isArray(metaRoot.multiSource)
-      ? { ...(metaRoot.multiSource as Record<string, unknown>) }
-      : {};
-  await batches
-    .update({
-      metadata_json: {
-        ...metaRoot,
-        multiSource: {
-          ...prevMs,
-          yellowPagesBatchId,
-          ypSkipped: false,
-        },
-      } as unknown as Json,
-    } as never)
-    .eq("id", coordinatorBatchId);
-}
-
-export async function scoreCommercialForCoordinatorLot(coordinatorBatchId: string): Promise<number> {
-  const ids = await getLeadGenerationStockIdsByImportBatch(coordinatorBatchId);
+export async function scoreCommercialForCoordinatorLot(importBatchId: string): Promise<number> {
+  const ids = await getLeadGenerationStockIdsByImportBatch(importBatchId);
   let total = 0;
   for (let i = 0; i < ids.length; i += 100) {
     const chunk = ids.slice(i, i + 100);
@@ -82,222 +38,100 @@ export async function scoreCommercialForCoordinatorLot(coordinatorBatchId: strin
 }
 
 export type MapsPhaseResult = {
+  /** Identifiant du lot (batch Google Maps) — alias historique « coordinateur ». */
   coordinatorBatchId: string;
   mapsBatchId: string;
   acceptedCount: number;
 };
 
 /**
- * Étape 1 : lancement multi-source et attente ingestion Maps + coordinateur (maps_ingested si PJ différée).
+ * Lance un import Google Maps Apify et attend la fin du run + ingestion SQL sur le même batch.
  */
-export async function executeUnifiedMapsPhase(
-  input: RunYellowPagesApifyImportInput,
-  opts: { deferYellowPages: boolean },
-): Promise<MapsPhaseResult> {
-  const launch = await runMultiSourceLeadGeneration({
-    ...input,
-    deferYellowPages: opts.deferYellowPages,
-  });
+export async function executeUnifiedMapsPhase(input: RunGoogleMapsApifyImportInput): Promise<MapsPhaseResult> {
+  const launch = await startGoogleMapsApifyImport(input);
   if (!launch.ok) {
     throw new Error(launch.error);
   }
 
-  const coordinatorBatchId = launch.data.coordinatorBatchId;
-  const mapsBatchId = launch.data.mapsBatchId;
+  const mapsBatchId = launch.data.batchId;
   const mapsWaitMs = unifiedPipelineApifyWaitMs();
   const deadline = Date.now() + mapsWaitMs;
-  let lastCoord = await syncMultiSourceCoordinatorImport({ coordinatorBatchId });
+
+  let last = await syncGoogleMapsApifyImport({ batchId: mapsBatchId });
 
   while (Date.now() < deadline) {
-    const mapsRes = await syncGoogleMapsApifyImport({ batchId: mapsBatchId });
+    if (last.phase === "completed" || last.phase === "already_completed") {
+      break;
+    }
     if (
-      !childSyncDone(mapsRes.phase) &&
-      mapsRes.phase !== "running" &&
-      mapsRes.phase !== "ingesting_elsewhere"
+      last.phase !== "running" &&
+      last.phase !== "ingesting_elsewhere"
     ) {
-      throw new Error(mapsRes.message ?? mapsRes.error ?? "Synchronisation Google Maps en échec.");
-    }
-
-    lastCoord = await syncMultiSourceCoordinatorImport({ coordinatorBatchId });
-    if (lastCoord.phase === "failed") {
-      throw new Error(lastCoord.message ?? lastCoord.error ?? "Fusion coordinateur en échec.");
-    }
-    if (opts.deferYellowPages && lastCoord.phase === "maps_ingested") {
-      break;
-    }
-    if (!opts.deferYellowPages && (lastCoord.phase === "completed" || lastCoord.phase === "already_completed")) {
-      break;
+      throw new Error(last.message ?? last.error ?? "Synchronisation Google Maps en échec.");
     }
     await sleep(POLL_MS);
+    last = await syncGoogleMapsApifyImport({ batchId: mapsBatchId });
   }
 
-  if (opts.deferYellowPages && lastCoord.phase !== "maps_ingested") {
+  if (last.phase !== "completed" && last.phase !== "already_completed") {
     const minWait = Math.round(mapsWaitMs / 60_000);
     throw new Error(
-      `Délai dépassé (~${minWait} min) en attendant l’ingestion carte et la fusion du lot. ` +
-        `Les gros scrapings Google Maps peuvent être lents : ouvrez Imports, synchronisez le batch Maps puis le coordinateur, ou augmentez LEAD_GENERATION_UNIFIED_APIFY_WAIT_MS (ms) puis relancez.`,
-    );
-  }
-  if (!opts.deferYellowPages && lastCoord.phase !== "completed" && lastCoord.phase !== "already_completed") {
-    throw new Error(
-      "Délai dépassé en attendant la fusion du lot. Synchronisez les imports depuis la page Imports puis relancez.",
+      `Délai dépassé (~${minWait} min) en attendant l’ingestion carte. ` +
+        `Les gros scrapings Google Maps peuvent être lents : ouvrez Imports, synchronisez ce lot Maps, ou augmentez LEAD_GENERATION_UNIFIED_APIFY_WAIT_MS (ms) puis relancez.`,
     );
   }
 
-  const coordRow = await getLeadGenerationImportBatchById(coordinatorBatchId);
-  const acceptedCount = coordRow?.accepted_count ?? lastCoord.acceptedCount ?? 0;
+  const row = await getLeadGenerationImportBatchById(mapsBatchId);
+  const acceptedCount = row?.accepted_count ?? last.acceptedCount ?? 0;
 
-  return { coordinatorBatchId, mapsBatchId, acceptedCount };
+  return { coordinatorBatchId: mapsBatchId, mapsBatchId, acceptedCount };
 }
 
-export type YellowPhaseResult = { patchedCount: number; fetchedCount: number };
+export type FirecrawlPhaseResult = {
+  attempted: number;
+  succeeded: number;
+  /** Aucun candidat Firecrawl sur le lot après filtrage métier. */
+  nothingToEnrich: boolean;
+};
 
 /**
- * Étape 2 : Pages Jaunes (lot coordinateur). `strict` : échec Apify / timeout / sync KO → bloque le pipeline.
+ * Lecture bornée des sites publics (Firecrawl) sur le lot courant — complète email / site quand c’est faisable.
  */
-export async function executeUnifiedYellowPagesPhase(
-  input: RunYellowPagesApifyImportInput,
-  coordinatorBatchId: string,
-  opts: {
-    strict: boolean;
-    onWarning: (w: string) => void;
-  },
-): Promise<YellowPhaseResult | { blocked: true; message: string }> {
-  const ypActorId = getYellowPagesActorId();
-  if (!ypActorId) {
-    return opts.strict
-      ? { blocked: true, message: "Pages Jaunes : actor non configuré (APIFY_YELLOW_PAGES_ACTOR_ID)." }
-      : { patchedCount: 0, fetchedCount: 0 };
-  }
+export async function executeUnifiedFirecrawlPhase(importBatchId: string): Promise<FirecrawlPhaseResult> {
+  const { settings } = await getLeadGenerationSettings();
+  const cap = Math.min(
+    100,
+    Math.max(1, settings.mainActionsDefaults.post_import_enrich_limit),
+  );
+  const scanCap = Math.min(500, cap * 5);
 
-  if (ypActorId && resolveYellowPagesApifyInputProfile(ypActorId) === "trudax_us") {
-    opts.onWarning(
-      "Annuaire : actor de type Pages Jaunes US — usage plutôt test ; pas une source principale FR.",
-    );
-  }
-
-  await scoreCommercialForCoordinatorLot(coordinatorBatchId);
-
-  const ypStart = await startYellowPagesApifyImport({
-    ...input,
-    multiSourceCoordinatorBatchId: coordinatorBatchId,
-    multiSourceDeferIngest: true,
-  });
-
-  let patchedCount = 0;
-  let fetchedCount = 0;
-
-  if (!ypStart.ok) {
-    if (opts.strict) {
-      return { blocked: true, message: `Pages Jaunes : ${ypStart.error}` };
+  const candidates = await getLeadGenerationStockFirecrawlCandidatesForBatch(importBatchId, scanCap);
+  const targetIds: string[] = [];
+  for (const row of candidates) {
+    const el = isEligibleForVerifiedLeadGenerationEnrichment(row);
+    if (el.ok) {
+      targetIds.push(row.id);
     }
-    opts.onWarning(`Pages Jaunes : ${ypStart.error}`);
-  } else {
-    await patchCoordinatorYellowChild(coordinatorBatchId, ypStart.data.batchId);
-    const ypDeadline = Date.now() + unifiedPipelineApifyWaitMs();
-    let ypSyncResolved = false;
-
-    while (Date.now() < ypDeadline) {
-      const ypRes = await syncYellowPagesApifyImport({ batchId: ypStart.data.batchId });
-      if (childSyncDone(ypRes.phase)) {
-        const applied = await applyYellowPagesDatasetToLot({
-          coordinatorBatchId,
-          yellowPagesBatchId: ypStart.data.batchId,
-        });
-        patchedCount = applied.patchedCount;
-        fetchedCount = ypRes.fetchedCount ?? 0;
-        ypSyncResolved = true;
-        if (fetchedCount === 0) {
-          opts.onWarning("Pages Jaunes : dataset vide après run — vérifiez search, location et l’actor.");
-        } else if (patchedCount === 0) {
-          opts.onWarning(
-            "Pages Jaunes : résultats présents mais aucune fiche du lot mise à jour (correspondance ou format).",
-          );
-        }
-        break;
-      }
-      if (ypRes.phase !== "running" && ypRes.phase !== "ingesting_elsewhere") {
-        const msg = ypRes.message ?? ypRes.error ?? "synchronisation interrompue.";
-        if (opts.strict) {
-          return { blocked: true, message: `Pages Jaunes : ${msg}` };
-        }
-        opts.onWarning(`Pages Jaunes : ${msg}`);
-        ypSyncResolved = true;
-        break;
-      }
-      await sleep(POLL_MS);
-    }
-
-    if (!ypSyncResolved) {
-      const msg =
-        "Pages Jaunes : délai dépassé — la synchronisation n’est pas terminée. Reprenez depuis Imports puis relancez.";
-      if (opts.strict) {
-        return { blocked: true, message: msg };
-      }
-      opts.onWarning(msg);
+    if (targetIds.length >= cap) {
+      break;
     }
   }
 
-  await finalizeDeferredMultiSourceCoordinator(coordinatorBatchId);
-  await scoreCommercialForCoordinatorLot(coordinatorBatchId);
-
-  return { patchedCount, fetchedCount };
-}
-
-export type LinkedInPhaseResult = { updatedCount: number };
-
-/**
- * Étape 3 : LinkedIn ciblé sur le lot. `strict` : run en échec ou timeout → bloque.
- */
-export async function executeUnifiedLinkedInPhase(
-  coordinatorBatchId: string,
-  opts: {
-    strict: boolean;
-    onWarning: (w: string) => void;
-  },
-): Promise<LinkedInPhaseResult | { blocked: true; message: string }> {
-  const liStart = await startLinkedInEnrichmentApifyImport({ importBatchId: coordinatorBatchId });
-  if (!liStart.ok) {
-    if (liStart.skipped) {
-      opts.onWarning(`LinkedIn : ${liStart.error}`);
-      return { updatedCount: 0 };
-    }
-    return opts.strict
-      ? { blocked: true, message: `LinkedIn : ${liStart.error}` }
-      : (opts.onWarning(`LinkedIn : ${liStart.error}`), { updatedCount: 0 });
+  if (targetIds.length === 0) {
+    return { attempted: 0, succeeded: 0, nothingToEnrich: true };
   }
 
-  const liDeadline = Date.now() + LINKEDIN_WAIT_MS;
-  let lastLi = await syncLinkedInEnrichmentApifyImport({ batchId: liStart.data.batchId });
-
-  while (Date.now() < liDeadline) {
-    if (lastLi.phase === "completed" || lastLi.phase === "already_completed") {
-      const updatedCount = lastLi.acceptedCount ?? 0;
-      const fetched = lastLi.fetchedCount ?? 0;
-      if (fetched === 0) {
-        opts.onWarning("LinkedIn : dataset vide — vérifiez proxy, cibles et schéma d’entrée de l’actor.");
-      } else if (updatedCount === 0) {
-        opts.onWarning("LinkedIn : profils renvoyés mais aucune fiche du lot mise en correspondance.");
-      }
-      return { updatedCount };
+  let succeeded = 0;
+  for (const stockId of targetIds) {
+    const res = await extractVerifiedLeadGenerationEnrichment({ stockId });
+    if (res.status === "completed") {
+      succeeded += 1;
     }
-    if (lastLi.phase === "failed" || lastLi.phase === "batch_failed" || lastLi.phase === "invalid_batch") {
-      const msg = lastLi.message ?? lastLi.error ?? "échec du run ou du batch.";
-      return opts.strict ? { blocked: true, message: `LinkedIn : ${msg}` } : (opts.onWarning(`LinkedIn : ${msg}`), { updatedCount: 0 });
-    }
-    if (lastLi.phase !== "running" && lastLi.phase !== "ingesting_elsewhere") {
-      const msg = lastLi.message ?? lastLi.error ?? "état inattendu du batch.";
-      return opts.strict ? { blocked: true, message: `LinkedIn : ${msg}` } : (opts.onWarning(`LinkedIn : ${msg}`), { updatedCount: 0 });
-    }
-    await sleep(POLL_MS);
-    lastLi = await syncLinkedInEnrichmentApifyImport({ batchId: liStart.data.batchId });
   }
 
-  const msg =
-    "LinkedIn : délai dépassé — le run continue côté Apify. Synchronisez le batch LinkedIn depuis Imports puis relancez le parcours.";
-  if (opts.strict) {
-    return { blocked: true, message: msg };
-  }
-  opts.onWarning(msg);
-  return { updatedCount: 0 };
+  return {
+    attempted: targetIds.length,
+    succeeded,
+    nothingToEnrich: false,
+  };
 }

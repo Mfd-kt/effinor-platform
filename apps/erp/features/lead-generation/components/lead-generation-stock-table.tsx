@@ -13,10 +13,7 @@ import { LeadGenerationCommercialPriorityBadge } from "./lead-generation-commerc
 import { LeadGenerationDispatchQueueBadge } from "./lead-generation-dispatch-queue-badge";
 import { LeadGenerationEnrichmentConfidenceBadge } from "./lead-generation-enrichment-confidence-badge";
 import { LeadGenerationEnrichmentStatusBadge } from "./lead-generation-enrichment-status-badge";
-import {
-  LeadGenerationClosingReadinessBadge,
-  LeadGenerationLinkedInStockHint,
-} from "./lead-generation-closing-readiness-badge";
+import { LeadGenerationClosingReadinessBadge } from "./lead-generation-closing-readiness-badge";
 import {
   LeadGenerationDecisionMakerConfidenceBadge,
   LeadGenerationDecisionMakerIdentifiedBadge,
@@ -124,7 +121,6 @@ export function LeadGenerationStockTable({ rows, enrichmentSelection }: Props) {
                   status={(r.closing_readiness_status ?? "low") as "low" | "medium" | "high"}
                   score={r.closing_readiness_score}
                 />
-                <LeadGenerationLinkedInStockHint hasLinkedIn={Boolean(r.has_linkedin || r.linkedin_url)} />
               </div>
             </TableCell>
             <TableCell>

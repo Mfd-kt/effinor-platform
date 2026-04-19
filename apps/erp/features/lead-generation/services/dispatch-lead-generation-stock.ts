@@ -7,10 +7,14 @@ import type {
   DispatchLeadGenerationStockResult,
 } from "../domain/dispatch-result";
 import { buildDispatchLeadGenerationStockClaimRpcParams } from "../lib/build-dispatch-lead-generation-rpc-params";
-import { computeAgentActiveStock } from "../lib/compute-agent-active-stock";
-import { MY_QUEUE_MANUAL_CHUNK_DEFAULT, MY_QUEUE_MAX_ACTIVE_STOCK } from "../lib/my-queue-manual-dispatch";
+import { computeAgentActiveStock, computeAgentActiveStockForCeeSheet } from "../lib/compute-agent-active-stock";
+import {
+  LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET,
+  MY_QUEUE_MANUAL_CHUNK_DEFAULT,
+} from "../lib/my-queue-manual-dispatch";
+import type { GetLeadGenerationStockFilters } from "../queries/get-lead-generation-stock";
 
-const TARGET_STOCK = MY_QUEUE_MAX_ACTIVE_STOCK;
+const TARGET_STOCK = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
 const THRESHOLD_STOCK = 50;
 
 const SELECTED_QUEUE = "ready_now" as const;
@@ -21,6 +25,7 @@ async function runDispatchClaimRpc(
   supabase: SupabaseClient,
   agentId: string,
   limit: number,
+  stockFilters?: GetLeadGenerationStockFilters,
 ): Promise<RpcClaimRow[]> {
   const safeLimit = Math.max(0, Math.floor(limit));
   if (safeLimit === 0) {
@@ -31,7 +36,7 @@ async function runDispatchClaimRpc(
     p_agent_id: agentId,
     p_limit: safeLimit,
     p_batch_number: batchNumber,
-    ...buildDispatchLeadGenerationStockClaimRpcParams(undefined),
+    ...buildDispatchLeadGenerationStockClaimRpcParams(stockFilters),
   });
   if (error) {
     throw new Error(`Dispatch lead generation : ${error.message}`);
@@ -98,7 +103,7 @@ export async function dispatchLeadGenerationStockForAgent(
     };
   }
 
-  const rows = await runDispatchClaimRpc(supabase, agentId, toAssign);
+  const rows = await runDispatchClaimRpc(supabase, agentId, toAssign, undefined);
   const { count: newStock } = await computeAgentActiveStock(supabase, agentId);
 
   return resultFromClaim(agentId, previousStock, toAssign, rows, newStock ?? previousStock);
@@ -106,16 +111,26 @@ export async function dispatchLeadGenerationStockForAgent(
 
 /**
  * Attribue jusqu’à `chunkSize` fiches `ready_now` à l’agent, sans seuil « stock &lt; 50 »,
- * mais en ne dépassant jamais le plafond de fiches actives (voir `MY_QUEUE_MAX_ACTIVE_STOCK`).
+ * mais en ne dépassant jamais le plafond par fiche CEE (voir `LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET`) lorsqu’une fiche est sélectionnée.
  */
 export async function dispatchLeadGenerationMyQueueChunkForAgent(
   agentId: string,
   chunkSize: number = MY_QUEUE_MANUAL_CHUNK_DEFAULT,
+  ceeSheetId?: string | null,
 ): Promise<DispatchLeadGenerationStockResult> {
   const supabase = await createClient();
-  const { count: previousStock } = await computeAgentActiveStock(supabase, agentId);
-  const desired = Math.min(MY_QUEUE_MAX_ACTIVE_STOCK, Math.max(0, Math.floor(chunkSize)));
-  const headroom = Math.max(0, MY_QUEUE_MAX_ACTIVE_STOCK - previousStock);
+  const sheet = ceeSheetId?.trim();
+  const cap = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
+
+  const { count: previousStockGlobal } = await computeAgentActiveStock(supabase, agentId);
+  const { count: previousStockCee } = sheet
+    ? await computeAgentActiveStockForCeeSheet(supabase, agentId, sheet)
+    : { count: previousStockGlobal };
+
+  /** Pour le plafond : par fiche CEE si le contexte est ciblé, sinon global (comportement historique). */
+  const previousStock = sheet ? previousStockCee : previousStockGlobal;
+  const desired = Math.min(cap, Math.max(0, Math.floor(chunkSize)));
+  const headroom = Math.max(0, cap - previousStock);
   const lim = Math.min(desired, headroom);
 
   if (lim <= 0) {
@@ -131,10 +146,13 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
     };
   }
 
-  const rows = await runDispatchClaimRpc(supabase, agentId, lim);
-  const { count: newStock } = await computeAgentActiveStock(supabase, agentId);
+  const filters: GetLeadGenerationStockFilters | undefined = sheet ? { cee_sheet_id: sheet } : undefined;
+  const rows = await runDispatchClaimRpc(supabase, agentId, lim, filters);
+  const { count: newStockAfter } = sheet
+    ? await computeAgentActiveStockForCeeSheet(supabase, agentId, sheet)
+    : await computeAgentActiveStock(supabase, agentId);
 
-  return resultFromClaim(agentId, previousStock, lim, rows, newStock ?? previousStock);
+  return resultFromClaim(agentId, previousStock, lim, rows, newStockAfter ?? previousStock);
 }
 
 /**

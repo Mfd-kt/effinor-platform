@@ -24,7 +24,7 @@ export function LeadGenerationClosingCockpitPanel({ metrics }: Props) {
     <section className="rounded-2xl border border-border bg-card/80 p-4 shadow-sm sm:p-5">
       <h2 className="text-sm font-semibold tracking-tight text-foreground">Leads prêts pour le closing</h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Décideurs, profil LinkedIn ciblé et score closing — pour nourrir les campagnes à fort taux de conversion.
+        Décideurs identifiés et score closing — pour nourrir les campagnes à fort taux de conversion.
       </p>
 
       <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
@@ -35,10 +35,6 @@ export function LeadGenerationClosingCockpitPanel({ metrics }: Props) {
         <li>
           <span className="text-muted-foreground">Avec décideur identifié :</span>{" "}
           <span className="font-semibold tabular-nums text-foreground">{metrics.withDecisionMakerCount}</span>
-        </li>
-        <li>
-          <span className="text-muted-foreground">Avec LinkedIn :</span>{" "}
-          <span className="font-semibold tabular-nums text-foreground">{metrics.withLinkedInCount}</span>
         </li>
         <li>
           <span className="text-muted-foreground">Premium (actifs) :</span>{" "}

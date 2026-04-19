@@ -7,7 +7,6 @@ import {
   FileSpreadsheet,
   FolderKanban,
   Headset,
-  Inbox,
   LayoutDashboard,
   LayoutGrid,
   LayoutTemplate,
@@ -19,17 +18,13 @@ import {
   ScrollText,
   Settings,
   SlidersHorizontal,
-  Upload,
   ShieldCheck,
   UserRound,
   UserRoundX,
   Users,
   KeyRound,
-  BarChart3,
-  Brain,
   Table2,
   Target,
-  Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -107,7 +102,6 @@ export const sidebarNavigation: SidebarNavEntry[] = [
     items: [
       { href: "/leads", label: "Fiches prospects", icon: FolderKanban },
       { href: "/leads/lost", label: "Prospects perdus", icon: UserRoundX },
-      { href: "/lead-generation/my-queue", label: "Ma file Lead Gen", icon: Inbox },
     ],
   },
   {
@@ -121,34 +115,15 @@ export const sidebarNavigation: SidebarNavEntry[] = [
     ],
   },
   { kind: "divider", id: "after-field" },
-  { kind: "heading", id: "hx-lead", label: "Acquisition de leads" },
   {
     kind: "group",
     id: "lead-gen-admin",
-    label: "Stock & campagnes",
+    label: "Acquisition de leads",
     icon: Target,
     items: [
       { href: "/lead-generation", label: "Pilotage", icon: LayoutDashboard },
-      {
-        kind: "section",
-        id: "lg-donnees",
-        label: "Données",
-        items: [
-          { href: "/lead-generation/stock", label: "Stock", icon: Table2 },
-          { href: "/lead-generation/imports", label: "Imports", icon: Upload },
-        ],
-      },
-      { href: "/lead-generation/automation", label: "Automatisations", icon: Zap },
-      {
-        kind: "section",
-        id: "lg-config-suivi",
-        label: "Configuration & suivi",
-        items: [
-          { href: "/lead-generation/settings", label: "Réglages métier", icon: SlidersHorizontal },
-          { href: "/lead-generation/analytics", label: "Analytics", icon: BarChart3 },
-          { href: "/lead-generation/learning", label: "Learning loop", icon: Brain },
-        ],
-      },
+      { href: "/lead-generation/stock", label: "Stock", icon: Table2 },
+      { href: "/lead-generation/settings", label: "Réglages", icon: SlidersHorizontal },
     ],
   },
   { kind: "divider", id: "after-lead-gen" },

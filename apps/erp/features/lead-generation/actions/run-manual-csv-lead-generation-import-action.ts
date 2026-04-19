@@ -1,5 +1,6 @@
 "use server";
 
+import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
@@ -9,6 +10,7 @@ import {
   runManualCsvLeadGenerationImport,
   type ManualCsvLeadGenerationImportResult,
 } from "../services/run-manual-csv-lead-generation-import";
+import { resolveLeadGenerationImportBatchCeeContext } from "../services/resolve-lead-generation-import-batch-cee-context";
 
 export async function runManualCsvLeadGenerationImportAction(
   input: unknown,
@@ -25,7 +27,21 @@ export async function runManualCsvLeadGenerationImportAction(
   }
 
   try {
-    const data = await runManualCsvLeadGenerationImport(parsed.data);
+    const supabase = await createClient();
+    const cee = await resolveLeadGenerationImportBatchCeeContext(
+      supabase,
+      parsed.data.ceeSheetId,
+      parsed.data.targetTeamId,
+    );
+    if (!cee.ok) {
+      return { ok: false, error: cee.error };
+    }
+    const data = await runManualCsvLeadGenerationImport({
+      csvText: parsed.data.csvText,
+      filename: parsed.data.filename,
+      sourceLabel: parsed.data.sourceLabel,
+      cee: cee.data,
+    });
     return { ok: true, data };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur lors de l’import CSV.";

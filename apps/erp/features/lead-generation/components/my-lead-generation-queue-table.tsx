@@ -1,10 +1,9 @@
-import { CalendarClock, ChevronRight, Phone } from "lucide-react";
+import { CalendarClock, ChevronRight, Phone, StickyNote } from "lucide-react";
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { leadPhoneToTelHref } from "@/features/leads/lib/lead-phone-tel";
-import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import { getRelanceDisplay, type RelanceBucket } from "../lib/my-queue-follow-up";
@@ -14,6 +13,8 @@ import { LeadGenerationDispatchQueueBadge } from "./lead-generation-dispatch-que
 
 type Props = {
   items: MyLeadGenerationQueueItem[];
+  /** Affiche la colonne « Fiche CEE » (utile si plusieurs fiches mélangées). */
+  showCeeColumn?: boolean;
 };
 
 function relanceTextClass(bucket: RelanceBucket): string {
@@ -21,63 +22,47 @@ function relanceTextClass(bucket: RelanceBucket): string {
     case "overdue":
       return "font-semibold text-red-600 dark:text-red-400";
     case "today":
-      return "font-semibold text-amber-700 dark:text-amber-300";
+      return "font-semibold text-orange-700 dark:text-orange-300";
     case "tomorrow":
     case "future":
-      return "text-foreground";
+      return "text-foreground/90";
     default:
       return "text-muted-foreground";
   }
 }
 
-function companySubline(item: MyLeadGenerationQueueItem): string | null {
-  const parts: string[] = [];
-  if (item.displayEmail) {
-    parts.push(item.displayEmail);
-  }
-  const dm = [item.decisionMakerName, item.decisionMakerRole].filter(Boolean).join(" · ");
-  if (dm) {
-    parts.push(dm);
-  }
-  if (parts.length === 0) {
-    return null;
-  }
-  return parts.join(" · ");
-}
-
-export function MyLeadGenerationQueueTable({ items }: Props) {
+export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Props) {
   return (
     <div className="space-y-2">
-      <div className="rounded-xl border border-border bg-card/50 shadow-sm">
+      <div className="rounded-xl border border-border/80 bg-card/40 shadow-sm">
         <Table className="w-max min-w-full text-sm">
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
+              {showCeeColumn ? (
+                <TableHead className="min-w-[140px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Fiche CEE
+                </TableHead>
+              ) : null}
               <TableHead className="sticky left-0 z-20 min-w-[200px] bg-muted/90 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-md dark:bg-muted/80">
-                Actions
-              </TableHead>
-              <TableHead className="min-w-[240px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Société
               </TableHead>
-              <TableHead className="min-w-[150px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Relance
-              </TableHead>
-              <TableHead className="min-w-[148px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <TableHead className="min-w-[132px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Téléphone
               </TableHead>
               <TableHead className="min-w-[100px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Ville
               </TableHead>
-              <TableHead className="min-w-[72px] px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Score
+              <TableHead className="min-w-[148px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Relance
               </TableHead>
-              <TableHead className="min-w-[100px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Priorité
+              <TableHead className="min-w-[140px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Score / priorité
               </TableHead>
-              <TableHead className="min-w-[150px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                File
+              <TableHead className="min-w-[120px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Statut
               </TableHead>
-              <TableHead className="min-w-[130px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Dernière activité
+              <TableHead className="min-w-[220px] px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Actions
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -85,7 +70,6 @@ export function MyLeadGenerationQueueTable({ items }: Props) {
             {items.map((r) => {
               const telHref = leadPhoneToTelHref(r.phone);
               const rel = getRelanceDisplay(r);
-              const sub = companySubline(r);
               const overdueRow = r.hasOverdueFollowUp;
               const urgentPriority = r.commercialPriority === "critical" || r.commercialPriority === "high";
 
@@ -93,18 +77,23 @@ export function MyLeadGenerationQueueTable({ items }: Props) {
                 <TableRow
                   key={r.assignmentId}
                   className={cn(
-                    "group/row border-border",
+                    "group/row border-border transition-colors",
                     overdueRow &&
                       "border-l-[4px] border-l-red-500 bg-red-500/[0.06] hover:bg-red-500/[0.1] dark:bg-red-500/[0.09] dark:hover:bg-red-500/[0.12]",
                     !overdueRow &&
                       urgentPriority &&
-                      "border-l-[4px] border-l-amber-500/70 bg-amber-500/[0.04] hover:bg-amber-500/[0.07] dark:border-l-amber-400/60 dark:bg-amber-500/[0.06] dark:hover:bg-amber-500/[0.09]",
-                    !overdueRow && !urgentPriority && "hover:bg-muted/40",
+                      "border-l-[4px] border-l-amber-500/70 bg-amber-500/[0.04] hover:bg-amber-500/[0.08] dark:border-l-amber-400/60 dark:bg-amber-500/[0.06] dark:hover:bg-amber-500/[0.09]",
+                    !overdueRow && !urgentPriority && "hover:bg-muted/35",
                   )}
                 >
+                  {showCeeColumn ? (
+                    <TableCell className="max-w-[160px] px-3 py-3 align-middle text-sm text-foreground/90 whitespace-normal">
+                      {r.ceeSheetDisplay ?? "—"}
+                    </TableCell>
+                  ) : null}
                   <TableCell
                     className={cn(
-                      "sticky left-0 z-10 px-3 py-3 align-middle shadow-[4px_0_12px_-4px_rgba(0,0,0,0.2)] backdrop-blur-sm transition-colors",
+                      "sticky left-0 z-10 px-3 py-3 align-middle shadow-[4px_0_12px_-4px_rgba(0,0,0,0.18)] backdrop-blur-sm transition-colors",
                       overdueRow &&
                         "bg-red-500/[0.08] group-hover/row:bg-red-500/[0.12] dark:bg-red-500/[0.12] dark:group-hover/row:bg-red-500/[0.16]",
                       !overdueRow &&
@@ -112,64 +101,16 @@ export function MyLeadGenerationQueueTable({ items }: Props) {
                         "bg-amber-500/[0.06] group-hover/row:bg-amber-500/[0.1] dark:bg-amber-500/[0.08] dark:group-hover/row:bg-amber-500/[0.12]",
                       !overdueRow &&
                         !urgentPriority &&
-                        "bg-card/95 group-hover/row:bg-muted/80 dark:bg-card/92 dark:group-hover/row:bg-muted/50",
+                        "bg-card/95 group-hover/row:bg-muted/75 dark:bg-card/92 dark:group-hover/row:bg-muted/45",
                     )}
                   >
-                    <div className="flex flex-nowrap items-center gap-1.5">
-                      <Link
-                        href={`/lead-generation/my-queue/${r.stockId}`}
-                        className={cn(
-                          buttonVariants({ variant: "default", size: "sm" }),
-                          "h-8 shrink-0 px-3 text-xs font-semibold",
-                        )}
-                      >
-                        Ouvrir
-                      </Link>
-                      {telHref ? (
-                        <Link
-                          href={telHref}
-                          aria-label="Appeler avec Aircall"
-                          title="Appeler avec Aircall"
-                          className={cn(
-                            buttonVariants({ variant: "outline", size: "sm" }),
-                            "h-8 shrink-0 gap-1 px-2.5 text-xs font-semibold",
-                          )}
-                        >
-                          <Phone className="size-3.5 shrink-0" aria-hidden />
-                          Appeler
-                        </Link>
-                      ) : null}
-                      <Link
-                        href={`/lead-generation/my-queue/${r.stockId}#suivi-activite`}
-                        className={cn(
-                          buttonVariants({ variant: "outline", size: "sm" }),
-                          "h-8 shrink-0 gap-1 px-2.5 text-xs font-medium text-muted-foreground",
-                        )}
-                        title="Planifier une relance"
-                      >
-                        <CalendarClock className="size-3.5 shrink-0" aria-hidden />
-                        Relance
-                      </Link>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-[320px] px-3 py-3 align-top whitespace-normal">
-                    <div className="space-y-1.5">
-                      <Link
-                        href={`/lead-generation/my-queue/${r.stockId}`}
-                        className="group/link inline-flex items-start gap-1 text-sm font-semibold leading-snug text-foreground decoration-primary/60 underline-offset-4 hover:text-primary hover:underline"
-                      >
-                        <span>{r.companyName}</span>
-                        <ChevronRight className="mt-0.5 size-4 shrink-0 text-primary opacity-0 transition-opacity group-hover/link:opacity-100" />
-                      </Link>
-                      {sub ? (
-                        <p className="text-xs leading-relaxed text-foreground/70" title={sub}>
-                          {sub}
-                        </p>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className={cn("max-w-[200px] px-3 py-3 align-top text-sm whitespace-normal", relanceTextClass(rel.bucket))}>
-                    {rel.label}
+                    <Link
+                      href={`/lead-generation/my-queue/${r.stockId}`}
+                      className="group/link inline-flex max-w-full items-start gap-1 text-sm font-semibold leading-snug text-foreground decoration-primary/55 underline-offset-4 hover:text-primary hover:underline"
+                    >
+                      <span className="min-w-0 break-words">{r.companyName}</span>
+                      <ChevronRight className="mt-0.5 size-4 shrink-0 text-primary opacity-0 transition-opacity group-hover/link:opacity-100" />
+                    </Link>
                   </TableCell>
                   <TableCell className="px-3 py-3 align-middle">
                     <div className="flex items-center gap-2">
@@ -180,7 +121,7 @@ export function MyLeadGenerationQueueTable({ items }: Props) {
                           aria-label="Appeler"
                           className={cn(
                             buttonVariants({ variant: "outline", size: "icon" }),
-                            "h-8 w-8 shrink-0 border-primary/25 text-primary hover:bg-primary/10",
+                            "h-8 w-8 shrink-0 border-primary/30 text-primary hover:bg-primary/10",
                           )}
                         >
                           <Phone className="size-4" />
@@ -189,13 +130,21 @@ export function MyLeadGenerationQueueTable({ items }: Props) {
                     </div>
                   </TableCell>
                   <TableCell className="px-3 py-3 text-foreground/90">{r.city ?? "—"}</TableCell>
-                  <TableCell className="px-3 py-3 text-right text-sm font-semibold tabular-nums text-foreground">
-                    {r.commercialScore}
+                  <TableCell
+                    className={cn(
+                      "max-w-[200px] px-3 py-3 align-middle text-sm whitespace-normal",
+                      relanceTextClass(rel.bucket),
+                    )}
+                  >
+                    {rel.label}
                   </TableCell>
-                  <TableCell className="px-3 py-3">
-                    <LeadGenerationCommercialPriorityBadge priority={r.commercialPriority} />
+                  <TableCell className="px-3 py-3 align-middle">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm font-semibold tabular-nums text-foreground">{r.commercialScore}</span>
+                      <LeadGenerationCommercialPriorityBadge priority={r.commercialPriority} />
+                    </div>
                   </TableCell>
-                  <TableCell className="px-3 py-3">
+                  <TableCell className="px-3 py-3 align-middle">
                     <LeadGenerationDispatchQueueBadge
                       status={r.dispatchQueueStatus}
                       reason={r.dispatchQueueReason}
@@ -203,8 +152,51 @@ export function MyLeadGenerationQueueTable({ items }: Props) {
                       tooltipReasonOnly
                     />
                   </TableCell>
-                  <TableCell className="px-3 py-3 text-xs text-muted-foreground whitespace-normal">
-                    {r.lastActivityAt ? formatDateTimeFr(r.lastActivityAt) : "—"}
+                  <TableCell className="px-3 py-3 align-middle">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      <Link
+                        href={`/lead-generation/my-queue/${r.stockId}`}
+                        className={cn(
+                          buttonVariants({ variant: "secondary", size: "sm" }),
+                          "h-8 px-2.5 text-xs font-semibold",
+                        )}
+                      >
+                        Ouvrir
+                      </Link>
+                      {telHref ? (
+                        <Link
+                          href={telHref}
+                          className={cn(
+                            buttonVariants({ variant: "outline", size: "sm" }),
+                            "h-8 gap-1 px-2 text-xs font-semibold",
+                          )}
+                        >
+                          <Phone className="size-3.5 shrink-0 opacity-80" aria-hidden />
+                          Appeler
+                        </Link>
+                      ) : null}
+                      <Link
+                        href={`/lead-generation/my-queue/${r.stockId}#suivi-activite`}
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "sm" }),
+                          "h-8 gap-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <StickyNote className="size-3.5 shrink-0" aria-hidden />
+                        Note
+                      </Link>
+                      <Link
+                        href={`/lead-generation/my-queue/${r.stockId}#suivi-activite`}
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "sm" }),
+                          "h-8 gap-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground",
+                        )}
+                        title="Planifier une relance"
+                      >
+                        <CalendarClock className="size-3.5 shrink-0" aria-hidden />
+                        Relance
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -213,7 +205,7 @@ export function MyLeadGenerationQueueTable({ items }: Props) {
         </Table>
       </div>
       <p className="px-1 text-center text-[11px] text-muted-foreground sm:hidden">
-        Actions à gauche — glissez le tableau pour voir toutes les colonnes.
+        Faites défiler horizontalement pour voir les actions.
       </p>
     </div>
   );

@@ -5,7 +5,6 @@ import { lgTable } from "../lib/lg-db";
 export type LeadGenerationClosingCockpitMetrics = {
   closingHighCount: number;
   withDecisionMakerCount: number;
-  withLinkedInCount: number;
   premiumReadyCount: number;
 };
 
@@ -20,22 +19,19 @@ export async function getLeadGenerationClosingCockpitMetrics(): Promise<LeadGene
       .is("duplicate_of_stock_id", null)
       .neq("qualification_status", "duplicate");
 
-  const [rHigh, rDm, rLi, rPrem] = await Promise.all([
+  const [rHigh, rDm, rPrem] = await Promise.all([
     baseFilter().eq("closing_readiness_status", "high"),
     baseFilter().not("decision_maker_name", "is", null),
-    baseFilter().eq("has_linkedin", true),
     baseFilter().eq("lead_tier", "premium"),
   ]);
 
   if (rHigh.error) throw new Error(rHigh.error.message);
   if (rDm.error) throw new Error(rDm.error.message);
-  if (rLi.error) throw new Error(rLi.error.message);
   if (rPrem.error) throw new Error(rPrem.error.message);
 
   return {
     closingHighCount: rHigh.count ?? 0,
     withDecisionMakerCount: rDm.count ?? 0,
-    withLinkedInCount: rLi.count ?? 0,
     premiumReadyCount: rPrem.count ?? 0,
   };
 }

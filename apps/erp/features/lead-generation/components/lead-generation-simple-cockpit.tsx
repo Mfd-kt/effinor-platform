@@ -25,6 +25,7 @@ import {
   writeSimpleCockpitRun,
 } from "../lib/simple-cockpit-ux";
 import { humanizeLeadGenerationActionError } from "../lib/humanize-lead-generation-action-error";
+import type { LeadGenerationCeeImportScope } from "../queries/get-lead-generation-cee-import-scope";
 import { LeadGenerationGenerateCampaignModal } from "./lead-generation-generate-campaign-modal";
 
 export type LeadGenerationSimpleCockpitMetrics = {
@@ -44,6 +45,7 @@ export type LeadGenerationSimpleCockpitAgentRow = {
 type LeadGenerationSimpleCockpitProps = {
   metrics: LeadGenerationSimpleCockpitMetrics;
   agents?: LeadGenerationSimpleCockpitAgentRow[];
+  ceeScope: LeadGenerationCeeImportScope;
 };
 
 function formatShortDate(iso: string): string {
@@ -56,7 +58,7 @@ function formatShortDate(iso: string): string {
   }
 }
 
-export function LeadGenerationSimpleCockpit({ metrics, agents = [] }: LeadGenerationSimpleCockpitProps) {
+export function LeadGenerationSimpleCockpit({ metrics, agents = [], ceeScope }: LeadGenerationSimpleCockpitProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busyStep, setBusyStep] = useState<"create" | "prepare" | "dispatch" | null>(null);
@@ -303,6 +305,7 @@ export function LeadGenerationSimpleCockpit({ metrics, agents = [] }: LeadGenera
         onOpenChange={setCreateModalOpen}
         initialConfig={initialCampaignConfig}
         onLaunch={handleMapsLaunch}
+        ceeScope={ceeScope}
         variant="mapsOnly"
       />
     </div>

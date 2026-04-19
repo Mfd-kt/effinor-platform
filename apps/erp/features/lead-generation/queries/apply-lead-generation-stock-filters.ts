@@ -50,5 +50,8 @@ export function applyLeadGenerationStockFilters(q: any, f: GetLeadGenerationStoc
   if (f.import_batch_id?.trim()) {
     q = q.eq("import_batch_id", f.import_batch_id.trim());
   }
+  if (f.import_batch_ids && f.import_batch_ids.length > 0) {
+    q = q.in("import_batch_id", f.import_batch_ids);
+  }
   return q;
 }

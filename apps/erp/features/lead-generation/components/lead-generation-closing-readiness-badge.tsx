@@ -38,12 +38,3 @@ export function LeadGenerationClosingReadinessBadge({
     </Badge>
   );
 }
-
-export function LeadGenerationLinkedInStockHint({ hasLinkedIn }: { hasLinkedIn: boolean }) {
-  if (!hasLinkedIn) return null;
-  return (
-    <span className="text-[10px] font-medium text-sky-200/90" title="LinkedIn renseigné">
-      in
-    </span>
-  );
-}

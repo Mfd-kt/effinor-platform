@@ -26,6 +26,13 @@ export type GetLeadGenerationStockFilters = {
   needs_contact_improvement?: boolean;
   /** Filtrer sur un import / lot coordinateur précis. */
   import_batch_id?: string;
+  /** Filtrer sur une fiche CEE (lots dont le batch est rattaché à cette fiche). */
+  cee_sheet_id?: string;
+  /**
+   * Intersection lot : liste d’UUID de `lead_generation_import_batches` (rempli côté serveur pour comptages
+   * quand `cee_sheet_id` est utilisé).
+   */
+  import_batch_ids?: string[];
 };
 
 export type GetLeadGenerationStockParams = {

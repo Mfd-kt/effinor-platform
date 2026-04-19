@@ -36,7 +36,10 @@ import {
   type GenerateCampaignStoredConfig,
   readGenerateCampaignPresets,
 } from "../lib/generate-campaign-storage";
+import type { LeadGenerationCeeImportScope } from "../queries/get-lead-generation-cee-import-scope";
 import { generateAndEnrichLeadsActionInputSchema } from "../schemas/lead-generation-actions.schema";
+
+import { LeadGenerationCeeTeamPickers } from "./lead-generation-cee-team-pickers";
 
 const PRESET_NONE = "__none__";
 
@@ -56,8 +59,9 @@ export type LeadGenerationGenerateCampaignModalProps = {
   onOpenChange: (open: boolean) => void;
   initialConfig: GenerateCampaignStoredConfig;
   onLaunch: (payload: GenerateCampaignStoredConfig) => Promise<{ ok: boolean; error?: string }>;
+  ceeScope: LeadGenerationCeeImportScope;
   /**
-   * `mapsOnly` : import carte + fusion du lot uniquement (cockpit simplifié), sans promettre PJ / LinkedIn / enrichissement.
+   * `mapsOnly` : import carte + fusion du lot uniquement (cockpit simplifié), sans promettre annuaire ni enrichissement automatique.
    */
   variant?: "default" | "mapsOnly";
 };
@@ -88,6 +92,7 @@ export function LeadGenerationGenerateCampaignModal({
   onOpenChange,
   initialConfig,
   onLaunch,
+  ceeScope,
   variant = "default",
 }: LeadGenerationGenerateCampaignModalProps) {
   const [form, setForm] = useState<GenerateCampaignStoredConfig>(initialConfig);
@@ -222,6 +227,16 @@ export function LeadGenerationGenerateCampaignModal({
         </DialogHeader>
 
         <div className="space-y-4 py-1">
+          <LeadGenerationCeeTeamPickers
+            scope={ceeScope}
+            ceeSheetId={form.ceeSheetId}
+            targetTeamId={form.targetTeamId}
+            onCeeSheetIdChange={(id) => setForm((f) => ({ ...f, ceeSheetId: id }))}
+            onTargetTeamIdChange={(id) => setForm((f) => ({ ...f, targetTeamId: id }))}
+            disabled={busy}
+            idPrefix="lg-modal-cee"
+          />
+
           {presets.length > 0 ? (
             <div className="space-y-1.5">
               <Label htmlFor="lg-preset-load">Charger un modèle</Label>

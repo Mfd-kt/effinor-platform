@@ -47,8 +47,8 @@ export function LeadGenerationIdentifyDecisionMakerButton({ stockId }: Props) {
     <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
       <p className="text-xs font-medium text-foreground">Décideur (extraction publique)</p>
       <p className="text-[11px] text-muted-foreground">
-        Parcourt le site (équipe, contact), puis recherche web et profils LinkedIn publics. Ne remplit que les champs
-        encore vides — jamais de nom inventé.
+        Parcourt le site (équipe, contact), puis recherche web et sources publiques. Ne remplit que les champs encore
+        vides — jamais de nom inventé.
       </p>
       <Button type="button" variant="secondary" size="sm" onClick={run} disabled={pending}>
         {pending ? "Analyse…" : "Identifier le décideur"}

@@ -262,7 +262,7 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
             <DetailRow label="Rôle décideur" value={stock.decision_maker_role ?? "—"} />
             <DetailRow label="Confiance décideur" value={stock.decision_maker_confidence ?? "—"} />
             <DetailRow
-              label="LinkedIn"
+              label="Profil public (URL)"
               value={stock.linkedin_url?.trim() ? stock.linkedin_url : "—"}
             />
             <DetailRow label="Angle suggéré" value={stock.approach_angle ?? "—"} />

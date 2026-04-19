@@ -15,8 +15,6 @@ function phaseMessage(phase: SyncGoogleMapsApifyImportPhase): string {
     running: "Le scraping ou l’intégration est encore en cours. Réessayez dans quelques instants.",
     failed: "La synchronisation a échoué.",
     completed: "Synchronisation terminée.",
-    completed_deferred:
-      "Dataset récupéré ; en attente de fusion multi-source (synchronisez aussi l’autre source puis le coordinateur).",
     already_completed: "Cet import était déjà à jour.",
     batch_failed: "Cet import est en erreur côté système.",
     ingesting_elsewhere: "Une intégration est déjà en cours pour cet import. Réessayez plus tard.",

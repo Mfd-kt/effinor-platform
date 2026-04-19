@@ -1,5 +1,6 @@
 "use server";
 
+import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
@@ -14,6 +15,7 @@ import { humanizeLeadGenerationActionError } from "../lib/humanize-lead-generati
 import { enrichLeadGenerationStockQuick } from "../enrichment/enrich-lead-generation-stock";
 import { generateAndEnrichLeadsActionInputSchema } from "../schemas/lead-generation-actions.schema";
 import { getLeadGenerationSettings } from "../settings/get-lead-generation-settings";
+import { resolveLeadGenerationImportBatchCeeContext } from "../services/resolve-lead-generation-import-batch-cee-context";
 import { runUnifiedLeadGenerationIngestThroughLinkedIn } from "../services/run-unified-lead-generation-ingest-through-linkedin";
 
 export async function generateAndEnrichLeadsAction(
@@ -56,7 +58,12 @@ export async function generateAndEnrichLeadsAction(
     }
 
     const zone = data.zone.trim();
-    const maxYp = data.maxYellowPagesResults ?? data.maxCrawledPlacesPerSearch ?? 50;
+
+    const supabase = await createClient();
+    const cee = await resolveLeadGenerationImportBatchCeeContext(supabase, data.ceeSheetId, data.targetTeamId);
+    if (!cee.ok) {
+      return { ok: false, error: cee.error };
+    }
 
     const ingest = await runUnifiedLeadGenerationIngestThroughLinkedIn(
       {
@@ -66,7 +73,9 @@ export async function generateAndEnrichLeadsAction(
         locationQuery: zone.length > 0 ? zone : undefined,
         campaignName: data.campaignName.trim(),
         campaignSector: data.sector,
-        maxYellowPagesResults: maxYp,
+        ceeSheetId: cee.data.cee_sheet_id,
+        ceeSheetCode: cee.data.cee_sheet_code,
+        targetTeamId: cee.data.target_team_id,
       },
       { persistPipelineRun: false },
     );
@@ -74,8 +83,6 @@ export async function generateAndEnrichLeadsAction(
     if (!ingest.ok) {
       return { ok: false, error: humanizeLeadGenerationActionError(ingest.error) };
     }
-
-    const premiumEnrich = ingest.yellowPatched + ingest.linkedInUpdated;
 
     if (ingest.stopped === "no_leads") {
       return {
@@ -87,7 +94,6 @@ export async function generateAndEnrichLeadsAction(
           apify_run_started: true,
           sync_batches_scanned: 0,
           coordinator_batch_id: ingest.coordinatorBatchId,
-          yellow_pages_patched: 0,
           linkedin_stocks_updated: 0,
           ingest_warnings: ingest.warnings.length ? ingest.warnings : undefined,
         },
@@ -103,12 +109,11 @@ export async function generateAndEnrichLeadsAction(
       data: {
         total_imported: ingest.generatedAccepted,
         total_accepted: ingest.generatedAccepted,
-        total_enriched: premiumEnrich + quick.successes,
+        total_enriched: quick.successes,
         apify_run_started: true,
-        sync_batches_scanned: 2,
+        sync_batches_scanned: 1,
         coordinator_batch_id: ingest.coordinatorBatchId,
-        yellow_pages_patched: ingest.yellowPatched,
-        linkedin_stocks_updated: ingest.linkedInUpdated,
+        linkedin_stocks_updated: 0,
         ingest_warnings: ingest.warnings.length ? ingest.warnings : undefined,
       },
     };

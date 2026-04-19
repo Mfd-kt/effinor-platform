@@ -1,7 +1,7 @@
 /**
  * Fiche brute importée (scraping, fichier, etc.) — avant normalisation / insertion.
  */
-export type LeadGenerationSourceChannel = "google_maps" | "yellow_pages" | "linkedin";
+export type LeadGenerationSourceChannel = "google_maps" | "linkedin";
 
 export type LeadGenerationRawStockInput = {
   source: string;
@@ -17,9 +17,9 @@ export type LeadGenerationRawStockInput = {
   sub_category?: string | null;
   siret?: string | null;
   headcount_range?: string | null;
-  /** Score 0–100 issu du blending multi-sources (servant aussi de seed pour `target_score`). */
+  /** Score 0–100 issu des canaux source (servant aussi de seed pour `target_score`). */
   source_signal_score?: number;
-  /** Canaux ayant alimenté la ligne (fusion Maps + Pages Jaunes, etc.). */
+  /** Canaux ayant alimenté la ligne (ex. google_maps, linkedin). */
   source_channels?: LeadGenerationSourceChannel[];
   has_linkedin?: boolean;
   has_decision_maker?: boolean;

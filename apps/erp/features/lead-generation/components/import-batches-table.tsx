@@ -9,7 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
+import {
+  formatLeadGenerationBatchCeeHint,
+  formatLeadGenerationSourceLabel,
+} from "@/features/lead-generation/lib/lead-generation-display";
 import { getLeadGenerationImportSyncHint } from "@/features/lead-generation/lib/import-batch-sync-hint";
 import type { LeadGenerationImportBatchListItem } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { formatDateTimeFr } from "@/lib/format";
@@ -52,11 +55,17 @@ export function ImportBatchesTable({ rows }: ImportBatchesTableProps) {
           {rows.map((row) => {
             const title = row.source_label?.trim() || formatLeadGenerationSourceLabel(row.source);
             const hint = getLeadGenerationImportSyncHint(row);
+            const ceeHint = formatLeadGenerationBatchCeeHint(row);
             return (
               <TableRow key={row.id}>
                 <TableCell>
                   <div className="flex flex-col gap-0.5">
                     <span className="font-medium leading-tight">{title}</span>
+                    {ceeHint ? (
+                      <span className="text-[11px] text-muted-foreground" title="Rattachement CEE / équipe">
+                        {ceeHint}
+                      </span>
+                    ) : null}
                     <span className="text-[11px] text-muted-foreground" title={row.id}>
                       Réf. {shortRef(row.id)}
                     </span>

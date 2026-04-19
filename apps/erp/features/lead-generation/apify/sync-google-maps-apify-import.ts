@@ -8,20 +8,12 @@ import { getLeadGenerationImportBatchById } from "../queries/get-lead-generation
 import { ingestLeadGenerationStock } from "../services/ingest-lead-generation-stock";
 
 import {
-  getApifyDatasetItems,
-  getApifyEnv,
-  getApifyRun,
-  isApifyRunFinished,
-} from "./client";
+  buildApifyPartialDatasetRecoveryMetadata,
+  APIFY_PARTIAL_IMPORT_META_KEY,
+} from "../lib/apify-partial-dataset-recovery";
+import { getApifyDatasetItems, getApifyEnv, getApifyRun, isApifyRunFinished } from "./client";
 import { mapGoogleMapsApifyItem } from "./map-google-maps-item";
 import type { SyncGoogleMapsApifyImportResult } from "./types";
-
-function readMultiSourceDeferIngest(metadata: unknown): boolean {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false;
-  const ms = (metadata as Record<string, unknown>).multiSource;
-  if (!ms || typeof ms !== "object") return false;
-  return (ms as Record<string, unknown>).deferIngest === true;
-}
 
 function resolveExternalRunId(row: {
   external_run_id: string | null;
@@ -56,8 +48,10 @@ async function updateBatchApifyFields(
  */
 export async function syncGoogleMapsApifyImport(input: {
   batchId: string;
+  /** Resynchronisation explicite d’un lot déjà en `failed` (bouton « Retenter la synchro »). */
+  retryFromFailed?: boolean;
 }): Promise<SyncGoogleMapsApifyImportResult> {
-  const { batchId } = input;
+  const { batchId, retryFromFailed } = input;
 
   let token: string;
   try {
@@ -71,8 +65,6 @@ export async function syncGoogleMapsApifyImport(input: {
   if (!row) {
     return { phase: "invalid_batch", batchId, message: "Batch introuvable." };
   }
-
-  const deferIngest = readMultiSourceDeferIngest(row.metadata_json);
 
   if (row.source !== "apify_google_maps") {
     return {
@@ -98,7 +90,7 @@ export async function syncGoogleMapsApifyImport(input: {
     };
   }
 
-  if (row.status === "failed") {
+  if (row.status === "failed" && !retryFromFailed) {
     return {
       phase: "batch_failed",
       batchId,
@@ -153,8 +145,8 @@ export async function syncGoogleMapsApifyImport(input: {
     },
   });
 
-  const phase = isApifyRunFinished(run.status);
-  if (phase === "running") {
+  const fin = isApifyRunFinished(run.status);
+  if (fin === "running") {
     return {
       phase: "running",
       batchId,
@@ -165,33 +157,30 @@ export async function syncGoogleMapsApifyImport(input: {
     };
   }
 
-  if (phase === "fail") {
-    const finishedAt = new Date().toISOString();
-    const summary = `Run Apify terminé en échec (${run.status}).`;
-    await batches
-      .update({
-        status: "failed",
-        finished_at: finishedAt,
-        external_status: run.status,
-        error_summary: summary.slice(0, 2000),
-      } as never)
-      .eq("id", batchId);
-
-    return {
-      phase: "failed",
-      batchId,
-      apifyRunId: runId,
-      datasetId: datasetFromRun || undefined,
-      externalStatus: run.status,
-      error: summary,
-      message: summary,
-    };
-  }
-
-  const datasetId = datasetFromRun || row.external_dataset_id || "";
+  const datasetId = (datasetFromRun || row.external_dataset_id || "").trim();
   if (!datasetId) {
-    const msg = "Run Apify réussi mais aucun dataset disponible.";
     const finishedAt = new Date().toISOString();
+    if (fin === "fail") {
+      const summary = `Run Apify terminé en échec (${run.status}) — aucun dataset.`;
+      await batches
+        .update({
+          status: "failed",
+          finished_at: finishedAt,
+          external_status: run.status,
+          error_summary: summary.slice(0, 2000),
+        } as never)
+        .eq("id", batchId);
+      return {
+        phase: "failed",
+        batchId,
+        apifyRunId: runId,
+        datasetId: undefined,
+        externalStatus: run.status,
+        error: summary,
+        message: summary,
+      };
+    }
+    const msg = "Run Apify réussi mais aucun dataset disponible.";
     await batches
       .update({
         status: "failed",
@@ -209,6 +198,49 @@ export async function syncGoogleMapsApifyImport(input: {
       message: msg,
     };
   }
+
+  let rawItems: unknown[];
+  try {
+    rawItems = await getApifyDatasetItems(token, datasetId);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur lecture dataset Apify.";
+    return {
+      phase: "failed",
+      batchId,
+      apifyRunId: runId,
+      datasetId,
+      externalStatus: run.status,
+      error: message,
+      message,
+    };
+  }
+
+  if (fin === "fail" && rawItems.length === 0) {
+    const finishedAt = new Date().toISOString();
+    const summary = `Run Apify terminé en échec (${run.status}) — dataset vide.`;
+    await batches
+      .update({
+        status: "failed",
+        finished_at: finishedAt,
+        external_status: run.status,
+        error_summary: summary.slice(0, 2000),
+      } as never)
+      .eq("id", batchId);
+    return {
+      phase: "failed",
+      batchId,
+      apifyRunId: runId,
+      datasetId,
+      externalStatus: run.status,
+      error: summary,
+      message: summary,
+    };
+  }
+
+  const partialRecoveryMeta =
+    fin === "fail" && rawItems.length > 0
+      ? buildApifyPartialDatasetRecoveryMetadata(run.status, rawItems.length, new Date().toISOString())
+      : null;
 
   const now = new Date().toISOString();
   const { data: claimRows, error: claimErr } = await batches
@@ -273,55 +305,12 @@ export async function syncGoogleMapsApifyImport(input: {
     } as never)
     .eq("id", batchId);
 
-  const rawItems = await getApifyDatasetItems(token, datasetId);
   const fetchedCount = rawItems.length;
 
   const mappedRows: LeadGenerationRawStockInput[] = [];
   for (let i = 0; i < rawItems.length; i++) {
     const mapped = mapGoogleMapsApifyItem(rawItems[i], i);
     if (mapped.ok) mappedRows.push(mapped.row);
-  }
-
-  if (deferIngest) {
-    const finishedAt = new Date().toISOString();
-    const metaRoot =
-      typeof row.metadata_json === "object" && row.metadata_json !== null && !Array.isArray(row.metadata_json)
-        ? { ...(row.metadata_json as Record<string, unknown>) }
-        : {};
-    const metaDefer = {
-      ...metaRoot,
-      last_apify_poll_at: finishedAt,
-      multiSourceDeferred: {
-        mappedCount: mappedRows.length,
-        at: finishedAt,
-      },
-    };
-    await batches
-      .update({
-        status: "completed",
-        finished_at: finishedAt,
-        external_status: run.status,
-        imported_count: mappedRows.length,
-        accepted_count: 0,
-        duplicate_count: 0,
-        rejected_count: 0,
-        metadata_json: metaDefer as unknown as Json,
-      } as never)
-      .eq("id", batchId);
-
-    return {
-      phase: "completed_deferred",
-      batchId,
-      apifyRunId: runId,
-      datasetId,
-      externalStatus: run.status,
-      fetchedCount: mappedRows.length,
-      ingestedCount: 0,
-      acceptedCount: 0,
-      duplicateCount: 0,
-      rejectedCount: 0,
-      message: "Dataset Maps récupéré — fusion multi-source côté coordinateur.",
-    };
   }
 
   const ingest = await ingestLeadGenerationStock(batchId, mappedRows);
@@ -345,6 +334,26 @@ export async function syncGoogleMapsApifyImport(input: {
   }
 
   const s = ingest.summary;
+  if (partialRecoveryMeta) {
+    const cur = await getLeadGenerationImportBatchById(batchId);
+    const metaRoot =
+      typeof cur?.metadata_json === "object" &&
+      cur.metadata_json !== null &&
+      !Array.isArray(cur.metadata_json)
+        ? { ...(cur.metadata_json as Record<string, unknown>) }
+        : {};
+    await batches
+      .update({
+        metadata_json: {
+          ...metaRoot,
+          [APIFY_PARTIAL_IMPORT_META_KEY]: partialRecoveryMeta,
+        } as unknown as Json,
+        error_summary: null,
+        external_status: run.status,
+      } as never)
+      .eq("id", batchId);
+  }
+
   return {
     phase: "completed",
     batchId,
@@ -356,6 +365,7 @@ export async function syncGoogleMapsApifyImport(input: {
     acceptedCount: s.accepted_count,
     duplicateCount: s.duplicate_count,
     rejectedCount: s.rejected_count,
+    partialApifyDatasetRecovery: Boolean(partialRecoveryMeta),
     message: "Import finalisé.",
   };
 }

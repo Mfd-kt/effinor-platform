@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { runManualCsvLeadGenerationImportAction } from "@/features/lead-generation/actions/run-manual-csv-lead-generation-import-action";
+import type { LeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
+
+import { LeadGenerationCeeTeamPickers } from "./lead-generation-cee-team-pickers";
 
 const EXAMPLE = `company_name,phone,email,city
 Ma SARL,01 23 45 67 89,contact@example.com,Lyon`;
@@ -15,11 +18,13 @@ Ma SARL,01 23 45 67 89,contact@example.com,Lyon`;
 /**
  * Import manuel CSV → même pipeline d’ingestion que les autres sources.
  */
-export function ManualCsvImportPanel() {
+export function ManualCsvImportPanel({ ceeScope }: { ceeScope: LeadGenerationCeeImportScope }) {
   const router = useRouter();
   const [csvText, setCsvText] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
   const [filename, setFilename] = useState("");
+  const [ceeSheetId, setCeeSheetId] = useState("");
+  const [targetTeamId, setTargetTeamId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -28,6 +33,8 @@ export function ManualCsvImportPanel() {
     startTransition(async () => {
       const res = await runManualCsvLeadGenerationImportAction({
         csvText,
+        ceeSheetId,
+        targetTeamId,
         ...(sourceLabel.trim() ? { sourceLabel: sourceLabel.trim() } : {}),
         ...(filename.trim() ? { filename: filename.trim() } : {}),
       });
@@ -89,6 +96,16 @@ export function ManualCsvImportPanel() {
           spellCheck={false}
         />
       </div>
+      <LeadGenerationCeeTeamPickers
+        scope={ceeScope}
+        ceeSheetId={ceeSheetId}
+        targetTeamId={targetTeamId}
+        onCeeSheetIdChange={setCeeSheetId}
+        onTargetTeamIdChange={setTargetTeamId}
+        disabled={pending}
+        idPrefix="csv-cee"
+      />
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="csv-source-label">Libellé source (optionnel)</Label>
@@ -111,7 +128,11 @@ export function ManualCsvImportPanel() {
           />
         </div>
       </div>
-      <Button type="button" onClick={run} disabled={pending || !csvText.trim()}>
+      <Button
+        type="button"
+        onClick={run}
+        disabled={pending || !csvText.trim() || !ceeSheetId.trim() || !targetTeamId.trim()}
+      >
         Importer le CSV
       </Button>
       {message ? (

@@ -49,11 +49,11 @@ export function getRelanceDisplay(item: MyLeadGenerationQueueItem, now: Date = n
   }
   const nearest = item.nearestNextActionAt;
   if (!nearest) {
-    return { bucket: "none", label: "Pas de relance prévue" };
+    return { bucket: "none", label: "Aucune" };
   }
   const t = new Date(nearest).getTime();
   if (Number.isNaN(t)) {
-    return { bucket: "none", label: "Pas de relance prévue" };
+    return { bucket: "none", label: "Aucune" };
   }
   const nowMs = now.getTime();
   if (t < nowMs) {
@@ -65,7 +65,7 @@ export function getRelanceDisplay(item: MyLeadGenerationQueueItem, now: Date = n
   const tom = tomorrowYmdParis(now);
 
   if (day === today) {
-    return { bucket: "today", label: `Aujourd'hui ${parisTimeHm(nearest)}` };
+    return { bucket: "today", label: `Aujourd’hui ${parisTimeHm(nearest)}` };
   }
   if (day === tom) {
     return { bucket: "tomorrow", label: `Demain ${parisTimeHm(nearest)}` };
@@ -140,24 +140,29 @@ export function itemMatchesQuickFilter(
 }
 
 /**
- * Tri : retards → relances du jour → demain → futur → sans date ;
- * puis priorité commerciale, puis score décroissant.
+ * Tri : retards (échéance la plus ancienne d’abord) → relances du jour (heure) → le reste par priorité puis score,
+ * avec relances futures (demain → plus tard → aucune) en tie-breaker.
  */
 export function sortQueueItems(items: MyLeadGenerationQueueItem[]): MyLeadGenerationQueueItem[] {
   const now = new Date();
 
-  function followUpTier(i: MyLeadGenerationQueueItem): number {
+  function relancePrimaryTier(i: MyLeadGenerationQueueItem): number {
     if (i.hasOverdueFollowUp) return 0;
     const rel = getRelanceDisplay(i, now);
     if (rel.bucket === "today") return 1;
-    if (rel.bucket === "tomorrow") return 2;
-    if (rel.bucket === "future") return 3;
-    return 4;
+    return 2;
+  }
+
+  function followUpSecondaryTier(i: MyLeadGenerationQueueItem): number {
+    const rel = getRelanceDisplay(i, now);
+    if (rel.bucket === "tomorrow") return 0;
+    if (rel.bucket === "future") return 1;
+    return 2;
   }
 
   return [...items].sort((a, b) => {
-    const ta = followUpTier(a);
-    const tb = followUpTier(b);
+    const ta = relancePrimaryTier(a);
+    const tb = relancePrimaryTier(b);
     if (ta !== tb) return ta - tb;
 
     if (ta === 0) {
@@ -166,7 +171,7 @@ export function sortQueueItems(items: MyLeadGenerationQueueItem[]): MyLeadGenera
       if (ae !== be) return ae - be;
     }
 
-    if (ta === 1 || ta === 2 || ta === 3) {
+    if (ta === 1) {
       const aNext = a.nearestNextActionAt ? new Date(a.nearestNextActionAt).getTime() : Number.POSITIVE_INFINITY;
       const bNext = b.nearestNextActionAt ? new Date(b.nearestNextActionAt).getTime() : Number.POSITIVE_INFINITY;
       if (aNext !== bNext) return aNext - bNext;
@@ -178,6 +183,16 @@ export function sortQueueItems(items: MyLeadGenerationQueueItem[]): MyLeadGenera
     if (a.commercialScore !== b.commercialScore) {
       return b.commercialScore - a.commercialScore;
     }
+
+    if (ta === 2) {
+      const fa = followUpSecondaryTier(a);
+      const fb = followUpSecondaryTier(b);
+      if (fa !== fb) return fa - fb;
+      const aNext = a.nearestNextActionAt ? new Date(a.nearestNextActionAt).getTime() : Number.POSITIVE_INFINITY;
+      const bNext = b.nearestNextActionAt ? new Date(b.nearestNextActionAt).getTime() : Number.POSITIVE_INFINITY;
+      if (aNext !== bNext) return aNext - bNext;
+    }
+
     return new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime();
   });
 }

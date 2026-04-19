@@ -8,14 +8,16 @@ import { canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
 
 import type { DispatchLeadGenerationStockResult } from "../domain/dispatch-result";
 import type { LeadGenerationActionResult } from "../lib/action-result";
+import { MY_QUEUE_NO_CEE_SHEET_SENTINEL } from "../lib/my-queue-cee-sheet-option";
 import { MY_QUEUE_MANUAL_CHUNK_DEFAULT, MY_QUEUE_MAX_ACTIVE_STOCK } from "../lib/my-queue-manual-dispatch";
+import { getLeadGenerationMyQueueCeeSheetOptions } from "../queries/get-lead-generation-my-queue-cee-sheet-options";
 import { dispatchLeadGenerationMyQueueChunkForAgent } from "../services/dispatch-lead-generation-stock";
 
-const inputSchema = z
-  .object({
-    chunkSize: z.number().int().min(1).max(MY_QUEUE_MAX_ACTIVE_STOCK).optional(),
-  })
-  .default({});
+const inputSchema = z.object({
+  chunkSize: z.number().int().min(1).max(MY_QUEUE_MAX_ACTIVE_STOCK).optional(),
+  /** Fiche CEE (UUID) ou sentinelle « sans fiche ». */
+  ceeSheetId: z.string().min(1).max(120).optional(),
+});
 
 /**
  * Récupère un lot de fiches `ready_now` pour l’agent connecté (ex. +20 depuis « Mes fiches à traiter »).
@@ -35,9 +37,22 @@ export async function dispatchLeadGenerationMyQueueChunkAction(
   }
 
   const chunkSize = parsed.data.chunkSize ?? MY_QUEUE_MANUAL_CHUNK_DEFAULT;
+  const sheetOptions = await getLeadGenerationMyQueueCeeSheetOptions(access);
+  const rawCee = parsed.data.ceeSheetId?.trim() || null;
+  const isNoCeeScope = rawCee === MY_QUEUE_NO_CEE_SHEET_SENTINEL;
+  const ceeSheetIdForDispatch = isNoCeeScope ? null : rawCee;
+
+  if (sheetOptions.length > 0) {
+    if (!rawCee) {
+      return { ok: false, error: "Choisissez une fiche CEE avant de récupérer des fiches." };
+    }
+    if (!isNoCeeScope && !sheetOptions.some((o) => o.id === rawCee)) {
+      return { ok: false, error: "Cette fiche CEE n’est pas disponible pour votre compte." };
+    }
+  }
 
   try {
-    const data = await dispatchLeadGenerationMyQueueChunkForAgent(access.userId, chunkSize);
+    const data = await dispatchLeadGenerationMyQueueChunkForAgent(access.userId, chunkSize, ceeSheetIdForDispatch);
     revalidatePath("/lead-generation/my-queue");
     revalidatePath("/agent");
     return { ok: true, data };

@@ -29,3 +29,29 @@ export async function computeAgentActiveStock(
 
   return { count: count ?? 0 };
 }
+
+/**
+ * Fiches actives de l’agent pour une fiche CEE (stock issu d’un lot rattaché à cette fiche).
+ */
+export async function computeAgentActiveStockForCeeSheet(
+  supabase: SupabaseClient,
+  agentId: string,
+  ceeSheetId: string,
+): Promise<AgentActiveStockSnapshot> {
+  const sheet = ceeSheetId.trim();
+  if (!sheet) {
+    return { count: 0 };
+  }
+
+  const { data, error } = await supabase.rpc("count_lead_generation_agent_active_stock_for_cee_sheet", {
+    p_agent_id: agentId,
+    p_cee_sheet_id: sheet,
+  });
+
+  if (error) {
+    throw new Error(`Stock actif agent (fiche CEE) : ${error.message}`);
+  }
+
+  const n = typeof data === "number" ? data : Number(data);
+  return { count: Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0 };
+}

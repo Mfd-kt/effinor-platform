@@ -52,7 +52,7 @@ export function humanizeLeadGenerationActionError(raw: string): string {
     return (
       "Apify refuse de lancer l’actor (403) : essai gratuit terminé ou actor non payé sur votre compte. " +
       "Le mot anglais « rent » signifie ici **souscrire / louer l’actor** (facturation Apify), pas un filtre « lieu » ou « ville » sur la carte. " +
-      "Ouvrez https://console.apify.com, vérifiez l’abonnement à cet actor, ou définissez `APIFY_LINKEDIN_ENRICHMENT_ACTOR_ID` vers un actor autorisé pour votre compte."
+      "Ouvrez https://console.apify.com et vérifiez l’abonnement à cet actor."
     );
   }
 

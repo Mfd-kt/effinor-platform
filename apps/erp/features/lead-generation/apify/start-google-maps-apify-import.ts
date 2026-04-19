@@ -5,6 +5,7 @@ import type { Json } from "../domain/json";
 import { lgTable } from "../lib/lg-db";
 
 import { getApifyEnv, startApifyActorRun } from "./client";
+import { leadGenerationBatchCeeInsertColumns, readCeeContextFromApifyInput } from "../lib/lead-generation-batch-cee-columns";
 import { buildGoogleMapsActorRunInput, resolveGoogleMapsLocationQuery } from "./google-maps-actor-input";
 import type { RunGoogleMapsApifyImportInput, StartGoogleMapsApifyImportOutcome } from "./types";
 
@@ -65,16 +66,9 @@ export async function startGoogleMapsApifyImport(
       : {}),
     ...(campaignName ? { campaignName } : {}),
     ...(input.campaignSector?.trim() ? { campaignSector: input.campaignSector.trim() } : {}),
-    ...(input.multiSourceCoordinatorBatchId
-      ? {
-          multiSource: {
-            coordinatorBatchId: input.multiSourceCoordinatorBatchId,
-            role: "google_maps",
-            deferIngest: input.multiSourceDeferIngest === true,
-          },
-        }
-      : {}),
   };
+
+  const ceeCols = leadGenerationBatchCeeInsertColumns(readCeeContextFromApifyInput(input));
 
   const { data: inserted, error: insErr } = await batches
     .insert({
@@ -83,7 +77,8 @@ export async function startGoogleMapsApifyImport(
       status: "running",
       started_at: now,
       metadata_json: baseMetadata as unknown as Json,
-    })
+      ...ceeCols,
+    } as never)
     .select("id")
     .single();
 

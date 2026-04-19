@@ -44,6 +44,7 @@ import {
   unifiedLeadGenerationPipelineBodySchema,
 } from "../schemas/lead-generation-actions.schema";
 import type { LeadGenerationImportBatchListItem } from "../queries/get-lead-generation-import-batches";
+import type { LeadGenerationCeeImportScope } from "../queries/get-lead-generation-cee-import-scope";
 import type {
   LeadGenerationPipelineCockpitSnapshot,
   LeadGenerationPipelineRecommendedStep,
@@ -106,11 +107,10 @@ const COOLDOWN_MS = 8_000;
 const IMPORT_BACKLOG_SOFT_CAP = 12;
 
 const UNIFIED_PIPELINE_LOADING_STEPS = [
-  "1/5 — Carte (Maps) et fusion du lot…",
-  "2/5 — Pages Jaunes (annuaire)…",
-  "3/5 — LinkedIn ciblé sur le lot…",
-  "4/5 — Amélioration des fiches (email, site, analyse)…",
-  "5/5 — Distribution aux commerciaux…",
+  "1/4 — Création du lot (carte)…",
+  "2/4 — Lecture des sites pour compléter les fiches…",
+  "3/4 — Finalisation et qualification…",
+  "4/4 — Répartition entre commerciaux…",
 ] as const;
 
 const UNIFIED_PIPELINE_LOADING_STEPS_LIST: string[] = [...UNIFIED_PIPELINE_LOADING_STEPS];
@@ -278,7 +278,7 @@ function summarizeDispatch(d: AutoDispatchLeadsResult): string {
 }
 
 function summarizeUnifiedPipelineRun(u: UnifiedLeadGenerationPipelineResult): string {
-  return `Carte ${u.counts.generatedAccepted} · PJ ${u.counts.yellowPatched} · LinkedIn ${u.counts.linkedInUpdated} · amélioration ${u.counts.improved} · distribuées ${u.counts.distributed}`;
+  return `Lot ${u.counts.generatedAccepted} · sites ${u.counts.firecrawlSucceeded} · finalisation ${u.counts.improved} · réparties ${u.counts.distributed}`;
 }
 
 type LeadGenerationMainActionsProps = {
@@ -286,12 +286,26 @@ type LeadGenerationMainActionsProps = {
   /** Commerciaux pouvant recevoir des attributions (vue cockpit). */
   assignableAgentsCount: number;
   syncingImportBatches: LeadGenerationImportBatchListItem[];
+  ceeScope: LeadGenerationCeeImportScope;
 };
+
+function formatCeeTeamSummaryLines(
+  cfg: { ceeSheetId: string; targetTeamId: string },
+  scope: LeadGenerationCeeImportScope,
+): { sheetLine: string; teamLine: string } {
+  const sheet = scope.sheets.find((s) => s.id === cfg.ceeSheetId);
+  const team = scope.teams.find((t) => t.id === cfg.targetTeamId);
+  return {
+    sheetLine: sheet ? `${sheet.code} — ${sheet.label}` : cfg.ceeSheetId.trim() ? cfg.ceeSheetId : "—",
+    teamLine: team ? team.name : cfg.targetTeamId.trim() ? cfg.targetTeamId : "—",
+  };
+}
 
 export function LeadGenerationMainActions({
   pipelineSnapshot,
   assignableAgentsCount,
   syncingImportBatches,
+  ceeScope,
 }: LeadGenerationMainActionsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -456,13 +470,6 @@ export function LeadGenerationMainActions({
       { label: "Compléments automatiques (échantillon)", value: String(d.total_enriched) },
       { label: "Lots fournisseur synchronisés", value: String(d.sync_batches_scanned) },
     ];
-    if (typeof d.yellow_pages_patched === "number" && d.yellow_pages_patched > 0) {
-      rows.push({ label: "Fiches patchées (Pages Jaunes)", value: String(d.yellow_pages_patched) });
-    }
-    if (typeof d.linkedin_stocks_updated === "number" && d.linkedin_stocks_updated > 0) {
-      rows.push({ label: "Fiches mises à jour (LinkedIn)", value: String(d.linkedin_stocks_updated) });
-    }
-
     const estPipeline = d.total_accepted + d.total_enriched;
     const businessNote =
       estPipeline > 0
@@ -631,21 +638,11 @@ export function LeadGenerationMainActions({
 
   function applyUnifiedPipelineResultToPanels(u: UnifiedLeadGenerationPipelineResult) {
     const mapsStep = u.steps.maps?.status ?? "—";
-    const ypStep = u.steps.yellow_pages?.status ?? "—";
-    const liStep = u.steps.linkedin?.status ?? "—";
 
     const genRows: ResultRow[] = [
       {
-        label: "Carte (Maps) — état",
-        value: `${mapsStep} · ${u.counts.generatedAccepted} fiche(s) dans le lot`,
-      },
-      {
-        label: "Pages Jaunes — état",
-        value: `${ypStep} · ${u.counts.yellowPatched} fiche(s) enrichies`,
-      },
-      {
-        label: "LinkedIn — état",
-        value: `${liStep} · ${u.counts.linkedInUpdated} fiche(s) enrichies`,
+        label: "Création du lot — état",
+        value: `${mapsStep} · ${u.counts.generatedAccepted} contact(s)`,
       },
     ];
 
@@ -664,31 +661,36 @@ export function LeadGenerationMainActions({
       rows: genRows,
       emptyHint:
         genPhase === "empty"
-          ? (u.stopReason ??
-            "Aucune fiche n’a été ajoutée au lot sur la carte — vérifiez la campagne ou relancez.")
+          ? (u.stopReason ?? "Aucun contact n’a été généré par cette campagne.")
           : undefined,
       banners: genBanners.length ? genBanners : undefined,
       businessNote:
         u.stopReason && genPhase === "success"
           ? u.stopReason
           : u.pipelineStatus === "completed"
-            ? "Parcours unifié terminé : les cinq étapes se sont enchaînées dans l’ordre imposé."
+            ? "Parcours terminé : création du lot, analyse des sites, qualification et répartition."
             : undefined,
     });
 
     const prepBanners: Banner[] = [];
-    if (u.counts.readyInLot === 0 && u.counts.improved > 0) {
+    if (u.counts.readyInLot === 0 && (u.counts.improved > 0 || u.counts.firecrawlSucceeded > 0)) {
       prepBanners.push({
         tone: "warning",
-        text: "Après amélioration, aucune fiche du lot n’était encore prête à être confiée. Complétez les contacts ou affinez la campagne.",
+        text: "Les fiches ont été améliorées, mais aucune n’est encore prête à distribuer.",
       });
     }
+
+    const fcStep = u.steps.firecrawl?.status ?? "—";
 
     setPanel("prepare", {
       phase: "success",
       rows: [
         {
-          label: "Compléments / analyse (étape « Améliorer »)",
+          label: "Analyse des sites — état",
+          value: `${fcStep} · ${u.counts.firecrawlSucceeded} fiche(s) complétée(s)`,
+        },
+        {
+          label: "Finalisation / qualification (autres compléments)",
           value: String(u.counts.improved),
         },
         {
@@ -701,10 +703,16 @@ export function LeadGenerationMainActions({
         },
       ],
       banners: prepBanners.length ? prepBanners : undefined,
-      businessNote:
-        u.counts.readyInLot > 0
-          ? `${u.counts.readyInLot} contact(s) étaient prêts à confier avant la distribution.`
-          : undefined,
+      businessNote: (() => {
+        const parts: string[] = [];
+        if (u.counts.firecrawlSucceeded > 0) {
+          parts.push("Les sites ont été analysés pour compléter les fiches.");
+        }
+        if (u.counts.readyInLot > 0) {
+          parts.push(`${u.counts.readyInLot} contact(s) prêts à confier avant la répartition.`);
+        }
+        return parts.length > 0 ? parts.join(" ") : undefined;
+      })(),
     });
 
     const remainingReady = Math.max(0, u.counts.readyInLot - u.counts.distributed);
@@ -773,7 +781,7 @@ export function LeadGenerationMainActions({
         bumpRun("pipeline", summarizeUnifiedPipelineRun(u), {
           imported: u.counts.generatedAccepted,
           accepted: u.counts.generatedAccepted,
-          enriched: u.counts.yellowPatched + u.counts.linkedInUpdated,
+          enriched: u.counts.firecrawlSucceeded,
           improved: u.counts.improved,
           readyNow: u.counts.readyInLot,
           enrichNeeded: u.counts.remainingToComplete,
@@ -828,11 +836,13 @@ export function LeadGenerationMainActions({
   function handlePipelineButtonClick() {
     if (pipelineOrCooldownLocked || pending || !canPipeline) return;
     const last = readLastGenerateCampaignConfig();
-    if (!last) {
+    const merged = mergeGenerateCampaignConfig(last);
+    const parsed = unifiedLeadGenerationPipelineBodySchema.safeParse(merged);
+    if (!last || !parsed.success) {
       openGenerateModal("pipeline");
       return;
     }
-    setPipelinePreflightConfig(last);
+    setPipelinePreflightConfig(parsed.data);
     setPipelinePreflightOpen(true);
   }
 
@@ -943,7 +953,7 @@ export function LeadGenerationMainActions({
             onClick={handlePipelineButtonClick}
           >
             {pipelineBusy ? <Loader2 className="mr-2 size-3.5 shrink-0 animate-spin" aria-hidden /> : null}
-            Enchaîner les 5 étapes
+            Enchaîner les 3 étapes
           </Button>
           <Link
             href="/lead-generation/imports"
@@ -1029,7 +1039,7 @@ export function LeadGenerationMainActions({
             <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-foreground">Parcours unifié — 5 étapes (Maps → PJ → LinkedIn → améliorer → distribuer)</p>
+            <p className="font-medium text-foreground">Parcours unifié — 3 étapes (Maps → améliorer → distribuer)</p>
             <p className="truncate text-[11px] text-muted-foreground">
               <span key={loadSession}>
                 <LoadingTickerMessage actionId="generate" overrideSteps={UNIFIED_PIPELINE_LOADING_STEPS_LIST} />
@@ -1121,7 +1131,7 @@ export function LeadGenerationMainActions({
 
       {store.runs.pipeline ? (
         <div className="animate-in fade-in-0 rounded-xl border border-border bg-muted/25 px-3.5 py-2.5 text-[11px] text-muted-foreground duration-300">
-          <span className="font-medium text-foreground/90">Dernier enchaînement (parcours 5 étapes) : </span>
+          <span className="font-medium text-foreground/90">Dernier enchaînement (parcours 3 étapes) : </span>
           {formatLastRunTime(store.runs.pipeline.at)} — {store.runs.pipeline.summary}
           {formatVolumeShort(store.runs.pipeline.volume)}
         </div>
@@ -1132,6 +1142,7 @@ export function LeadGenerationMainActions({
         onOpenChange={setGenerateModalOpen}
         initialConfig={generateModalInitial}
         onLaunch={handleGenerateModalLaunch}
+        ceeScope={ceeScope}
       />
 
       <Dialog open={generateConfirmOpen} onOpenChange={setGenerateConfirmOpen}>
@@ -1148,6 +1159,18 @@ export function LeadGenerationMainActions({
               <p className="text-muted-foreground">
                 {generateConfirmConfig.sector} — {generateConfirmConfig.zone}
               </p>
+              {(() => {
+                const { sheetLine, teamLine } = formatCeeTeamSummaryLines(generateConfirmConfig, ceeScope);
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground/80">Fiche CEE : </span>
+                    {sheetLine}
+                    <br />
+                    <span className="font-medium text-foreground/80">Équipe : </span>
+                    {teamLine}
+                  </p>
+                );
+              })()}
               <p className="text-xs text-muted-foreground">
                 {generateConfirmPlan.searchStrings.length} recherche
                 {generateConfirmPlan.searchStrings.length > 1 ? "s" : ""} · ordre de grandeur ~
@@ -1244,11 +1267,11 @@ export function LeadGenerationMainActions({
       <Dialog open={pipelinePreflightOpen} onOpenChange={setPipelinePreflightOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Enchaîner les 5 étapes</DialogTitle>
+            <DialogTitle>Enchaîner les 3 étapes</DialogTitle>
             <DialogDescription>
-              Un réglage de campagne est mémorisé sur cet appareil. Le parcours complet exécute toujours dans l’ordre :
-              carte (Maps), Pages Jaunes, LinkedIn, amélioration des fiches, puis distribution — sans sauter les
-              enrichissements, même s’il reste des fiches à compléter ailleurs dans le carnet.
+              Un réglage de campagne est mémorisé sur cet appareil. Le parcours enchaîne : carte (Google Maps), puis
+              amélioration des fiches et distribution — sans sauter les étapes du lot, même s’il reste des fiches à
+              compléter ailleurs dans le carnet.
             </DialogDescription>
           </DialogHeader>
           {pipelinePreflightConfig ? (
@@ -1257,6 +1280,18 @@ export function LeadGenerationMainActions({
               <p className="text-muted-foreground">
                 {pipelinePreflightConfig.sector} — {pipelinePreflightConfig.zone}
               </p>
+              {(() => {
+                const { sheetLine, teamLine } = formatCeeTeamSummaryLines(pipelinePreflightConfig, ceeScope);
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground/80">Fiche CEE : </span>
+                    {sheetLine}
+                    <br />
+                    <span className="font-medium text-foreground/80">Équipe : </span>
+                    {teamLine}
+                  </p>
+                );
+              })()}
             </div>
           ) : null}
           <DialogFooter className="gap-2 sm:gap-0">

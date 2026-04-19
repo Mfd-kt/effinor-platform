@@ -31,10 +31,14 @@ export type LeadGenerationImportBatchListItem = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  cee_sheet_id: string | null;
+  cee_sheet_code: string | null;
+  target_team_id: string | null;
+  target_team_name: string | null;
 };
 
 const LIST_SELECT =
-  "id, source, source_label, status, external_status, external_run_id, external_dataset_id, imported_count, accepted_count, duplicate_count, rejected_count, error_summary, created_at, started_at, finished_at";
+  "id, source, source_label, status, external_status, external_run_id, external_dataset_id, imported_count, accepted_count, duplicate_count, rejected_count, error_summary, created_at, started_at, finished_at, cee_sheet_id, cee_sheet_code, target_team_id";
 
 /**
  * Liste les batches d’import avec filtres optionnels et pagination (tri `created_at` desc).
@@ -67,5 +71,22 @@ export async function getLeadGenerationImportBatches(
     throw new Error(`Liste imports lead generation : ${error.message}`);
   }
 
-  return (data ?? []) as LeadGenerationImportBatchListItem[];
+  const rows = (data ?? []) as Omit<LeadGenerationImportBatchListItem, "target_team_name">[];
+  const teamIds = [...new Set(rows.map((r) => r.target_team_id).filter((id): id is string => !!id?.trim()))];
+  let teamNameById = new Map<string, string>();
+  if (teamIds.length > 0) {
+    const { data: teams, error: teamErr } = await supabase
+      .from("cee_sheet_teams")
+      .select("id, name")
+      .in("id", teamIds);
+    if (teamErr) {
+      throw new Error(teamErr.message);
+    }
+    teamNameById = new Map((teams ?? []).map((t) => [t.id, t.name?.trim() || t.id] as const));
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    target_team_name: r.target_team_id ? (teamNameById.get(r.target_team_id) ?? null) : null,
+  }));
 }

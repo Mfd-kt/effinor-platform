@@ -1,11 +1,5 @@
 /** Clés d’étapes du parcours unifié (ordre strict). */
-export const UNIFIED_PIPELINE_STEPS = [
-  "maps",
-  "yellow_pages",
-  "linkedin",
-  "improve",
-  "dispatch",
-] as const;
+export const UNIFIED_PIPELINE_STEPS = ["maps", "firecrawl", "improve", "dispatch"] as const;
 
 export type UnifiedPipelineStepKey = (typeof UNIFIED_PIPELINE_STEPS)[number];
 

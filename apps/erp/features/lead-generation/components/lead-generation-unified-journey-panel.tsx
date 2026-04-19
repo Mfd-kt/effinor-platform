@@ -20,17 +20,17 @@ import {
   type UnifiedPipelineStepRecord,
 } from "../services/unified-pipeline-state";
 import { buildLeadGenerationStockLockedPipelineLotUrl } from "../lib/build-lead-generation-list-url";
+import type { LeadGenerationCeeImportScope } from "../queries/get-lead-generation-cee-import-scope";
 import { LeadGenerationGenerateCampaignModal } from "./lead-generation-generate-campaign-modal";
 
 const LOCK_MESSAGE =
   "Le dernier parcours a laissé des fiches du lot coordinateur sans email ou sans site web (téléphone présent). Complétez-les ou corrigez-les depuis le stock pour débloquer un nouveau parcours.";
 
 const STEP_LABEL: Record<UnifiedPipelineStepKey, string> = {
-  maps: "1. Carte (Google Maps)",
-  yellow_pages: "2. Pages Jaunes",
-  linkedin: "3. LinkedIn",
-  improve: "4. Améliorer les fiches",
-  dispatch: "5. Distribuer aux commerciaux",
+  maps: "1. Créer les contacts",
+  firecrawl: "2. Compléter depuis les sites",
+  improve: "3. Finaliser et qualifier",
+  dispatch: "4. Répartir entre commerciaux",
 };
 
 type PipelineLock = {
@@ -42,6 +42,7 @@ type PipelineLock = {
 type Props = {
   pipelineLock: PipelineLock;
   assignableAgentsCount: number;
+  ceeScope: LeadGenerationCeeImportScope;
 };
 
 type ApiErrorBody = {
@@ -99,7 +100,7 @@ function PipelineStepsReadout({
   );
 }
 
-export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgentsCount }: Props) {
+export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgentsCount, ceeScope }: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [running, setRunning] = useState(false);
@@ -159,8 +160,8 @@ export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgen
             <h2 className="text-lg font-semibold tracking-tight">Parcours automatique</h2>
           </div>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Un seul lancement enchaîne dans l’ordre : carte, Pages Jaunes, LinkedIn, amélioration des fiches,
-            puis distribution au lot — chaque étape doit se terminer avant la suivante.
+            Un seul lancement enchaîne : création du lot, lecture des sites utiles pour compléter les fiches, qualification
+            métier, puis répartition vers votre équipe — dans cet ordre.
           </p>
           <p className="text-xs text-muted-foreground">
             {assignableAgentsCount} commercial
@@ -212,7 +213,7 @@ export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgen
 
       {running ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          Les étapes s’enchaînent sur le serveur dans l’ordre imposé ; comptez plusieurs minutes (Apify).
+          Les étapes s’enchaînent sur le serveur ; la création du lot peut prendre plusieurs minutes.
         </p>
       ) : null}
 
@@ -255,7 +256,7 @@ export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgen
           </div>
           {result.warnings.length > 0 ? (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-950 dark:text-amber-100">
-              <p className="text-xs font-medium uppercase tracking-wide opacity-90">À vérifier (Apify / annuaire)</p>
+              <p className="text-xs font-medium uppercase tracking-wide opacity-90">À vérifier</p>
               <ul className="mt-1 list-inside list-disc space-y-1 text-sm">
                 {result.warnings.map((w, i) => (
                   <li key={`${i}-${w.slice(0, 48)}`}>{w}</li>
@@ -264,13 +265,12 @@ export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgen
             </div>
           ) : null}
           <ul className="list-inside list-disc space-y-0.5 text-muted-foreground">
-            <li>Fiches retenues sur le lot : {result.counts.generatedAccepted}</li>
-            <li>Enrichies annuaire (mise à jour des fiches) : {result.counts.yellowPatched}</li>
-            <li>Enrichies LinkedIn : {result.counts.linkedInUpdated}</li>
-            <li>Améliorées (email / site / analyse) : {result.counts.improved}</li>
-            <li>Prêtes à confier après amélioration : {result.counts.readyInLot}</li>
-            <li>Distribuées aux équipes : {result.counts.distributed}</li>
-            <li>Restantes à compléter (lot) : {result.counts.remainingToComplete}</li>
+            <li>Contacts retenus sur le lot : {result.counts.generatedAccepted}</li>
+            <li>Fiches complétées depuis les sites : {result.counts.firecrawlSucceeded}</li>
+            <li>Compléments / qualification (étape « finaliser ») : {result.counts.improved}</li>
+            <li>Prêtes à confier : {result.counts.readyInLot}</li>
+            <li>Réparties vers les commerciaux : {result.counts.distributed}</li>
+            <li>Restantes à compléter sur le lot : {result.counts.remainingToComplete}</li>
           </ul>
         </div>
       ) : null}
@@ -280,6 +280,7 @@ export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgen
         onOpenChange={setModalOpen}
         initialConfig={initialConfig}
         onLaunch={onLaunch}
+        ceeScope={ceeScope}
       />
     </section>
   );

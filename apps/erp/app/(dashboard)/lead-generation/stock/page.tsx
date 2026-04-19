@@ -164,6 +164,30 @@ export default async function LeadGenerationStockPage({ searchParams }: PageProp
         }
       />
 
+      <nav
+        aria-label="Sous-sections stock"
+        className="flex flex-wrap gap-2 border-b border-border/70 pb-4 text-sm"
+      >
+        <Link
+          href="/lead-generation/my-queue"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Ma file à traiter
+        </Link>
+        <Link
+          href="/lead-generation/imports"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Imports
+        </Link>
+      </nav>
+
       <LeadGenerationFilters defaults={filters} action="/lead-generation/stock" />
 
       <LeadGenerationDuplicateScanPanel />

@@ -115,10 +115,10 @@ export function computeLeadGenerationClosingReadiness(row: LeadGenerationStockRo
 
   if (row.linkedin_url?.trim()) {
     score += 10;
-    reasons.push("Profil LinkedIn trouvé");
+    reasons.push("Profil professionnel public (URL) renseigné");
   } else if (row.has_linkedin) {
     score += 5;
-    reasons.push("Signal LinkedIn présent");
+    reasons.push("Indicateur réseau professionnel présent");
   }
 
   if (!dmName && !role) {

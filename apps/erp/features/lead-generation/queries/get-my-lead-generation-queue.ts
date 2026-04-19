@@ -1,12 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 
 import type { LeadGenerationCommercialPriority, LeadGenerationDispatchQueueStatus } from "../domain/statuses";
+import { formatMyQueueCeeSheetOptionLabel } from "../lib/my-queue-cee-sheet-option";
 import { lgTable } from "../lib/lg-db";
 import { sortQueueItems } from "../lib/my-queue-follow-up";
 
 export type MyLeadGenerationQueueItem = {
   assignmentId: string;
   stockId: string;
+  /** Fiche CEE du lot d’import (si renseignée). */
+  ceeSheetId: string | null;
+  /** Libellé affichable (nom / code). */
+  ceeSheetDisplay: string | null;
   companyName: string;
   phone: string | null;
   email: string | null;
@@ -63,7 +68,16 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
         enriched_email,
         normalized_phone,
         decision_maker_name,
-        decision_maker_role
+        decision_maker_role,
+        import_batch:lead_generation_import_batches!lead_generation_stock_import_batch_id_fkey (
+          cee_sheet_id,
+          cee_sheet_code,
+          cee_sheet:cee_sheets!lead_generation_import_batches_cee_sheet_id_fkey (
+            id,
+            code,
+            label
+          )
+        )
       )
     `,
     )
@@ -75,6 +89,18 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
   if (error) {
     throw new Error(`Ma file lead generation : ${error.message}`);
   }
+
+  type CeeSheetRow = {
+    id: string;
+    code: string | null;
+    label: string | null;
+  };
+
+  type ImportBatchRow = {
+    cee_sheet_id: string | null;
+    cee_sheet_code: string | null;
+    cee_sheet: CeeSheetRow | CeeSheetRow[] | null;
+  };
 
   type StockRow = {
     id: string;
@@ -94,6 +120,7 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
     normalized_phone: string | null;
     decision_maker_name: string | null;
     decision_maker_role: string | null;
+    import_batch: ImportBatchRow | ImportBatchRow[] | null;
   };
 
   type Row = {
@@ -109,6 +136,43 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
       return null;
     }
     return Array.isArray(s) ? s[0] ?? null : s;
+  }
+
+  function pickBatch(b: StockRow["import_batch"]): ImportBatchRow | null {
+    if (!b) {
+      return null;
+    }
+    return Array.isArray(b) ? b[0] ?? null : b;
+  }
+
+  function pickCeeSheet(sh: ImportBatchRow["cee_sheet"]): CeeSheetRow | null {
+    if (!sh) {
+      return null;
+    }
+    return Array.isArray(sh) ? sh[0] ?? null : sh;
+  }
+
+  function resolveCeeFields(s: StockRow): { ceeSheetId: string | null; ceeSheetDisplay: string | null } {
+    const batch = pickBatch(s.import_batch);
+    const sheet = pickCeeSheet(batch?.cee_sheet ?? null);
+    const idFromBatch = batch?.cee_sheet_id?.trim() || null;
+
+    if (sheet) {
+      const sid = String(sheet.id);
+      return {
+        ceeSheetId: sid,
+        ceeSheetDisplay: formatMyQueueCeeSheetOptionLabel({
+          id: sid,
+          code: sheet.code?.trim() ?? "",
+          label: sheet.label?.trim() ?? "",
+        }),
+      };
+    }
+    const codeOnly = batch?.cee_sheet_code?.trim() || null;
+    if (codeOnly) {
+      return { ceeSheetId: idFromBatch, ceeSheetDisplay: codeOnly };
+    }
+    return { ceeSheetId: idFromBatch, ceeSheetDisplay: null };
   }
 
   const raw = (rows ?? []) as Row[];
@@ -132,6 +196,7 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
 
   const items: MyLeadGenerationQueueItem[] = active.map((r) => {
     const s = pickStock(r.stock)!;
+    const { ceeSheetId, ceeSheetDisplay } = resolveCeeFields(s);
     const hint = nextByAssignment.get(r.id) ?? { nearest: null, overdue: false, earliestOverdueAt: null };
     const emailPrimary = s.email?.trim() || null;
     const enriched = s.enriched_email?.trim() || null;
@@ -139,6 +204,8 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
     return {
       assignmentId: r.id,
       stockId: s.id,
+      ceeSheetId,
+      ceeSheetDisplay,
       companyName: s.company_name,
       phone: s.phone ?? s.normalized_phone ?? null,
       email: s.email,

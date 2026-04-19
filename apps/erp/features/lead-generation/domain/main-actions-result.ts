@@ -10,11 +10,9 @@ export type GenerateAndEnrichLeadsResult = {
   sync_batches_scanned: number;
   /** Court message utilisateur si le démarrage Apify a échoué (sync / enrich peuvent quand même avoir tourné). */
   apify_notice?: string;
-  /** Lot coordinateur multi-source (étape 1 alignée sur le parcours unifié). */
+  /** Lot d’import Google Maps (aligné sur le parcours unifié). */
   coordinator_batch_id?: string;
-  /** Fiches du lot mises à jour depuis Pages Jaunes. */
-  yellow_pages_patched?: number;
-  /** Fiches du lot mises à jour depuis LinkedIn (actor). */
+  /** Champ historique (compat.) — l’enrichissement LinkedIn automatisé n’est plus proposé ; rester à 0. */
   linkedin_stocks_updated?: number;
   /** Avertissements Apify / annuaire (non bloquants). */
   ingest_warnings?: string[];
@@ -41,7 +39,7 @@ export type AutoDispatchLeadsResult = {
   rounds?: number;
 };
 
-/** Création cockpit simplifiée : import Google Maps + fusion du lot uniquement (pas YP/LI ni enrich rapide). */
+/** Création cockpit simplifiée : import Google Maps sur le lot (sans enrich rapide). */
 export type SimpleCreateLeadsMapsResult = {
   acceptedCount: number;
   coordinatorBatchId: string;

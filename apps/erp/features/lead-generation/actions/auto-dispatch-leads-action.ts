@@ -39,6 +39,7 @@ function normalizeDispatchFilters(f: DispatchFiltersInput | undefined): GetLeadG
   if (f.closing_readiness_status?.trim()) out.closing_readiness_status = f.closing_readiness_status.trim();
   if (f.needs_contact_improvement === true) out.needs_contact_improvement = true;
   if (f.import_batch_id?.trim()) out.import_batch_id = f.import_batch_id.trim();
+  if (f.cee_sheet_id?.trim()) out.cee_sheet_id = f.cee_sheet_id.trim();
   return Object.keys(out).length > 0 ? out : undefined;
 }
 

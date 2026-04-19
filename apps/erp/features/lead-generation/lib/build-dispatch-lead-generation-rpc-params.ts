@@ -15,6 +15,7 @@ export function buildDispatchLeadGenerationStockClaimRpcParams(
   p_closing_readiness_status: string | null;
   p_lead_tier: string | null;
   p_needs_contact_improvement: boolean | null;
+  p_cee_sheet_id: string | null;
 } {
   if (!filters) {
     return {
@@ -25,6 +26,7 @@ export function buildDispatchLeadGenerationStockClaimRpcParams(
       p_closing_readiness_status: null,
       p_lead_tier: null,
       p_needs_contact_improvement: null,
+      p_cee_sheet_id: null,
     };
   }
   const company = filters.company_search?.trim();
@@ -37,5 +39,6 @@ export function buildDispatchLeadGenerationStockClaimRpcParams(
     p_closing_readiness_status: filters.closing_readiness_status?.trim() ?? null,
     p_lead_tier: filters.lead_tier?.trim() ?? null,
     p_needs_contact_improvement: filters.needs_contact_improvement === true ? true : null,
+    p_cee_sheet_id: filters.cee_sheet_id?.trim() ?? null,
   };
 }

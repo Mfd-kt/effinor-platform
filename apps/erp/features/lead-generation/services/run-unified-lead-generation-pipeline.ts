@@ -1,7 +1,4 @@
-import { getLinkedInEnrichmentActorId, getYellowPagesActorId } from "../apify/client";
-import { resolveGoogleMapsLocationQuery } from "../apify/google-maps-actor-input";
-import type { RunYellowPagesApifyImportInput } from "../apify/types";
-import { yellowPagesUsActorFranceMismatchMessage } from "../apify/yellow-pages-us-france-guard";
+import type { RunGoogleMapsApifyImportInput } from "../apify/types";
 import { countLeadGenerationStockNeedingContactImprovementForBatch } from "../queries/get-lead-generation-stock-ids-needing-contact-improvement-for-batch";
 import { getLeadGenerationAssignableAgents } from "../queries/get-lead-generation-assignable-agents";
 import { getLeadGenerationSettings } from "../settings/get-lead-generation-settings";
@@ -9,17 +6,18 @@ import {
   autoDispatchLeadGenerationStockRoundRobin,
   countDispatchableReadyNowPoolForBatch,
 } from "./auto-dispatch-lead-generation-stock-round-robin";
-import {
-  executeUnifiedLinkedInPhase,
-  executeUnifiedMapsPhase,
-  executeUnifiedYellowPagesPhase,
-} from "./unified-pipeline-ingest-phases";
+import { executeUnifiedFirecrawlPhase, executeUnifiedMapsPhase } from "./unified-pipeline-ingest-phases";
 import { insertUnifiedPipelineRun, updateUnifiedPipelineRun } from "./unified-pipeline-run-repository";
-import type { UnifiedPipelineCurrentStep, UnifiedPipelineRunStatus, UnifiedPipelineStepsJson } from "./unified-pipeline-state";
-import { createInitialStepsJson, mergeStepRecord, type UnifiedPipelineStepKey } from "./unified-pipeline-state";
+import type {
+  UnifiedPipelineCurrentStep,
+  UnifiedPipelineRunStatus,
+  UnifiedPipelineStepKey,
+  UnifiedPipelineStepsJson,
+} from "./unified-pipeline-state";
+import { createInitialStepsJson, mergeStepRecord } from "./unified-pipeline-state";
 import { prepareLeadGenerationLot } from "./prepare-lead-generation-lot";
 
-export type UnifiedLeadGenerationPipelineInput = RunYellowPagesApifyImportInput;
+export type UnifiedLeadGenerationPipelineInput = RunGoogleMapsApifyImportInput;
 
 export type UnifiedLeadGenerationPipelineResult = {
   ok: true;
@@ -30,8 +28,7 @@ export type UnifiedLeadGenerationPipelineResult = {
   steps: UnifiedPipelineStepsJson;
   counts: {
     generatedAccepted: number;
-    yellowPatched: number;
-    linkedInUpdated: number;
+    firecrawlSucceeded: number;
     improved: number;
     readyInLot: number;
     distributed: number;
@@ -69,39 +66,14 @@ export async function runUnifiedLeadGenerationPipeline(
     };
   }
 
-  const yellowActorId = getYellowPagesActorId();
-  if (!yellowActorId) {
-    return {
-      ok: false,
-      error:
-        "Parcours unifié : définissez APIFY_YELLOW_PAGES_ACTOR_ID — l’étape Pages Jaunes est obligatoire dans ce parcours.",
-    };
-  }
-  const resolvedLocation = resolveGoogleMapsLocationQuery(input);
-  const usFrMismatch = yellowPagesUsActorFranceMismatchMessage(yellowActorId, resolvedLocation);
-  if (usFrMismatch) {
-    return { ok: false, error: usFrMismatch };
-  }
-  if (!getLinkedInEnrichmentActorId()) {
-    return {
-      ok: false,
-      error:
-        "Parcours unifié : définissez APIFY_LINKEDIN_ENRICHMENT_ACTOR_ID — l’étape LinkedIn est obligatoire dans ce parcours.",
-    };
-  }
-
   let pipelineRunId: string | null = null;
   let coordinatorBatchId = "";
   let stepsJson: UnifiedPipelineStepsJson = createInitialStepsJson();
   const warnings: string[] = [];
-  const onWarning = (w: string) => {
-    warnings.push(w);
-  };
 
   const counts = {
     generatedAccepted: 0,
-    yellowPatched: 0,
-    linkedInUpdated: 0,
+    firecrawlSucceeded: 0,
     improved: 0,
     readyInLot: 0,
     distributed: 0,
@@ -123,43 +95,11 @@ export async function runUnifiedLeadGenerationPipeline(
     });
   };
 
-  const failRun = async (
-    status: UnifiedPipelineRunStatus,
-    step: UnifiedPipelineStepKey,
-    message: string,
-    blocked: boolean,
-  ) => {
-    stepsJson = mergeStepRecord(stepsJson, step, {
-      status: blocked ? "blocked" : "failed",
-      message,
-      finished_at: nowIso(),
-    });
-    if (pipelineRunId) {
-      await updateUnifiedPipelineRun(pipelineRunId, {
-        pipeline_status: status,
-        current_step: step,
-        steps_json: stepsJson,
-        warnings: [...warnings],
-        finished_at: nowIso(),
-        summary_json: { error: message, counts },
-      });
-    }
-    return {
-      ok: false as const,
-      error: message,
-      blocked,
-      blockedStep: blocked ? step : undefined,
-      pipelineRunId: pipelineRunId ?? undefined,
-      steps: stepsJson,
-      warnings: [...warnings],
-    };
-  };
-
   try {
     // —— 1. Maps ——
     stepsJson = mergeStepRecord(stepsJson, "maps", { status: "running", started_at: nowIso() });
 
-    const mapsOutcome = await executeUnifiedMapsPhase(input, { deferYellowPages: true });
+    const mapsOutcome = await executeUnifiedMapsPhase(input);
     coordinatorBatchId = mapsOutcome.coordinatorBatchId;
     counts.generatedAccepted = mapsOutcome.acceptedCount;
 
@@ -170,7 +110,7 @@ export async function runUnifiedLeadGenerationPipeline(
       count: counts.generatedAccepted,
       finished_at: nowIso(),
     });
-    await persist({ steps_json: stepsJson, current_step: "yellow_pages" });
+    await persist({ steps_json: stepsJson, current_step: "firecrawl" });
 
     if (counts.generatedAccepted === 0) {
       counts.remainingToComplete = await countLeadGenerationStockNeedingContactImprovementForBatch(
@@ -192,48 +132,32 @@ export async function runUnifiedLeadGenerationPipeline(
         steps: stepsJson,
         counts,
         warnings,
-        stopReason: "Aucune fiche utile n’a été ajoutée au lot — le parcours s’arrête après Maps.",
+        stopReason: "Aucun contact n’a été généré par cette campagne.",
         status: "stopped",
       };
     }
 
-    // —— 2. Yellow Pages ——
-    stepsJson = mergeStepRecord(stepsJson, "yellow_pages", { status: "running", started_at: nowIso() });
-    await persist({ steps_json: stepsJson, current_step: "yellow_pages" });
+    // —— 2. Firecrawl (sites publics) ——
+    stepsJson = mergeStepRecord(stepsJson, "firecrawl", { status: "running", started_at: nowIso() });
+    await persist({ steps_json: stepsJson, current_step: "firecrawl" });
 
-    const yp = await executeUnifiedYellowPagesPhase(input, coordinatorBatchId, {
-      strict: true,
-      onWarning,
-    });
-    if (!("patchedCount" in yp)) {
-      return await failRun("blocked", "yellow_pages", yp.message, true);
-    }
-    counts.yellowPatched = yp.patchedCount;
-    stepsJson = mergeStepRecord(stepsJson, "yellow_pages", {
+    const firecrawlOutcome = await executeUnifiedFirecrawlPhase(coordinatorBatchId);
+    counts.firecrawlSucceeded = firecrawlOutcome.succeeded;
+
+    stepsJson = mergeStepRecord(stepsJson, "firecrawl", {
       status: "completed",
-      count: yp.patchedCount,
-      message: yp.fetchedCount ? `${yp.fetchedCount} ligne(s) dataset` : undefined,
+      count: firecrawlOutcome.succeeded,
       finished_at: nowIso(),
-    });
-    await persist({ steps_json: stepsJson, current_step: "linkedin" });
-
-    // —— 3. LinkedIn ——
-    stepsJson = mergeStepRecord(stepsJson, "linkedin", { status: "running", started_at: nowIso() });
-    await persist({ steps_json: stepsJson, current_step: "linkedin" });
-
-    const li = await executeUnifiedLinkedInPhase(coordinatorBatchId, { strict: true, onWarning });
-    if (!("updatedCount" in li)) {
-      return await failRun("blocked", "linkedin", li.message, true);
-    }
-    counts.linkedInUpdated = li.updatedCount;
-    stepsJson = mergeStepRecord(stepsJson, "linkedin", {
-      status: "completed",
-      count: li.updatedCount,
-      finished_at: nowIso(),
+      ...(firecrawlOutcome.nothingToEnrich
+        ? {
+            message:
+              "Aucune fiche de ce lot ne nécessitait une lecture de site : le lot est passé directement à l’étape suivante.",
+          }
+        : {}),
     });
     await persist({ steps_json: stepsJson, current_step: "improve" });
 
-    // —— 4. Améliorer ——
+    // —— 3. Améliorer (qualification / scoring / compléments restants) ——
     stepsJson = mergeStepRecord(stepsJson, "improve", { status: "running", started_at: nowIso() });
     await persist({ steps_json: stepsJson, current_step: "improve" });
 
@@ -269,12 +193,12 @@ export async function runUnifiedLeadGenerationPipeline(
         counts,
         warnings,
         stopReason:
-          "Après amélioration, aucune fiche du lot n’est prête à être confiée — complétez les contacts ou affinez la campagne.",
+          "Les fiches ont été améliorées, mais aucune n’est encore prête à distribuer.",
         status: "stopped",
       };
     }
 
-    // —— 5. Distribuer ——
+    // —— 4. Distribuer ——
     stepsJson = mergeStepRecord(stepsJson, "dispatch", { status: "running", started_at: nowIso() });
     await persist({ steps_json: stepsJson, current_step: "dispatch" });
 
@@ -318,7 +242,7 @@ export async function runUnifiedLeadGenerationPipeline(
       warnings,
       stopReason:
         dispatched === 0
-          ? "Aucune fiche du lot n’a pu être attribuée (vérifiez les agents éligibles et les plafonds par commercial)."
+          ? "Aucun lead prêt n’a pu être attribué (vérifiez les commerciaux éligibles et les plafonds)."
           : null,
       status: finalPipelineStatus === "completed" ? "completed" : "stopped",
     };

@@ -1,4 +1,5 @@
 import type { LeadGenerationRawStockInput } from "../domain/raw-input";
+import { combinedSourceSignalScore } from "../lib/source-signal-score";
 
 export type MappedApifyStockRow =
   | { ok: true; row: LeadGenerationRawStockInput }
@@ -99,6 +100,8 @@ export function mapGoogleMapsApifyItem(item: unknown, _lineIndex: number): Mappe
 
   const row: LeadGenerationRawStockInput = {
     source: "apify_google_maps",
+    source_channels: ["google_maps"],
+    source_signal_score: combinedSourceSignalScore(["google_maps"]),
     source_external_id: pickExternalId(item),
     company_name,
     phone: pickPhone(item),

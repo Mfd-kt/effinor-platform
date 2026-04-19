@@ -60,18 +60,15 @@ export const startGoogleMapsApifyImportActionInputSchema = z.object({
   includeWebResults: z.boolean().optional(),
   /** Zone Maps ; vide = défaut serveur (France métropolitaine). */
   locationQuery: z.string().trim().max(200).optional(),
-});
-
-/** Maps + Pages Jaunes (fusion) — mêmes recherches pour les deux actors. */
-export const startMultiSourceLeadGenerationActionInputSchema = startGoogleMapsApifyImportActionInputSchema.extend({
-  campaignName: z.string().trim().max(200).optional(),
-  campaignSector: z.string().trim().max(120).optional(),
-  maxYellowPagesResults: z.number().int().min(1).max(500).optional(),
-  /** Parcours unifié : Pages Jaunes après ingestion carte (si actor configuré). */
-  deferYellowPages: z.boolean().optional(),
+  ceeSheetId: uuid,
+  targetTeamId: uuid,
 });
 
 export const syncGoogleMapsApifyImportActionInputSchema = z.object({
+  batchId: uuid,
+});
+
+export const retryLeadGenerationImportSyncActionInputSchema = z.object({
   batchId: uuid,
 });
 
@@ -82,6 +79,8 @@ export const runManualCsvLeadGenerationImportActionInputSchema = z.object({
     .max(600_000, "Texte CSV trop volumineux (limite ~600 ko)."),
   filename: z.string().trim().max(260).optional().nullable(),
   sourceLabel: z.string().trim().max(200).optional().nullable(),
+  ceeSheetId: uuid,
+  targetTeamId: uuid,
 });
 
 export const enrichLeadGenerationStockBatchActionInputSchema = z.object({
@@ -192,8 +191,8 @@ export const generateAndEnrichLeadsActionInputSchema = z.object({
   maxTotalPlaces: z.number().int().min(1, "Minimum 1 fiche au total.").max(50_000),
   customQueriesText: z.string().max(8000).optional().default(""),
   includeWebResults: z.boolean().optional().default(false),
-  /** Plafond résultats Pages Jaunes (si `APIFY_YELLOW_PAGES_ACTOR_ID` est défini). */
-  maxYellowPagesResults: z.number().int().min(1).max(500).optional(),
+  ceeSheetId: uuid,
+  targetTeamId: uuid,
 });
 
 /** Corps POST du parcours unifié (identique à la génération cockpit). */
@@ -213,6 +212,7 @@ export const leadGenerationDispatchFiltersSchema = z.object({
   closing_readiness_status: z.string().max(80).optional(),
   needs_contact_improvement: z.boolean().optional(),
   import_batch_id: z.string().uuid().optional(),
+  cee_sheet_id: z.string().uuid().optional(),
 });
 
 export const autoDispatchLeadsActionInputSchema = z.object({

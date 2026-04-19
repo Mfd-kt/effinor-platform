@@ -9,6 +9,7 @@ import { ImportBatchesTable } from "@/features/lead-generation/components/import
 import { LeadGenerationRecentImports } from "@/features/lead-generation/components/lead-generation-recent-imports";
 import { ManualCsvImportPanel } from "@/features/lead-generation/components/manual-csv-import-panel";
 import { buildImportBatchesListUrl, type ImportBatchesListSearchState } from "@/features/lead-generation/lib/build-import-batches-list-url";
+import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import { getLeadGenerationImportBatches } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
@@ -16,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-/** Parcours « import + sync + scores + LinkedIn » (action serveur longue). */
+/** Imports et synchronisations (actions serveur pouvant être longues). */
 export const maxDuration = 300;
 
 const PAGE_SIZE = 50;
@@ -65,6 +66,13 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
     recentForPreview = [];
   }
 
+  let ceeImportScope: Awaited<ReturnType<typeof getLeadGenerationCeeImportScope>> = { sheets: [], teams: [] };
+  try {
+    ceeImportScope = await getLeadGenerationCeeImportScope();
+  } catch {
+    ceeImportScope = { sheets: [], teams: [] };
+  }
+
   let rows;
   try {
     rows = await getLeadGenerationImportBatches({
@@ -100,19 +108,43 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
         description="Importer des fiches, lancer un scraping cartes, synchroniser les lots."
         actions={
           <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            Cockpit
+            Pilotage
           </Link>
         }
       />
 
+      <nav
+        aria-label="Navigation acquisition"
+        className="flex flex-wrap gap-2 border-b border-border/70 pb-4 text-sm"
+      >
+        <Link
+          href="/lead-generation/stock"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Stock
+        </Link>
+        <Link
+          href="/lead-generation/my-queue"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Ma file à traiter
+        </Link>
+      </nav>
+
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Importer un fichier CSV</h2>
-        <ManualCsvImportPanel />
+        <ManualCsvImportPanel ceeScope={ceeImportScope} />
       </section>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Scraping Google Maps</h2>
-        <ApifyGoogleMapsImportPanel />
+        <ApifyGoogleMapsImportPanel ceeScope={ceeImportScope} />
       </section>
 
       <section className="space-y-3">

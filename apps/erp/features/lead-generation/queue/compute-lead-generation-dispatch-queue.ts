@@ -29,7 +29,7 @@ function hasPhone(row: LeadGenerationStockRow): boolean {
 
 /**
  * Décision de file de dispatch (fonction pure, étape 13).
- * Exclusions dures → téléphone → score → diffusion possible sans exiger enrichissement email/site/LinkedIn
+ * Exclusions dures → téléphone → score → diffusion possible sans exiger enrichissement email/site
  * (le score commercial et le rang restent utilisés pour la priorisation).
  */
 export function computeLeadGenerationDispatchQueue(
@@ -84,7 +84,7 @@ export function computeLeadGenerationDispatchQueue(
     score >= rules.score_enrich_floor &&
     score < rules.score_ready_min
   ) {
-    return finalize(row, "ready_now", "diffusion autorisée — score modéré, enrichissement LinkedIn / autre possible ensuite");
+    return finalize(row, "ready_now", "diffusion autorisée — score modéré, enrichissement complémentaire possible ensuite");
   }
 
   // G — Faible valeur commerciale (sans être hors-cible absolue)

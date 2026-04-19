@@ -3,11 +3,15 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { MyLeadGenerationQueueSummary } from "@/features/lead-generation/components/my-lead-generation-queue-summary";
-import { MyLeadGenerationQueueWorkbench } from "@/features/lead-generation/components/my-lead-generation-queue-workbench";
+import { MyLeadGenerationQueueAgentShell } from "@/features/lead-generation/components/my-lead-generation-queue-agent-shell";
+import { getLeadGenerationMyQueueCeeSheetOptions } from "@/features/lead-generation/queries/get-lead-generation-my-queue-cee-sheet-options";
 import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationMyQueue, canAccessLeadsModule } from "@/lib/auth/module-access";
+import {
+  canAccessLeadGenerationHub,
+  canAccessLeadGenerationMyQueue,
+  canAccessLeadsModule,
+} from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,25 +22,54 @@ export default async function MyLeadGenerationQueuePage() {
     notFound();
   }
 
-  const items = await getMyLeadGenerationQueue(access.userId);
+  let items: Awaited<ReturnType<typeof getMyLeadGenerationQueue>> = [];
+  try {
+    items = await getMyLeadGenerationQueue(access.userId);
+  } catch {
+    items = [];
+  }
+
+  let ceeSheetOptions: Awaited<ReturnType<typeof getLeadGenerationMyQueueCeeSheetOptions>> = [];
+  try {
+    ceeSheetOptions = await getLeadGenerationMyQueueCeeSheetOptions(access);
+  } catch {
+    ceeSheetOptions = [];
+  }
+
+  const hub = await canAccessLeadGenerationHub(access);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
       <PageHeader
         title="Mes fiches à traiter"
-        description="Vos prospections attribuées : relances, priorités et actions rapides — tout pour enchaîner les appels."
+        description="Priorité aux rappels : qui appeler, quand, et l’essentiel pour enchaîner."
         actions={
-          canAccessLeadsModule(access) ? (
-            <Link href="/leads" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-              Fiches prospects CRM
-            </Link>
-          ) : null
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {hub ? (
+              <Link
+                href="/lead-generation/stock"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Stock
+              </Link>
+            ) : null}
+            {canAccessLeadsModule(access) ? (
+              <Link href="/leads" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                CRM
+              </Link>
+            ) : null}
+          </div>
         }
       />
 
-      <MyLeadGenerationQueueSummary items={items} />
-
-      <MyLeadGenerationQueueWorkbench items={items} />
+      <MyLeadGenerationQueueAgentShell
+        items={items}
+        ceeSheetOptions={ceeSheetOptions}
+        viewerUserId={access.userId}
+      />
     </div>
   );
 }

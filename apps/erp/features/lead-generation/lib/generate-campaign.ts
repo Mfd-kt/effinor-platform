@@ -133,6 +133,8 @@ export function getDefaultGenerateCampaignConfig(): {
   maxTotalPlaces: number;
   customQueriesText: string;
   includeWebResults: boolean;
+  ceeSheetId: string;
+  targetTeamId: string;
 } {
   return {
     campaignName: "",
@@ -142,6 +144,8 @@ export function getDefaultGenerateCampaignConfig(): {
     maxTotalPlaces: 500,
     customQueriesText: "",
     includeWebResults: false,
+    ceeSheetId: "",
+    targetTeamId: "",
   };
 }
 
