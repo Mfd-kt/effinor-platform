@@ -1,7 +1,8 @@
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { applyDropcontactResultToLead } from "@/features/lead-generation/dropcontact/apply-dropcontact-result";
+import { logDropcontact } from "@/features/lead-generation/dropcontact/dropcontact-log";
+import { revalidateLeadStockDropcontactPaths } from "@/features/lead-generation/dropcontact/revalidate-lead-stock-dropcontact-paths";
 import type { LeadGenerationStockRow } from "@/features/lead-generation/domain/stock-row";
 import { lgTable } from "@/features/lead-generation/lib/lg-db";
 import { evaluateLeadGenerationDispatchQueue } from "@/features/lead-generation/queue/evaluate-dispatch-queue";
@@ -42,56 +43,67 @@ function readLeadIdFromContact(contact: Record<string, unknown>): string | null 
   return null;
 }
 
-function revalidateLeadStock(id: string) {
-  revalidatePath("/lead-generation");
-  revalidatePath("/lead-generation/stock");
-  revalidatePath(`/lead-generation/${id}`);
-  revalidatePath("/lead-generation/my-queue");
-  revalidatePath(`/lead-generation/my-queue/${id}`);
-}
-
 export async function POST(req: Request) {
   let body: unknown;
   try {
     body = await req.json();
-  } catch {
+  } catch (e) {
+    logDropcontact("webhook", "Corps webhook non JSON", { error: String(e) });
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
   const events: EnrichWebhookPayload[] = Array.isArray(body) ? body : [body as EnrichWebhookPayload];
+  logDropcontact("webhook", "POST webhook reçu", {
+    eventCount: events.length,
+    eventTypes: events.map((ev) => (typeof ev?.event_type === "string" ? ev.event_type : "(absent)")),
+  });
 
   let supabase;
   try {
     supabase = createAdminClient();
   } catch (e) {
-    console.error("[dropcontact/webhook] client admin indisponible", e);
+    logDropcontact("webhook", "Client admin Supabase indisponible", { error: String(e) });
     return NextResponse.json({ ok: false }, { status: 503 });
   }
 
   const stockTable = lgTable(supabase, "lead_generation_stock");
 
   for (const ev of events) {
-    if (ev.event_type !== "enrich_api_result") continue;
+    if (ev.event_type !== "enrich_api_result") {
+      logDropcontact("webhook", "Événement ignoré (event_type)", {
+        eventType: ev.event_type ?? "(absent)",
+      });
+      continue;
+    }
     const inner = ev.data;
-    if (!inner || typeof inner !== "object") continue;
+    if (!inner || typeof inner !== "object") {
+      logDropcontact("webhook", "Payload interne absent ou invalide", { eventType: ev.event_type });
+      continue;
+    }
 
     const requestId = typeof inner.request_id === "string" ? inner.request_id.trim() : "";
     const contacts = Array.isArray(inner.data) ? inner.data : [];
 
     if (!requestId) {
-      console.warn("[dropcontact/webhook] request_id manquant");
+      logDropcontact("webhook", "request_id manquant dans le corps webhook");
       continue;
     }
 
-    let leadId: string | null = null;
+    let leadIdFromCustomFields: string | null = null;
     const firstContact = contacts[0];
     if (firstContact && typeof firstContact === "object" && firstContact !== null) {
-      leadId = readLeadIdFromContact(firstContact as Record<string, unknown>);
+      leadIdFromCustomFields = readLeadIdFromContact(firstContact as Record<string, unknown>);
     }
 
+    logDropcontact("webhook", "Traitement enrich_api_result", {
+      requestId,
+      leadIdFromCustomFields: leadIdFromCustomFields ?? "(non lu)",
+      contactsCount: contacts.length,
+    });
+
     let row: LeadGenerationStockRow | null = null;
-    if (leadId) {
-      const { data } = await stockTable.select("*").eq("id", leadId).maybeSingle();
+    if (leadIdFromCustomFields) {
+      const { data } = await stockTable.select("*").eq("id", leadIdFromCustomFields).maybeSingle();
       row = data ? (data as LeadGenerationStockRow) : null;
     }
     if (!row) {
@@ -100,19 +112,36 @@ export async function POST(req: Request) {
     }
 
     if (!row) {
-      console.warn("[dropcontact/webhook] fiche introuvable", { requestId, leadId });
+      logDropcontact("webhook", "Webhook reçu mais lead introuvable", {
+        requestId,
+        leadIdFromCustomFields,
+        lookupByRequestIdAttempted: true,
+      });
       continue;
     }
 
-    /** Tant que `request_id` n’est pas encore persisté (entre verrou « pending » et retour API), accepter le `request_id` du webhook. */
     const storedRid =
       typeof row.dropcontact_request_id === "string" ? row.dropcontact_request_id.trim() : "";
     if (storedRid.length > 0 && storedRid !== requestId) {
-      console.warn("[dropcontact/webhook] request_id incohérent", { stockId: row.id, requestId, storedRid });
+      logDropcontact("webhook", "request_id incohérent avec la fiche", {
+        stockId: row.id,
+        requestIdWebhook: requestId,
+        dropcontact_request_id_db: storedRid,
+      });
       continue;
     }
 
+    logDropcontact("webhook", "État DB avant traitement", {
+      stockId: row.id,
+      dropcontact_status: row.dropcontact_status ?? "(null)",
+      dropcontact_request_id: row.dropcontact_request_id ?? "(null)",
+    });
+
     if (row.dropcontact_status !== "pending") {
+      logDropcontact("webhook", "Webhook ignoré : statut DB n’est pas pending", {
+        stockId: row.id,
+        dropcontact_status: row.dropcontact_status ?? "(null)",
+      });
       continue;
     }
 
@@ -127,8 +156,16 @@ export async function POST(req: Request) {
         enrichment_source: "dropcontact",
         updated_at: new Date().toISOString(),
       };
-      await stockTable.update(noDataPatch).eq("id", row.id);
-      revalidateLeadStock(row.id);
+      const { error: noDataErr } = await stockTable.update(noDataPatch).eq("id", row.id);
+      if (noDataErr) {
+        logDropcontact("webhook", "Webhook reçu mais update DB refusé (branche sans contact)", {
+          stockId: row.id,
+          message: noDataErr.message,
+        });
+      } else {
+        logDropcontact("webhook", "Mise à jour OK (aucun contact dans le webhook)", { stockId: row.id });
+        revalidateLeadStockDropcontactPaths(row.id, "webhook_no_contact");
+      }
       continue;
     }
 
@@ -138,30 +175,46 @@ export async function POST(req: Request) {
       .eq("id", row.id);
 
     if (upErr) {
-      console.error("[dropcontact/webhook] échec mise à jour", row.id, upErr.message);
-      await stockTable
+      logDropcontact("webhook", "Webhook reçu mais update DB refusé", {
+        stockId: row.id,
+        message: upErr.message,
+      });
+      const { error: failErr } = await stockTable
         .update({
           dropcontact_status: "failed",
-          dropcontact_last_error: "Enrichissement interrompu. Réessayez plus tard.",
+          dropcontact_last_error: "Webhook reçu mais mise à jour base refusée (voir logs serveur).",
           enrichment_status: "failed",
-          enrichment_error: "Enrichissement interrompu. Réessayez plus tard.",
+          enrichment_error: "Webhook reçu mais mise à jour base refusée (voir logs serveur).",
           updated_at: new Date().toISOString(),
         })
         .eq("id", row.id);
-      revalidateLeadStock(row.id);
+      if (failErr) {
+        logDropcontact("webhook", "Échec secondaire après update refusée", { stockId: row.id, message: failErr.message });
+      }
+      revalidateLeadStockDropcontactPaths(row.id, "webhook_update_failed");
       continue;
     }
+
+    logDropcontact("webhook", "Mise à jour DB OK", {
+      stockId: row.id,
+      hasUsefulData,
+      dropcontact_status_applied: hasUsefulData ? "completed" : "failed",
+    });
 
     if (hasUsefulData) {
       try {
         await recalculateLeadGenerationCommercialScore(row.id);
         await evaluateLeadGenerationDispatchQueue({ stockId: row.id });
-      } catch {
-        /* non bloquant */
+      } catch (e) {
+        logDropcontact("webhook", "Post-traitement score/file non bloquant en erreur", {
+          stockId: row.id,
+          error: String(e),
+        });
       }
     }
 
-    revalidateLeadStock(row.id);
+    revalidateLeadStockDropcontactPaths(row.id, "webhook_success");
+    logDropcontact("webhook", "Flux webhook terminé pour la fiche", { stockId: row.id });
   }
 
   return NextResponse.json({ ok: true });

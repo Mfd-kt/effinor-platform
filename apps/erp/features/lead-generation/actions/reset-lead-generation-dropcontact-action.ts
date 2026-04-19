@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
   canAccessLeadGenerationHub,
@@ -9,6 +7,8 @@ import {
 } from "@/lib/auth/module-access";
 import { createClient } from "@/lib/supabase/server";
 
+import { logDropcontact } from "../dropcontact/dropcontact-log";
+import { revalidateLeadStockDropcontactPaths } from "../dropcontact/revalidate-lead-stock-dropcontact-paths";
 import type { LeadGenerationStockRow } from "../domain/stock-row";
 import { lgTable } from "../lib/lg-db";
 
@@ -73,14 +73,12 @@ export async function resetLeadGenerationDropcontactAction(
   const { error: upErr } = await stockTable.update(patch).eq("id", id);
 
   if (upErr) {
+    logDropcontact("reset", "Reset Dropcontact : update refusée", { leadId: id, message: upErr.message });
     return { ok: false, message: "Réinitialisation impossible pour le moment." };
   }
 
-  revalidatePath("/lead-generation");
-  revalidatePath("/lead-generation/stock");
-  revalidatePath(`/lead-generation/${id}`);
-  revalidatePath("/lead-generation/my-queue");
-  revalidatePath(`/lead-generation/my-queue/${id}`);
+  revalidateLeadStockDropcontactPaths(id, "reset_dropcontact");
+  logDropcontact("reset", "Reset Dropcontact OK", { leadId: id, previousStatus: prev });
 
   return { ok: true, message: "Suivi Dropcontact réinitialisé. Vous pouvez relancer l’enrichissement." };
 }

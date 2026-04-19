@@ -38,6 +38,7 @@ import { getLeadGenerationAssignmentRecycleSnapshot } from "@/features/lead-gene
 import { LeadGenerationClosingReadinessBadge } from "@/features/lead-generation/components/lead-generation-closing-readiness-badge";
 import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
 import { LeadGenerationDeleteStockButton } from "@/features/lead-generation/components/lead-generation-delete-stock-button";
+import { LeadGenerationDropcontactAdminDebug } from "@/features/lead-generation/components/lead-generation-dropcontact-admin-debug";
 import { LeadGenerationDropcontactPanel } from "@/features/lead-generation/components/lead-generation-dropcontact-panel";
 import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
 import { LeadGenerationManualReviewPanel } from "@/features/lead-generation/components/lead-generation-manual-review-panel";
@@ -179,6 +180,20 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
         decisionMakerName={stock.decision_maker_name ?? null}
         decisionMakerRole={stock.decision_maker_role ?? null}
         linkedinUrl={stock.linkedin_url ?? null}
+      />
+
+      <LeadGenerationDropcontactAdminDebug
+        stockId={stock.id}
+        snapshot={{
+          dropcontact_status: stock.dropcontact_status ?? null,
+          dropcontact_request_id: stock.dropcontact_request_id ?? null,
+          dropcontact_requested_at: stock.dropcontact_requested_at ?? null,
+          dropcontact_completed_at: stock.dropcontact_completed_at ?? null,
+          dropcontact_last_error: stock.dropcontact_last_error ?? null,
+          enrichment_status: stock.enrichment_status ?? null,
+          enrichment_error: stock.enrichment_error ?? null,
+          updated_at: stock.updated_at ?? null,
+        }}
       />
 
       <LeadGenerationCallReadinessCard stock={stock} />
