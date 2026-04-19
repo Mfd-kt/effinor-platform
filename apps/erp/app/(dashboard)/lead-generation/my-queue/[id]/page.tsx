@@ -10,7 +10,6 @@ import { LeadGenerationUnifiedAgentActivitySection } from "@/features/lead-gener
 import { LeadGenerationCommercialPriorityBadge } from "@/features/lead-generation/components/lead-generation-commercial-priority-badge";
 import { LeadGenerationDispatchQueueBadge } from "@/features/lead-generation/components/lead-generation-dispatch-queue-badge";
 import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
-import { LeadGenerationDropcontactAdminDebug } from "@/features/lead-generation/components/lead-generation-dropcontact-admin-debug";
 import { LeadGenerationDropcontactPanel } from "@/features/lead-generation/components/lead-generation-dropcontact-panel";
 import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
 import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
@@ -110,7 +109,6 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
   const streetViewModel = buildLeadGenerationStreetViewModel(stock);
   const dropcontactElig = isEligibleForDropcontactEnrichment(stock);
   const leadGenHub = await canAccessLeadGenerationHub(access);
-  const showDropcontactAdminDebug = leadGenHub || canBypassLeadGenMyQueueAsImpersonationActor(access);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8">
       {openedViaSupportBypass ? (
@@ -196,22 +194,6 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
         decisionMakerRole={stock.decision_maker_role ?? null}
         linkedinUrl={stock.linkedin_url ?? null}
       />
-
-      {showDropcontactAdminDebug ? (
-        <LeadGenerationDropcontactAdminDebug
-          stockId={stock.id}
-          snapshot={{
-            dropcontact_status: stock.dropcontact_status ?? null,
-            dropcontact_request_id: stock.dropcontact_request_id ?? null,
-            dropcontact_requested_at: stock.dropcontact_requested_at ?? null,
-            dropcontact_completed_at: stock.dropcontact_completed_at ?? null,
-            dropcontact_last_error: stock.dropcontact_last_error ?? null,
-            enrichment_status: stock.enrichment_status ?? null,
-            enrichment_error: stock.enrichment_error ?? null,
-            updated_at: stock.updated_at ?? null,
-          }}
-        />
-      ) : null}
 
       <LeadGenerationCallReadinessCard stock={stock} />
 
