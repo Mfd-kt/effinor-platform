@@ -26,6 +26,9 @@ const UNASSIGNED_VALUE = "__unassigned__";
 type CommercialCallbacksTeamClientProps = {
   rows: CommercialCallbackRow[];
   agentNameById: Record<string, string>;
+  /** Utilisateur connecté (pilote / directeur) — défaut d’assignation à la création. */
+  currentUserId: string;
+  assigneeOptions: { id: string; label: string }[];
   agentSimulator: {
     sheets: AgentAvailableSheet[];
     destratProducts: SimulatorProductCardViewModel[];
@@ -35,6 +38,8 @@ type CommercialCallbacksTeamClientProps = {
 export function CommercialCallbacksTeamClient({
   rows,
   agentNameById,
+  currentUserId,
+  assigneeOptions,
   agentSimulator,
 }: CommercialCallbacksTeamClientProps) {
   const router = useRouter();
@@ -116,7 +121,10 @@ export function CommercialCallbacksTeamClient({
         rows={filteredRows}
         kpis={kpis}
         performance={performance}
-        onOpenNew={() => {}}
+        onOpenNew={() => {
+          setEditing(null);
+          setSheetOpen(true);
+        }}
         onEdit={(row) => {
           setEditing(row);
           setSheetOpen(true);
@@ -134,6 +142,9 @@ export function CommercialCallbacksTeamClient({
         }}
         editing={editing}
         onSaved={refresh}
+        currentUserId={currentUserId}
+        assigneeOptions={assigneeOptions}
+        canChooseAssignee
       />
     </div>
   );

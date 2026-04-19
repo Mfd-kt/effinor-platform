@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { LeadGenerationDuplicateScanPanel } from "@/features/lead-generation/components/lead-generation-duplicate-scan-panel";
 import { LeadGenerationEnrichmentToolbar } from "@/features/lead-generation/components/lead-generation-enrichment-toolbar";
 import { LeadGenerationFilters } from "@/features/lead-generation/components/lead-generation-filters";
 import {
@@ -164,6 +165,8 @@ export default async function LeadGenerationStockPage({ searchParams }: PageProp
       />
 
       <LeadGenerationFilters defaults={filters} action="/lead-generation/stock" />
+
+      <LeadGenerationDuplicateScanPanel />
 
       {filtre === "pret" ? (
         <p className="text-xs font-medium text-foreground">Affichage : prêts à contacter</p>

@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppShell } from "@/components/shared/app-shell";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { buildAllowedNavHrefs } from "@/lib/auth/navigation";
+import { canAccessCloserWorkspace } from "@/lib/auth/module-access";
 import { isSuperAdmin } from "@/lib/auth/role-codes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -58,6 +59,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   const actorIsSuperAdmin = access.kind === "authenticated" && isSuperAdmin(access.actorRoleCodes);
   const isImpersonating = access.kind === "authenticated" && access.impersonation != null;
+  const includeCloserLeadReminders =
+    access.kind === "authenticated" && canAccessCloserWorkspace(access);
 
   const userEmail = profileRow?.email ?? user.email ?? "";
 
@@ -73,6 +76,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             actorIsSuperAdmin={actorIsSuperAdmin}
             isImpersonating={isImpersonating}
             impersonationRoleOptions={impersonationRoleOptions}
+            includeCloserLeadReminders={includeCloserLeadReminders}
           />
         }
       >

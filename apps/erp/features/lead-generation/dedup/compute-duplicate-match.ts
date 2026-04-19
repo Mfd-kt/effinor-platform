@@ -6,6 +6,10 @@ import { areCompanyNamesSimilarForDedup, normalizeCompanyNameForMatching } from 
 export type LeadGenerationDuplicateMatchReason =
   | "exact_siret"
   | "exact_email"
+  /** Même `normalized_phone` : blocage systématique (sans condition sur le nom). */
+  | "exact_normalized_phone"
+  /** Même `normalized_company_name` : une seule fiche par nom normalisé en base. */
+  | "exact_normalized_company_name"
   | "exact_phone_and_similar_name"
   | "exact_domain_and_similar_name"
   | "similar_name_same_city_and_postal"
@@ -31,7 +35,8 @@ function normCity(c: string | null | undefined): string | null {
 
 /**
  * Compare une fiche stock existante avec un candidat à l’ingestion.
- * Règles prudentes : signaux faibles seuls (téléphone / domaine sans nom proche) ne suffisent pas.
+ * Règles strictes : même téléphone normalisé ou même nom de société normalisé ⇒ doublon.
+ * Domaine / ville / CP restent des signaux combinés avec une raison sociale proche.
  */
 export function computeLeadGenerationDuplicateMatch(
   existing: LeadGenerationStockRow,
@@ -54,16 +59,28 @@ export function computeLeadGenerationDuplicateMatch(
     return { isDuplicate: true, matchScore: 96, matchReasons: ["exact_email"] };
   }
 
+  const ncE = existing.normalized_company_name?.trim() ?? "";
+  const ncC = candidate.normalized_company_name?.trim() ?? "";
+  if (ncE && ncC && ncE === ncC) {
+    return {
+      isDuplicate: true,
+      matchScore: 86,
+      matchReasons: ["exact_normalized_company_name"],
+    };
+  }
+
   const phoneMatch =
     !!existing.normalized_phone &&
     !!candidate.normalized_phone &&
     existing.normalized_phone === candidate.normalized_phone;
   const nameSimilar = areCompanyNamesSimilarForDedup(existing.company_name, candidate.company_name);
 
-  if (phoneMatch && nameSimilar) {
-    reasons.push("exact_phone_and_similar_name");
-    score = 88;
-    return { isDuplicate: true, matchScore: score, matchReasons: reasons };
+  if (phoneMatch) {
+    return {
+      isDuplicate: true,
+      matchScore: nameSimilar ? 90 : 89,
+      matchReasons: [nameSimilar ? "exact_phone_and_similar_name" : "exact_normalized_phone"],
+    };
   }
 
   const domainMatch =

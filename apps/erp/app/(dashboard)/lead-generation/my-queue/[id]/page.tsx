@@ -6,13 +6,15 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ConvertMyLeadAssignmentCeeBundle } from "@/features/lead-generation/components/convert-my-lead-assignment-button";
 import { ConvertMyLeadAssignmentButton } from "@/features/lead-generation/components/convert-my-lead-assignment-button";
-import { LeadGenerationAssignmentAircallSection } from "@/features/lead-generation/components/lead-generation-assignment-aircall-section";
-import { LeadGenerationCommercialActivitySection } from "@/features/lead-generation/components/lead-generation-commercial-activity-section";
+import { LeadGenerationUnifiedAgentActivitySection } from "@/features/lead-generation/components/lead-generation-unified-agent-activity-section";
 import { LeadGenerationCommercialPriorityBadge } from "@/features/lead-generation/components/lead-generation-commercial-priority-badge";
 import { LeadGenerationDispatchQueueBadge } from "@/features/lead-generation/components/lead-generation-dispatch-queue-badge";
 import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
-import { MyLeadQueueNextStepsCard } from "@/features/lead-generation/components/my-lead-queue-next-steps-card";
+import { MyLeadQueueDecisionMakerFields } from "@/features/lead-generation/components/my-lead-queue-decision-maker-fields";
+import { MyLeadQueueTopActionBar } from "@/features/lead-generation/components/my-lead-queue-top-action-bar";
 import { getLeadGenerationAssignmentActivities } from "@/features/lead-generation/queries/get-lead-generation-assignment-activities";
+import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
+import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { getLeadGenerationMyQueueStockPageDetail } from "@/features/lead-generation/queries/get-lead-generation-stock-for-agent";
 import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
 import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
@@ -59,6 +61,13 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
 
   const { stock, assignmentCallTrace, openedViaSupportBypass, currentAssignmentAgentId, lastTerminalAssignmentId } =
     detail;
+
+  const queueOwnerId =
+    openedViaSupportBypass && currentAssignmentAgentId ? currentAssignmentAgentId : access.userId;
+  const queueItems = await getMyLeadGenerationQueue(queueOwnerId);
+  const queueIndex = queueItems.findIndex((item) => item.stockId === id);
+  const nextStockId =
+    queueIndex >= 0 && queueIndex < queueItems.length - 1 ? queueItems[queueIndex + 1]!.stockId : null;
   const assignmentId = stock.current_assignment_id;
   const assignmentIdForHistory = assignmentId ?? lastTerminalAssignmentId ?? null;
   const assignmentBelongsToImpersonatedUser =
@@ -68,8 +77,9 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
     Boolean(stock.converted_lead_id) || lockActionsForSupportView || !stock.current_assignment_id;
 
   const activities = assignmentIdForHistory
-    ? await getLeadGenerationAssignmentActivities(assignmentIdForHistory)
+    ? await getLeadGenerationAssignmentActivities(assignmentIdForHistory, { limit: 120 })
     : [];
+  const phoneLine = stock.phone ?? stock.normalized_phone ?? null;
 
   let ceeBundle: ConvertMyLeadAssignmentCeeBundle | null = null;
   if (canAccessCeeWorkflowsModule(access)) {
@@ -91,9 +101,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
     stock.email?.trim() && stock.enriched_email?.trim() && stock.email.trim() !== stock.enriched_email.trim()
       ? "Suggestion : " + stock.enriched_email
       : null;
-  const decisionMakerLine =
-    [stock.decision_maker_name?.trim(), stock.decision_maker_role?.trim()].filter(Boolean).join(" · ") || null;
-
+  const streetViewModel = buildLeadGenerationStreetViewModel(stock);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8">
       {openedViaSupportBypass ? (
@@ -108,60 +116,96 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
 
       <PageHeader
         title={stock.company_name}
-        description={[stock.city, stock.phone].filter(Boolean).join(" · ") || "Fiche prospection"}
+        titlePrefix={
+          streetViewModel.canShowSection ? (
+            <Link
+              href={streetViewModel.openMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Ouvrir dans Google Maps
+            </Link>
+          ) : undefined
+        }
+        description={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <LeadGenerationDispatchQueueBadge
+              status={stock.dispatch_queue_status ?? "review"}
+              reason={stock.dispatch_queue_reason}
+              compact
+              tooltipReasonOnly
+              className="flex-row items-center gap-2"
+            />
+            <span className="text-muted-foreground">·</span>
+            <span className="text-sm tabular-nums font-semibold">{stock.commercial_score ?? 0}</span>
+            <LeadGenerationCommercialPriorityBadge priority={stock.commercial_priority ?? "normal"} />
+            {stock.city ? (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="text-sm text-muted-foreground">{stock.city}</span>
+              </>
+            ) : null}
+          </span>
+        }
         actions={
-          <Link href="/lead-generation/my-queue" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            ← Ma file
-          </Link>
+          <>
+            <Link href="/lead-generation/my-queue" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              ← Ma file
+            </Link>
+            {nextStockId ? (
+              <Link
+                href={`/lead-generation/my-queue/${nextStockId}`}
+                className={cn(buttonVariants({ variant: "default", size: "sm" }))}
+              >
+                Suivant →
+              </Link>
+            ) : null}
+          </>
         }
       />
+
+      {assignmentIdForHistory ? (
+        <MyLeadQueueTopActionBar
+          assignmentId={assignmentIdForHistory}
+          stock={stock}
+          activities={activities}
+          phone={phoneLine}
+          readOnly={lockActionsForSupportView || callTraceReadOnly}
+        />
+      ) : null}
+
+      <LeadGenerationStreetViewSection stock={stock} />
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Coordonnées</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
-          <DetailRow label="Téléphone" value={stock.phone ?? stock.normalized_phone ?? "—"} />
           <DetailRow label="E-mail" value={primaryEmail ?? "—"} />
           {emailHint ? <p className="text-xs text-muted-foreground sm:col-span-2">{emailHint}</p> : null}
-          <DetailRow label="Décideur / responsable" value={decisionMakerLine ?? "—"} />
-          <DetailRow label="Ville" value={stock.city ?? "—"} />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Score</span>
-            <span className="text-lg font-semibold tabular-nums">{stock.commercial_score ?? 0}</span>
-            <LeadGenerationCommercialPriorityBadge priority={stock.commercial_priority ?? "normal"} />
-          </div>
           <div className="sm:col-span-2">
-            <p className="text-xs font-medium text-muted-foreground">File de travail</p>
-            <div className="mt-1">
-              <LeadGenerationDispatchQueueBadge
-                status={stock.dispatch_queue_status ?? "review"}
-                reason={stock.dispatch_queue_reason}
-              />
-            </div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Décideur</p>
+            <MyLeadQueueDecisionMakerFields
+              key={stock.updated_at}
+              stockId={stock.id}
+              initialName={stock.decision_maker_name}
+              initialRole={stock.decision_maker_role}
+              readOnly={lockActionsForSupportView || Boolean(stock.converted_lead_id)}
+            />
           </div>
         </CardContent>
       </Card>
 
       {assignmentIdForHistory ? (
-        <LeadGenerationAssignmentAircallSection
+        <LeadGenerationUnifiedAgentActivitySection
           assignmentId={assignmentIdForHistory}
-          phone={stock.phone ?? stock.normalized_phone ?? null}
-          readOnly={callTraceReadOnly}
+          nextStockId={nextStockId}
+          readOnly={lockActionsForSupportView || callTraceReadOnly}
           initial={assignmentCallTrace}
+          initialActivities={activities}
         />
       ) : null}
-
-      <LeadGenerationStreetViewSection stock={stock} />
-
-      <MyLeadQueueNextStepsCard stock={stock} activities={activities} />
-
-      <LeadGenerationCommercialActivitySection
-        assignmentId={assignmentIdForHistory}
-        initialActivities={activities}
-        variant="agent"
-        readOnly={lockActionsForSupportView || callTraceReadOnly}
-      />
 
       {stock.converted_lead_id ? (
         <Card className="border-primary/30 bg-primary/5">

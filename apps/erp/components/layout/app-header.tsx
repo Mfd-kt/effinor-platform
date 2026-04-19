@@ -19,6 +19,8 @@ type AppHeaderProps = {
   /** Impersonation active (masque le sélecteur « se connecter en tant que »). */
   isImpersonating: boolean;
   impersonationRoleOptions: { code: string; label: string }[];
+  /** Affiche les relances leads (poste closer) dans la cloche. */
+  includeCloserLeadReminders?: boolean;
 };
 
 export function AppHeader({
@@ -27,6 +29,7 @@ export function AppHeader({
   actorIsSuperAdmin,
   isImpersonating,
   impersonationRoleOptions,
+  includeCloserLeadReminders = false,
 }: AppHeaderProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -48,8 +51,11 @@ export function AppHeader({
         >
           <Menu className="size-5" />
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0">
-          <SheetHeader className="border-b border-border px-4 py-4 text-left">
+        <SheetContent
+          side="left"
+          className="flex h-[100dvh] max-h-[100dvh] w-[min(20rem,calc(100vw-2rem))] min-w-0 flex-col gap-0 overflow-hidden p-0"
+        >
+          <SheetHeader className="shrink-0 border-b border-border px-4 py-4 text-left">
             <SheetTitle className="sr-only">Menu Effinor ERP</SheetTitle>
             <EffinorLogo
               href="/"
@@ -58,7 +64,7 @@ export function AppHeader({
               linkOnClick={() => setMobileNavOpen(false)}
             />
           </SheetHeader>
-          <div className="p-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-3 [-webkit-overflow-scrolling:touch] pb-[max(5.5rem,calc(1.25rem+env(safe-area-inset-bottom)))]">
             <NavLinks
               allowedNavHrefs={allowedNavHrefs}
               onNavigate={() => setMobileNavOpen(false)}
@@ -73,7 +79,10 @@ export function AppHeader({
         {actorIsSuperAdmin && !isImpersonating ? (
           <ImpersonationPicker roleOptions={impersonationRoleOptions} />
         ) : null}
-        <AppNotificationsBell userId={userId} />
+        <AppNotificationsBell
+          userId={userId}
+          includeCloserLeadReminders={includeCloserLeadReminders}
+        />
       </div>
     </header>
   );

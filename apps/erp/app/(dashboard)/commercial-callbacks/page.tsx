@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { CommercialCallbacksTeamClient } from "@/features/commercial-callbacks/components/commercial-callbacks-team-client";
 import { canAccessCommercialCallbacksTeamOverview } from "@/features/commercial-callbacks/lib/callback-access";
+import { getCommercialCallbackAssigneeOptions } from "@/features/commercial-callbacks/queries/get-callback-assignee-options";
 import {
   fetchCommercialCallbacksAllVisible,
   fetchProfileDisplayNamesByIds,
@@ -17,10 +18,11 @@ export default async function CommercialCallbacksTeamPage() {
     redirect("/");
   }
 
-  const [rows, dashboard, destratProducts] = await Promise.all([
+  const [rows, dashboard, destratProducts, assigneeOptions] = await Promise.all([
     fetchCommercialCallbacksAllVisible(),
     getAgentDashboardData(access, undefined, { restrictToLeadsCreatedByCurrentUser: false }),
     getAgentDestratSimulatorProducts(),
+    getCommercialCallbackAssigneeOptions(),
   ]);
   const agentIds = rows
     .map((r) => r.assigned_agent_user_id)
@@ -36,6 +38,8 @@ export default async function CommercialCallbacksTeamPage() {
       <CommercialCallbacksTeamClient
         rows={rows}
         agentNameById={agentNameById}
+        currentUserId={access.userId}
+        assigneeOptions={assigneeOptions}
         agentSimulator={{ sheets: dashboard.sheets, destratProducts }}
       />
     </div>

@@ -8,9 +8,9 @@ import type {
 } from "../domain/dispatch-result";
 import { buildDispatchLeadGenerationStockClaimRpcParams } from "../lib/build-dispatch-lead-generation-rpc-params";
 import { computeAgentActiveStock } from "../lib/compute-agent-active-stock";
-import { MY_QUEUE_MANUAL_CHUNK_DEFAULT } from "../lib/my-queue-manual-dispatch";
+import { MY_QUEUE_MANUAL_CHUNK_DEFAULT, MY_QUEUE_MAX_ACTIVE_STOCK } from "../lib/my-queue-manual-dispatch";
 
-const TARGET_STOCK = 100;
+const TARGET_STOCK = MY_QUEUE_MAX_ACTIVE_STOCK;
 const THRESHOLD_STOCK = 50;
 
 const SELECTED_QUEUE = "ready_now" as const;
@@ -105,8 +105,8 @@ export async function dispatchLeadGenerationStockForAgent(
 }
 
 /**
- * Attribue jusqu’à `chunkSize` fiches `ready_now` à l’agent, sans plafond « stock actif &lt; 50 ».
- * Pour le bouton « Recharger » sur la file agent.
+ * Attribue jusqu’à `chunkSize` fiches `ready_now` à l’agent, sans seuil « stock &lt; 50 »,
+ * mais en ne dépassant jamais le plafond de fiches actives (voir `MY_QUEUE_MAX_ACTIVE_STOCK`).
  */
 export async function dispatchLeadGenerationMyQueueChunkForAgent(
   agentId: string,
@@ -114,7 +114,22 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
 ): Promise<DispatchLeadGenerationStockResult> {
   const supabase = await createClient();
   const { count: previousStock } = await computeAgentActiveStock(supabase, agentId);
-  const lim = Math.max(1, Math.min(100, Math.floor(chunkSize)));
+  const desired = Math.min(MY_QUEUE_MAX_ACTIVE_STOCK, Math.max(0, Math.floor(chunkSize)));
+  const headroom = Math.max(0, MY_QUEUE_MAX_ACTIVE_STOCK - previousStock);
+  const lim = Math.min(desired, headroom);
+
+  if (lim <= 0) {
+    return {
+      agentId,
+      previousStock,
+      requestedCount: 0,
+      assignedCount: 0,
+      remainingNeed: 0,
+      selectedQueueStatus: SELECTED_QUEUE,
+      newStock: previousStock,
+      assignedStockIds: [],
+    };
+  }
 
   const rows = await runDispatchClaimRpc(supabase, agentId, lim);
   const { count: newStock } = await computeAgentActiveStock(supabase, agentId);

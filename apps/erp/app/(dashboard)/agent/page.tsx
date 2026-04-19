@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { AgentWorkstation } from "@/features/cee-workflows/components/agent-workstation";
 import { resolvePreferredCeeSheetIdForLead } from "@/features/cee-workflows/lib/resolve-preferred-cee-sheet-for-lead";
+import { getCommercialCallbackAssigneeOptions } from "@/features/commercial-callbacks/queries/get-callback-assignee-options";
 import {
   computeCallbackPerformanceStats,
   computeCommercialCallbackKpis,
@@ -43,7 +45,7 @@ function buildSimulatorSessionFromLead(lead: LeadDetailRow): AgentSimulatorLeadS
 }
 
 type PageProps = {
-  searchParams?: Promise<{ lead?: string; simulator?: string; lgStock?: string }>;
+  searchParams?: Promise<{ lead?: string; simulator?: string; lgStock?: string; callback?: string }>;
 };
 
 export default async function AgentPage({ searchParams }: PageProps) {
@@ -65,14 +67,17 @@ export default async function AgentPage({ searchParams }: PageProps) {
       ? await getLeadGenerationStockDetailForAgent(lgStockParam, access.userId)
       : null;
 
-  const [dashboard, destratProducts, commercialCallbacks, leadForSheet] = await Promise.all([
-    getAgentDashboardData(access, undefined, {
-      restrictToLeadsCreatedByCurrentUser: !hasFullCeeWorkflowAccess(access),
-    }),
-    getAgentDestratSimulatorProducts(),
-    fetchCommercialCallbacksForAgentWorkstation(access),
-    leadId ? getLeadById(leadId, access) : Promise.resolve(null),
-  ]);
+  const pilot = hasFullCeeWorkflowAccess(access);
+  const [dashboard, destratProducts, commercialCallbacks, leadForSheet, callbackAssigneeOptions] =
+    await Promise.all([
+      getAgentDashboardData(access, undefined, {
+        restrictToLeadsCreatedByCurrentUser: !pilot,
+      }),
+      getAgentDestratSimulatorProducts(),
+      fetchCommercialCallbacksForAgentWorkstation(access),
+      leadId ? getLeadById(leadId, access) : Promise.resolve(null),
+      pilot ? getCommercialCallbackAssigneeOptions() : Promise.resolve([] as { id: string; label: string }[]),
+    ]);
 
   const ceeWorkflowsForContextLead =
     leadForSheet != null ? await getLeadSheetWorkflowsForLead(leadForSheet.id, access) : [];
@@ -120,16 +125,23 @@ export default async function AgentPage({ searchParams }: PageProps) {
               Fiche prospection introuvable, déjà convertie ou non attribuée à votre compte.
             </p>
           ) : null}
-          <AgentWorkstation
-            sheets={dashboard.sheets}
-            activity={dashboard.activity}
-            destratProducts={destratProducts}
-            commercialCallbacks={commercialCallbacks}
-            callbackKpis={callbackKpis}
-            callbackPerformance={callbackPerformance}
-            initialSheetId={initialSheetId}
-            initialSimulatorSession={initialSimulatorSession}
-          />
+          <Suspense
+            fallback={<p className="text-sm text-muted-foreground">Chargement du poste agent…</p>}
+          >
+            <AgentWorkstation
+              sheets={dashboard.sheets}
+              activity={dashboard.activity}
+              destratProducts={destratProducts}
+              commercialCallbacks={commercialCallbacks}
+              callbackKpis={callbackKpis}
+              callbackPerformance={callbackPerformance}
+              initialSheetId={initialSheetId}
+              initialSimulatorSession={initialSimulatorSession}
+              callbackCurrentUserId={access.userId}
+              callbackAssigneeOptions={callbackAssigneeOptions}
+              canChooseCallbackAssignee={pilot}
+            />
+          </Suspense>
         </div>
         {leadForSheet ? (
           <LeadCrmRightRail

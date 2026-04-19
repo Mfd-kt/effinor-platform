@@ -172,3 +172,13 @@
     @apply font-bold tracking-tight;
   }
 }
+
+/* Barre indéterminée (fusion doublons stock lead-gen) */
+@keyframes lg-dedupe-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}

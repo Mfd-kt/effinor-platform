@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 import {
   type MyQueueQuickFilter,
+  computeQueueKpis,
   itemMatchesQuickFilter,
 } from "../lib/my-queue-follow-up";
 import type { MyLeadGenerationQueueItem } from "../queries/get-my-lead-generation-queue";
@@ -27,6 +28,7 @@ type Props = {
 
 export function MyLeadGenerationQueueWorkbench({ items }: Props) {
   const [filter, setFilter] = useState<MyQueueQuickFilter>("all");
+  const activeStockCount = useMemo(() => computeQueueKpis(items).active, [items]);
 
   const filtered = useMemo(
     () => items.filter((i) => itemMatchesQuickFilter(i, filter)),
@@ -38,7 +40,7 @@ export function MyLeadGenerationQueueWorkbench({ items }: Props) {
       <section className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold">À traiter</h2>
-          <MyLeadGenerationQueueReloadButton />
+          <MyLeadGenerationQueueReloadButton activeStockCount={activeStockCount} />
         </div>
         <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
           Rien à traiter pour le moment. Vous pouvez récupérer des fiches depuis le carnet « prêt maintenant » avec le
@@ -59,7 +61,7 @@ export function MyLeadGenerationQueueWorkbench({ items }: Props) {
             </p>
           ) : null}
         </div>
-        <MyLeadGenerationQueueReloadButton className="shrink-0 lg:pt-0.5" />
+        <MyLeadGenerationQueueReloadButton activeStockCount={activeStockCount} className="shrink-0 lg:pt-0.5" />
       </div>
 
       <div className="flex flex-wrap gap-2">

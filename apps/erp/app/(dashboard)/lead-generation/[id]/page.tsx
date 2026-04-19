@@ -27,6 +27,7 @@ import { isEligibleForLeadGenerationEnrichment } from "@/features/lead-generatio
 import { isEligibleForVerifiedLeadGenerationEnrichment } from "@/features/lead-generation/enrichment/verified-enrichment-eligibility";
 import { formatDuplicateMatchReasonsForDisplay } from "@/features/lead-generation/dedup/duplicate-match-labels";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
+import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { lgTable } from "@/features/lead-generation/lib/lg-db";
 import { LeadGenerationCommercialActivitySection } from "@/features/lead-generation/components/lead-generation-commercial-activity-section";
 import { LeadGenerationRecyclingSection } from "@/features/lead-generation/components/lead-generation-recycling-section";
@@ -34,6 +35,7 @@ import { getLeadGenerationAssignableAgents } from "@/features/lead-generation/qu
 import { getLeadGenerationStockActivities } from "@/features/lead-generation/queries/get-lead-generation-assignment-activities";
 import { getLeadGenerationAssignmentRecycleSnapshot } from "@/features/lead-generation/queries/get-lead-generation-assignment-recycle-snapshot";
 import { LeadGenerationClosingReadinessBadge } from "@/features/lead-generation/components/lead-generation-closing-readiness-badge";
+import { LeadGenerationDeleteStockButton } from "@/features/lead-generation/components/lead-generation-delete-stock-button";
 import { LeadGenerationManualReviewPanel } from "@/features/lead-generation/components/lead-generation-manual-review-panel";
 import { getLeadGenerationManualReviews } from "@/features/lead-generation/queries/get-lead-generation-manual-reviews";
 import { getLeadGenerationStockById } from "@/features/lead-generation/queries/get-lead-generation-stock-by-id";
@@ -120,16 +122,37 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
   const verifiedElig = isEligibleForVerifiedLeadGenerationEnrichment(stock);
 
   const rawJson = JSON.stringify(stock.raw_payload ?? {}, null, 2);
+  const streetViewModel = buildLeadGenerationStreetViewModel(stock);
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-8">
       <PageHeader
         title={stock.company_name}
+        titlePrefix={
+          streetViewModel.canShowSection ? (
+            <Link
+              href={streetViewModel.openMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Ouvrir dans Google Maps
+            </Link>
+          ) : undefined
+        }
         description={[stock.city, stock.phone].filter(Boolean).join(" · ") || "Fiche stock lead generation"}
         actions={
-          <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            ← Fiches disponibles
-          </Link>
+          <div className="flex flex-wrap items-end justify-end gap-2">
+            <LeadGenerationDeleteStockButton
+              stockId={stock.id}
+              companyName={stock.company_name}
+              convertedLeadId={stock.converted_lead_id}
+              stockStatus={stock.stock_status}
+            />
+            <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              ← Fiches disponibles
+            </Link>
+          </div>
         }
       />
 

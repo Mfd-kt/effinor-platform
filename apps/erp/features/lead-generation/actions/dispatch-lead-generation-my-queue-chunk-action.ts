@@ -8,12 +8,12 @@ import { canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
 
 import type { DispatchLeadGenerationStockResult } from "../domain/dispatch-result";
 import type { LeadGenerationActionResult } from "../lib/action-result";
-import { MY_QUEUE_MANUAL_CHUNK_DEFAULT } from "../lib/my-queue-manual-dispatch";
+import { MY_QUEUE_MANUAL_CHUNK_DEFAULT, MY_QUEUE_MAX_ACTIVE_STOCK } from "../lib/my-queue-manual-dispatch";
 import { dispatchLeadGenerationMyQueueChunkForAgent } from "../services/dispatch-lead-generation-stock";
 
 const inputSchema = z
   .object({
-    chunkSize: z.number().int().min(1).max(100).optional(),
+    chunkSize: z.number().int().min(1).max(MY_QUEUE_MAX_ACTIVE_STOCK).optional(),
   })
   .default({});
 

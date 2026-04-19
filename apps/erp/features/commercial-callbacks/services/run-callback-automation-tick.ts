@@ -100,7 +100,7 @@ export async function runCallbackAutomationTick(): Promise<{
           body: `${raw.company_name} — ${raw.contact_name}`,
           severity: businessScore >= 75 ? "critical" : "high",
           entityId: raw.id,
-          actionUrl: "/agent",
+          actionUrl: `/agent?callback=${raw.id}`,
           dedupeKey,
           metadata: { callbackId: raw.id, businessScore },
         });
@@ -115,7 +115,7 @@ export async function runCallbackAutomationTick(): Promise<{
           body: `${raw.company_name} — priorité ${businessScore}/100`,
           severity: "warning",
           entityId: raw.id,
-          actionUrl: "/agent",
+          actionUrl: `/agent?callback=${raw.id}`,
           dedupeKey,
           metadata: { callbackId: raw.id, businessScore },
         });

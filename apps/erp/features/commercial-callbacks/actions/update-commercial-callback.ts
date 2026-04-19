@@ -8,6 +8,7 @@ import {
   type UpdateCommercialCallbackInput,
 } from "@/features/commercial-callbacks/schemas/callback.schema";
 import { getAccessContext } from "@/lib/auth/access-context";
+import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 
@@ -52,6 +53,18 @@ export async function updateCommercialCallback(
     const est = rest.estimated_value_eur;
     patch.estimated_value_cents =
       est == null || Number.isNaN(est) ? null : Math.round(est * 100);
+  }
+
+  if (rest.assigned_agent_user_id !== undefined) {
+    const nextAssignee = rest.assigned_agent_user_id?.trim() || null;
+    if (!nextAssignee) {
+      return { ok: false, error: "L’agent assigné est obligatoire — choisissez un collaborateur." };
+    }
+    const isPilot = hasFullCeeWorkflowAccess(access);
+    if (!isPilot && nextAssignee !== access.userId) {
+      return { ok: false, error: "Vous ne pouvez réassigner un rappel qu’à vous-même." };
+    }
+    patch.assigned_agent_user_id = nextAssignee;
   }
 
   if (Object.keys(patch).length === 0) {

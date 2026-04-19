@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -44,6 +44,12 @@ type CommercialCallbackSheetProps = {
   /** `null` = création */
   editing: CommercialCallbackRow | null;
   onSaved?: () => void;
+  /** Utilisateur connecté (défaut d’assignation). */
+  currentUserId: string;
+  /** Profils pour le sélecteur « Assigné à » (pilotes / vue équipe). */
+  assigneeOptions?: { id: string; label: string }[];
+  /** Si true, le créateur peut choisir un autre agent ; sinon le rappel reste sur `currentUserId`. */
+  canChooseAssignee?: boolean;
 };
 
 function parseEurInput(s: string): number | null | undefined {
@@ -54,31 +60,50 @@ function parseEurInput(s: string): number | null | undefined {
   return n;
 }
 
-const emptyForm = {
-  company_name: "",
-  contact_name: "",
-  phone: "",
-  email: "",
-  callback_date: "",
-  callback_time: "",
-  callback_time_window: "" as string,
-  callback_comment: "",
-  priority: "normal" as string,
-  source: "",
-  call_context_summary: "",
-  prospect_temperature: "" as string,
-  estimated_value_eur: "",
-};
+function emptyFormForUser(currentUserId: string) {
+  return {
+    company_name: "",
+    contact_name: "",
+    phone: "",
+    email: "",
+    callback_date: "",
+    callback_time: "",
+    callback_time_window: "" as string,
+    callback_comment: "",
+    priority: "normal" as string,
+    source: "",
+    call_context_summary: "",
+    prospect_temperature: "" as string,
+    estimated_value_eur: "",
+    assigned_agent_user_id: currentUserId,
+  };
+}
 
 export function CommercialCallbackSheet({
   open,
   onOpenChange,
   editing,
   onSaved,
+  currentUserId,
+  assigneeOptions = [],
+  canChooseAssignee = false,
 }: CommercialCallbackSheetProps) {
   const router = useRouter();
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => emptyFormForUser(currentUserId));
   const [pending, startTransition] = useTransition();
+
+  const assigneeLabel =
+    assigneeOptions.find((o) => o.id === (editing?.assigned_agent_user_id ?? ""))?.label ??
+    (editing?.assigned_agent_user_id ? `${editing.assigned_agent_user_id.slice(0, 8)}…` : "—");
+
+  const assigneeSelectOptions = useMemo(() => {
+    const id = form.assigned_agent_user_id.trim();
+    if (!id || assigneeOptions.some((o) => o.id === id)) return assigneeOptions;
+    return [
+      ...assigneeOptions,
+      { id, label: `Profil inconnu (${id.slice(0, 8)}…)` },
+    ];
+  }, [assigneeOptions, form.assigned_agent_user_id]);
 
   useEffect(() => {
     if (!open) return;
@@ -102,14 +127,15 @@ export function CommercialCallbackSheet({
           editing.estimated_value_cents != null
             ? String(editing.estimated_value_cents / 100)
             : "",
+        assigned_agent_user_id: editing.assigned_agent_user_id ?? currentUserId,
       });
     } else {
       setForm({
-        ...emptyForm,
+        ...emptyFormForUser(currentUserId),
         callback_date: new Date().toISOString().slice(0, 10),
       });
     }
-  }, [open, editing]);
+  }, [open, editing, currentUserId]);
 
   function submit() {
     startTransition(async () => {
@@ -133,6 +159,9 @@ export function CommercialCallbackSheet({
               ? null
               : (form.prospect_temperature as (typeof PROSPECT_TEMPERATURES)[number]),
           estimated_value_eur: parseEurInput(form.estimated_value_eur) ?? null,
+          ...(canChooseAssignee && form.assigned_agent_user_id.trim()
+            ? { assigned_agent_user_id: form.assigned_agent_user_id.trim() }
+            : {}),
         });
         if (!res.ok) {
           toast.error("Modification impossible", { description: res.error });
@@ -140,6 +169,9 @@ export function CommercialCallbackSheet({
         }
         toast.success("Rappel mis à jour.");
       } else {
+        const assigneeId = canChooseAssignee
+          ? form.assigned_agent_user_id.trim() || currentUserId
+          : currentUserId;
         const res = await createCommercialCallback({
           company_name: form.company_name.trim(),
           contact_name: form.contact_name.trim(),
@@ -158,6 +190,7 @@ export function CommercialCallbackSheet({
               ? null
               : (form.prospect_temperature as (typeof PROSPECT_TEMPERATURES)[number]),
           estimated_value_eur: parseEurInput(form.estimated_value_eur),
+          assigned_agent_user_id: assigneeId,
         });
         if (!res.ok) {
           toast.error("Création impossible", { description: res.error });
@@ -183,6 +216,63 @@ export function CommercialCallbackSheet({
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+          {canChooseAssignee && assigneeSelectOptions.length > 0 ? (
+            <div className="space-y-2">
+              <Label htmlFor="cb-assignee">Assigné à</Label>
+              <Select
+                value={form.assigned_agent_user_id}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, assigned_agent_user_id: v ?? currentUserId }))
+                }
+              >
+                <SelectTrigger id="cb-assignee" className="w-full">
+                  <SelectValue placeholder="Choisir un collaborateur" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assigneeSelectOptions.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Le collaborateur choisi verra le rappel sur son poste Agent et dans ses listes.
+              </p>
+            </div>
+          ) : canChooseAssignee && assigneeSelectOptions.length === 0 ? (
+            !editing ? (
+              <p className="text-xs text-muted-foreground">
+                Aucun profil actif dans la liste : le rappel sera enregistré sur{" "}
+                <strong className="text-foreground">votre file</strong> (vous en êtes l’assigné).
+              </p>
+            ) : (
+              <div className="rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-xs">
+                <span className="font-medium text-foreground">Assigné à :</span>{" "}
+                <span className="text-muted-foreground">{assigneeLabel}</span>
+                <span className="mt-1 block text-amber-700 dark:text-amber-500">
+                  Liste des collaborateurs vide — impossible de réassigner depuis l’interface. Vérifiez les profils
+                  actifs.
+                </span>
+              </div>
+            )
+          ) : !editing ? (
+            <p className="text-xs text-muted-foreground">
+              Ce rappel est enregistré sur <strong className="text-foreground">votre file</strong> (vous en êtes
+              l’assigné).
+            </p>
+          ) : (
+            <div className="rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-xs">
+              <span className="font-medium text-foreground">Assigné à :</span>{" "}
+              <span className="text-muted-foreground">{assigneeLabel}</span>
+              {!canChooseAssignee ? (
+                <span className="mt-1 block text-muted-foreground">
+                  Seul un pilote peut réassigner un rappel depuis la vue équipe.
+                </span>
+              ) : null}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="cb-company">Société</Label>
             <Input

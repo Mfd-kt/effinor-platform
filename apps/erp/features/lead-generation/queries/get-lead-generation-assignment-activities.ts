@@ -36,19 +36,28 @@ async function enrichWithAgentNames(
   }));
 }
 
+export type GetLeadGenerationAssignmentActivitiesOptions = {
+  /** Limite le nombre de lignes (page « Ma file » : l’historique récent suffit). */
+  limit?: number;
+};
+
 /**
  * Activités pour une assignation donnée (tri récent d’abord).
  */
 export async function getLeadGenerationAssignmentActivities(
   assignmentId: string,
+  options?: GetLeadGenerationAssignmentActivitiesOptions,
 ): Promise<LeadGenerationAssignmentActivityListItem[]> {
   const supabase = await createClient();
   const t = lgTable(supabase, "lead_generation_assignment_activities");
 
-  const { data, error } = await t
-    .select("*")
-    .eq("assignment_id", assignmentId)
-    .order("created_at", { ascending: false });
+  let q = t.select("*").eq("assignment_id", assignmentId).order("created_at", { ascending: false });
+  const cap = options?.limit;
+  if (cap != null && cap > 0) {
+    q = q.limit(cap);
+  }
+
+  const { data, error } = await q;
 
   if (error) {
     throw new Error(`Activités assignation : ${error.message}`);

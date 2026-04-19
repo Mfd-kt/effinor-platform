@@ -84,6 +84,22 @@ export async function findAdvancedDuplicateLeadGenerationStock(
     }
   }
 
+  const nc = prepared.normalized_company_name?.trim();
+  if (nc) {
+    const { data, error } = await stock
+      .select("*")
+      .eq("normalized_company_name", nc)
+      .order("created_at", { ascending: true })
+      .limit(25);
+    if (error) {
+      throw new Error(`Dédup nom de société normalisé : ${error.message}`);
+    }
+    const hit = tryRows((data ?? []) as LeadGenerationStockRow[]);
+    if (hit) {
+      return hit;
+    }
+  }
+
   if (prepared.normalized_phone) {
     const { data, error } = await stock
       .select("*")

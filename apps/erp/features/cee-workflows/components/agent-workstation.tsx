@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarClock, Headset, Plus, Send, Save, Sigma, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -40,6 +41,7 @@ import type { SimulatorProductCardViewModel } from "@/features/products/domain/t
 import { formatHeatingModeLabelFr } from "@/features/leads/simulator/schemas/simulator.schema";
 import { CommercialCallbackSheet } from "@/features/commercial-callbacks/components/commercial-callback-sheet";
 import { CommercialCallbacksSection } from "@/features/commercial-callbacks/components/commercial-callbacks-section";
+import { createClient } from "@/lib/supabase/client";
 import { isoToDatetimeLocal } from "@/lib/utils/datetime";
 import type {
   CallbackPerformanceStats,
@@ -48,6 +50,9 @@ import type {
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
 
 const SHEET_STORAGE_KEY = "agent-workstation:last-sheet-id";
+
+const CALLBACK_QUERY_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function formatCurrencyEur(value: number): string {
   return new Intl.NumberFormat("fr-FR", {
@@ -99,6 +104,9 @@ export function AgentWorkstation({
   initialSheetId = null,
   /** Ouvre le simulateur avec prospect prérempli (ex. conversion rappel → `?lead=&simulator=1`). */
   initialSimulatorSession = null,
+  callbackCurrentUserId,
+  callbackAssigneeOptions = [],
+  canChooseCallbackAssignee = false,
 }: {
   sheets: AgentAvailableSheet[];
   activity: AgentActivityBuckets;
@@ -108,8 +116,15 @@ export function AgentWorkstation({
   callbackPerformance: CallbackPerformanceStats;
   initialSheetId?: string | null;
   initialSimulatorSession?: AgentSimulatorLeadSession | null;
+  callbackCurrentUserId: string;
+  callbackAssigneeOptions?: { id: string; label: string }[];
+  canChooseCallbackAssignee?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const handledCallbackQueryRef = useRef<string | null>(null);
+  const workstationCallbackRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipDraftHydrate = useRef(false);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(() => {
     const trimmed = initialSheetId?.trim() ?? "";
@@ -129,6 +144,83 @@ export function AgentWorkstation({
   const [callbackEditing, setCallbackEditing] = useState<CommercialCallbackRow | null>(null);
   const [leadGenStockId, setLeadGenStockId] = useState<string | null>(null);
   const simulatorBootstrapRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const raw = searchParams.get("callback")?.trim() ?? "";
+    if (!raw || !CALLBACK_QUERY_UUID_RE.test(raw)) {
+      handledCallbackQueryRef.current = null;
+      return;
+    }
+    if (handledCallbackQueryRef.current === raw) {
+      return;
+    }
+    handledCallbackQueryRef.current = raw;
+
+    const row = commercialCallbacks.find((r) => r.id === raw);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("callback");
+    const q = params.toString();
+    const nextUrl = q ? `${pathname}?${q}` : pathname;
+
+    if (row) {
+      setCallbackEditing(row);
+      setCallbackSheetOpen(true);
+    } else {
+      toast.warning("Rappel introuvable", {
+        description: "Ce rappel n’est pas dans votre liste ou n’existe plus.",
+      });
+    }
+    router.replace(nextUrl, { scroll: false });
+  }, [searchParams, commercialCallbacks, pathname, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const channelRef: {
+      current: ReturnType<Awaited<ReturnType<typeof createClient>>["channel"]> | null;
+    } = { current: null };
+
+    void (async () => {
+      const supabase = await createClient();
+      if (cancelled) return;
+
+      channelRef.current = supabase
+        .channel(`agent-workstation-callbacks-${callbackCurrentUserId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "commercial_callbacks" },
+          (payload) => {
+            const row = (payload.new ?? payload.old) as CommercialCallbackRow | null;
+            if (!row) return;
+            const mine =
+              row.assigned_agent_user_id === callbackCurrentUserId ||
+              row.created_by_user_id === callbackCurrentUserId;
+            if (!mine) return;
+
+            if (workstationCallbackRefreshRef.current) {
+              clearTimeout(workstationCallbackRefreshRef.current);
+            }
+            workstationCallbackRefreshRef.current = setTimeout(() => {
+              workstationCallbackRefreshRef.current = null;
+              router.refresh();
+            }, 400);
+          },
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (workstationCallbackRefreshRef.current) {
+        clearTimeout(workstationCallbackRefreshRef.current);
+        workstationCallbackRefreshRef.current = null;
+      }
+      void createClient().then((supabase) => {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+        }
+      });
+    };
+  }, [callbackCurrentUserId, router]);
 
   useEffect(() => {
     if (!initialSimulatorSession) {
@@ -623,6 +715,9 @@ export function AgentWorkstation({
         onOpenChange={handleCallbackSheetOpenChange}
         editing={callbackEditing}
         onSaved={() => router.refresh()}
+        currentUserId={callbackCurrentUserId}
+        assigneeOptions={callbackAssigneeOptions}
+        canChooseAssignee={canChooseCallbackAssignee}
       />
 
       {renderSimulatorShell()}

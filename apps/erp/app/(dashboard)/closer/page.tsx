@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { CloserWorkstation } from "@/features/cee-workflows/components/closer-workstation";
 import { getCloserDashboardData } from "@/features/cee-workflows/queries/get-closer-dashboard-data";
@@ -20,7 +21,7 @@ function asCloserQueueTab(raw: string | undefined): CloserQueueTab | null {
 }
 
 type PageProps = {
-  searchParams?: Promise<{ sheet?: string; tab?: string }>;
+  searchParams?: Promise<{ sheet?: string; tab?: string; lead?: string }>;
 };
 
 export default async function CloserPage({ searchParams }: PageProps) {
@@ -33,11 +34,16 @@ export default async function CloserPage({ searchParams }: PageProps) {
   const dashboard = await getCloserDashboardData(access);
 
   return (
-    <CloserWorkstation
-      sheets={dashboard.sheets}
-      queue={dashboard.queue}
-      activeSheetId={params.sheet ?? null}
-      initialQueueTab={asCloserQueueTab(params.tab)}
-    />
+    <Suspense
+      fallback={<p className="p-4 text-sm text-muted-foreground">Chargement du poste closer…</p>}
+    >
+      <CloserWorkstation
+        sheets={dashboard.sheets}
+        queue={dashboard.queue}
+        activeSheetId={params.sheet ?? null}
+        initialQueueTab={asCloserQueueTab(params.tab)}
+        viewerUserId={access.userId}
+      />
+    </Suspense>
   );
 }

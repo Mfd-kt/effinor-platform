@@ -28,6 +28,7 @@ import {
   BarChart3,
   Brain,
   Table2,
+  Target,
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -63,17 +64,23 @@ export type NavGroupItem = {
   items: NavGroupChild[];
 };
 
-export type SidebarNavEntry = NavLinkItem | NavGroupItem;
+/** Séparateur visuel entre blocs métier. */
+export type NavDividerItem = { kind: "divider"; id: string };
+
+/** Libellé de section discret au-dessus d'un bloc. */
+export type NavHeadingItem = { kind: "heading"; id: string; label: string };
+
+export type SidebarNavEntry = NavLinkItem | NavGroupItem | NavDividerItem | NavHeadingItem;
 
 /**
  * Navigation principale (sidebar + menu mobile).
- * Regroupement type SaaS : vue d’ensemble, pilotage CEE, prospection, terrain, puis compte et administration.
+ * Hiérarchie type SaaS : travail quotidien → acquisition de leads → perso → organisation.
  */
 export const sidebarNavigation: SidebarNavEntry[] = [
   {
     kind: "group",
     id: "overview",
-    label: "Vue d’ensemble",
+    label: "Accueil",
     icon: LayoutGrid,
     items: [
       { href: "/", label: "Tableau de bord", icon: LayoutDashboard },
@@ -95,12 +102,12 @@ export const sidebarNavigation: SidebarNavEntry[] = [
   {
     kind: "group",
     id: "sales",
-    label: "Prospection",
+    label: "CRM & prospection",
     icon: Briefcase,
     items: [
       { href: "/leads", label: "Fiches prospects", icon: FolderKanban },
       { href: "/leads/lost", label: "Prospects perdus", icon: UserRoundX },
-      { href: "/lead-generation/my-queue", label: "Mes fiches Lead Gen", icon: Inbox },
+      { href: "/lead-generation/my-queue", label: "Ma file Lead Gen", icon: Inbox },
     ],
   },
   {
@@ -113,12 +120,47 @@ export const sidebarNavigation: SidebarNavEntry[] = [
       { href: "/tasks", label: "Tâches", icon: ListTodo },
     ],
   },
+  { kind: "divider", id: "after-field" },
+  { kind: "heading", id: "hx-lead", label: "Acquisition de leads" },
+  {
+    kind: "group",
+    id: "lead-gen-admin",
+    label: "Stock & campagnes",
+    icon: Target,
+    items: [
+      { href: "/lead-generation", label: "Pilotage", icon: LayoutDashboard },
+      {
+        kind: "section",
+        id: "lg-donnees",
+        label: "Données",
+        items: [
+          { href: "/lead-generation/stock", label: "Stock", icon: Table2 },
+          { href: "/lead-generation/imports", label: "Imports", icon: Upload },
+        ],
+      },
+      { href: "/lead-generation/automation", label: "Automatisations", icon: Zap },
+      {
+        kind: "section",
+        id: "lg-config-suivi",
+        label: "Configuration & suivi",
+        items: [
+          { href: "/lead-generation/settings", label: "Réglages métier", icon: SlidersHorizontal },
+          { href: "/lead-generation/analytics", label: "Analytics", icon: BarChart3 },
+          { href: "/lead-generation/learning", label: "Learning loop", icon: Brain },
+        ],
+      },
+    ],
+  },
+  { kind: "divider", id: "after-lead-gen" },
+  { kind: "heading", id: "hx-personal", label: "Pour vous" },
   { kind: "link", href: "/digests", label: "Digest", icon: ScrollText },
   { kind: "link", href: "/account", label: "Mon compte", icon: UserRound },
+  { kind: "divider", id: "before-admin" },
+  { kind: "heading", id: "hx-org", label: "Organisation" },
   {
     kind: "group",
     id: "settings",
-    label: "Administration",
+    label: "Paramètres",
     icon: Settings,
     items: [
       { href: "/settings/users", label: "Utilisateurs", icon: Users },
@@ -126,32 +168,6 @@ export const sidebarNavigation: SidebarNavEntry[] = [
       { href: "/settings/cee", label: "Réglages CEE", icon: BadgeEuro },
       { href: "/admin/cee-sheets", label: "Fiches CEE", icon: FileSpreadsheet },
       { href: "/admin/technical-visit-templates", label: "Templates visite technique", icon: LayoutTemplate },
-      {
-        kind: "section",
-        id: "lead-gen-ops",
-        label: "Lead generation · pilotage",
-        items: [
-          { href: "/lead-generation", label: "Vue d’ensemble", icon: LayoutDashboard },
-          { href: "/lead-generation/stock", label: "Stock complet", icon: Table2 },
-          { href: "/lead-generation/automation", label: "Automatisations", icon: Zap },
-          { href: "/lead-generation/settings", label: "Réglages métier", icon: SlidersHorizontal },
-        ],
-      },
-      {
-        kind: "section",
-        id: "lead-gen-acquisition",
-        label: "Lead generation · acquisition",
-        items: [{ href: "/lead-generation/imports", label: "Imports & lots", icon: Upload }],
-      },
-      {
-        kind: "section",
-        id: "lead-gen-performance",
-        label: "Lead generation · performance",
-        items: [
-          { href: "/lead-generation/analytics", label: "Analytics", icon: BarChart3 },
-          { href: "/lead-generation/learning", label: "Learning loop", icon: Brain },
-        ],
-      },
       { href: "/settings/products", label: "Produits", icon: Package },
     ],
   },

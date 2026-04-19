@@ -27,6 +27,15 @@ import { LeadGenerationStockTable } from "./lead-generation-stock-table";
 /** Sélection tableau : jusqu’à 100 (score commercial) ; enrichissement par lot de 100 côté action. */
 const SELECTION_MAX = 100;
 const ENRICH_BATCH_MAX = 100;
+const SERVER_BATCH_MAX = 100;
+
+function chunkIds(ids: string[], size: number): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    out.push(ids.slice(i, i + size));
+  }
+  return out;
+}
 
 type Props = {
   rows: LeadGenerationStockListItem[];
@@ -39,6 +48,14 @@ type Props = {
   activeStockChip?: string;
   activeDispatchChip?: string;
   dispatchFilters: GetLeadGenerationStockFilters | undefined;
+  /**
+   * Si défini, les actions « tout le lot » (enrichir / scorer / file) ne portent que sur ces fiches,
+   * par paquets de {SERVER_BATCH_MAX} — pas sur le stock global.
+   */
+  importBatchScope?: {
+    importBatchId: string;
+    allStockIds: string[];
+  };
 };
 
 export function LeadGenerationEnrichmentToolbar({
@@ -51,6 +68,7 @@ export function LeadGenerationEnrichmentToolbar({
   activeStockChip,
   activeDispatchChip,
   dispatchFilters,
+  importBatchScope,
 }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -114,6 +132,32 @@ export function LeadGenerationEnrichmentToolbar({
     });
   }
 
+  function runEnrichEntireImportBatch() {
+    setMessage(null);
+    const ids = importBatchScope?.allStockIds ?? [];
+    if (ids.length === 0) {
+      setMessage("Aucune fiche liée à cet import.");
+      return;
+    }
+    startTransition(async () => {
+      let processed = 0;
+      let successes = 0;
+      let failures = 0;
+      for (const part of chunkIds(ids, SERVER_BATCH_MAX)) {
+        const res = await enrichLeadGenerationStockBatchAction({ stockIds: part });
+        if (!res.ok) {
+          setMessage(humanizeLeadGenerationActionError(res.error));
+          return;
+        }
+        processed += res.data.processed;
+        successes += res.data.successes;
+        failures += res.data.failures;
+      }
+      setMessage(`Lot import : ${processed} fiche(s) · ${successes} réussie(s) · ${failures} échec(s).`);
+      router.refresh();
+    });
+  }
+
   function runSelection() {
     setMessage(null);
     const ids = Array.from(selected).slice(0, ENRICH_BATCH_MAX);
@@ -144,6 +188,36 @@ export function LeadGenerationEnrichmentToolbar({
       }
       setCommercialMessage(formatCommercialScoreFeedback(res.data));
       if (res.data.totalRequested > 0) {
+        router.refresh();
+      }
+    });
+  }
+
+  function runScoreEntireImportBatch() {
+    setCommercialMessage(null);
+    const ids = importBatchScope?.allStockIds ?? [];
+    if (ids.length === 0) {
+      setCommercialMessage("Aucune fiche liée à cet import.");
+      return;
+    }
+    startTransition(async () => {
+      let totalRequested = 0;
+      let totalScored = 0;
+      let totalFailed = 0;
+      for (const part of chunkIds(ids, SERVER_BATCH_MAX)) {
+        const res = await recalculateLeadGenerationCommercialScoreBatchAction({ stockIds: part });
+        if (!res.ok) {
+          setCommercialMessage(humanizeLeadGenerationActionError(res.error));
+          return;
+        }
+        totalRequested += res.data.totalRequested;
+        totalScored += res.data.totalScored;
+        totalFailed += res.data.totalFailed;
+      }
+      setCommercialMessage(
+        formatCommercialScoreFeedback({ totalRequested, totalScored, totalFailed, failedStockIds: [] }),
+      );
+      if (totalRequested > 0) {
         router.refresh();
       }
     });
@@ -182,6 +256,43 @@ export function LeadGenerationEnrichmentToolbar({
     });
   }
 
+  function runQueueEntireImportBatch() {
+    setQueueMessage(null);
+    const ids = importBatchScope?.allStockIds ?? [];
+    if (ids.length === 0) {
+      setQueueMessage("Aucune fiche liée à cet import.");
+      return;
+    }
+    startTransition(async () => {
+      let totalRequested = 0;
+      let totalSucceeded = 0;
+      let totalFailed = 0;
+      for (const part of chunkIds(ids, SERVER_BATCH_MAX)) {
+        const res = await evaluateLeadGenerationDispatchQueueBatchAction({ stockIds: part });
+        if (!res.ok) {
+          setQueueMessage(humanizeLeadGenerationActionError(res.error));
+          return;
+        }
+        totalRequested += res.data.totalRequested;
+        totalSucceeded += res.data.totalSucceeded;
+        totalFailed += res.data.totalFailed;
+      }
+      setQueueMessage(
+        formatQueueFeedback({
+          totalRequested,
+          totalSucceeded,
+          totalFailed,
+          failedStockIds: [],
+          dispatchReadyNowCount: 0,
+          dispatchEnrichFirstCount: 0,
+        }),
+      );
+      if (totalRequested > 0) {
+        router.refresh();
+      }
+    });
+  }
+
   function runQueueSelection() {
     setQueueMessage(null);
     const ids = Array.from(selected).slice(0, SELECTION_MAX);
@@ -200,6 +311,10 @@ export function LeadGenerationEnrichmentToolbar({
     });
   }
 
+  const batchAllIds = importBatchScope?.allStockIds ?? [];
+  const importBatchMode = Boolean(importBatchScope);
+  const importBatchHasStock = batchAllIds.length > 0;
+
   return (
     <div className="space-y-3">
       <LeadGenerationStockSummaryStrip
@@ -215,14 +330,29 @@ export function LeadGenerationEnrichmentToolbar({
       <div className="rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground">Enrichissement des fiches</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Les suggestions d’enrichissement sont indicatives et doivent être vérifiées avant utilisation. La vérification
-          « via le site » (fiche détail) utilise Firecrawl sur quelques pages publiques seulement. Aide commerciale
-          heuristique : domaine / site / email suggérés sans modifier les sources. Fiches éligibles (téléphone + nom ;
-          email ou site manquant ; pas rejet / doublon).
+          {importBatchMode ? (
+            <>
+              Actions limitées à cet import : « tout l’import » traite les fiches par paquets de {SERVER_BATCH_MAX}.
+              Même règles métier que le stock (téléphone + nom ; email ou site manquant ; pas rejet / doublon). Les
+              suggestions restent indicatives.
+            </>
+          ) : (
+            <>
+              Les suggestions d’enrichissement sont indicatives et doivent être vérifiées avant utilisation. La
+              vérification « via le site » (fiche détail) utilise Firecrawl sur quelques pages publiques seulement. Aide
+              commerciale heuristique : domaine / site / email suggérés sans modifier les sources. Fiches éligibles
+              (téléphone + nom ; email ou site manquant ; pas rejet / doublon).
+            </>
+          )}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" size="sm" onClick={runQuick} disabled={pending}>
-            Enrichir les fiches sans email
+          <Button
+            type="button"
+            size="sm"
+            onClick={importBatchMode ? runEnrichEntireImportBatch : runQuick}
+            disabled={pending || (importBatchMode && !importBatchHasStock)}
+          >
+            {importBatchMode ? `Enrichir tout l’import (${batchAllIds.length})` : "Enrichir les fiches sans email"}
           </Button>
           <Button type="button" size="sm" variant="secondary" onClick={runSelection} disabled={pending || selected.size === 0}>
             Enrichir la sélection ({selected.size})
@@ -242,12 +372,18 @@ export function LeadGenerationEnrichmentToolbar({
       <div className="rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground">Priorisation commerciale</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Calcul du score et de la priorité commerciale sur les fiches sélectionnées ou sur un lot de fiches « prêtes »
-          (jamais scorées en priorité). Action manuelle : pas de calcul automatique en arrière-plan.
+          {importBatchMode
+            ? `Score commercial sur la sélection ou sur les fiches de cet import (${batchAllIds.length}, par paquets de ${SERVER_BATCH_MAX}).`
+            : "Calcul du score et de la priorité commerciale sur les fiches sélectionnées ou sur un lot de fiches « prêtes » (jamais scorées en priorité). Action manuelle : pas de calcul automatique en arrière-plan."}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" size="sm" onClick={runScoreQuick} disabled={pending}>
-            Scorer les fiches prêtes
+          <Button
+            type="button"
+            size="sm"
+            onClick={importBatchMode ? runScoreEntireImportBatch : runScoreQuick}
+            disabled={pending || (importBatchMode && !importBatchHasStock)}
+          >
+            {importBatchMode ? "Scorer tout l’import" : "Scorer les fiches prêtes"}
           </Button>
           <Button
             type="button"
@@ -267,13 +403,19 @@ export function LeadGenerationEnrichmentToolbar({
       <div className="rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground">File de dispatch</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Classe chaque fiche (prêt maintenant, enrichir avant, revoir, faible valeur, ne pas diffuser) à partir du
-          score commercial et des données de contact. Action manuelle, sans traitement en masse automatique.
+          {importBatchMode
+            ? `Classe les fiches de cet import dans la file (paquets de ${SERVER_BATCH_MAX}). La distribution ci-contre ne concerne que les fiches « prêt maintenant » de cet import.`
+            : "Classe chaque fiche (prêt maintenant, enrichir avant, revoir, faible valeur, ne pas diffuser) à partir du score commercial et des données de contact. Action manuelle, sans traitement en masse automatique."}
         </p>
         <div className="mt-4 flex flex-wrap items-start gap-4">
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" onClick={runQueueQuick} disabled={pending}>
-              Évaluer les fiches prêtes
+            <Button
+              type="button"
+              size="sm"
+              onClick={importBatchMode ? runQueueEntireImportBatch : runQueueQuick}
+              disabled={pending || (importBatchMode && !importBatchHasStock)}
+            >
+              {importBatchMode ? "Évaluer la file (tout l’import)" : "Évaluer les fiches prêtes"}
             </Button>
             <Button
               type="button"
@@ -301,8 +443,9 @@ export function LeadGenerationEnrichmentToolbar({
 
       {rows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
-          Aucune ligne sur cette page pour la sélection. L’enrichissement rapide cible tout de même les fiches
-          « prêtes » sans email dans tout le stock (hors filtres de cette liste).
+          {importBatchMode
+            ? "Aucune fiche dans l’aperçu pour cet import. Vérifiez la synchronisation ou ouvrez la vue Stock filtrée sur ce lot."
+            : "Aucune ligne sur cette page pour la sélection. L’enrichissement rapide cible tout de même les fiches « prêtes » sans email dans tout le stock (hors filtres de cette liste)."}
         </p>
       ) : (
         <LeadGenerationStockTable

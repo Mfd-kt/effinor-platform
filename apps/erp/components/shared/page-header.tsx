@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 
 type PageHeaderProps = {
   title: string;
+  /** Affiché avant le titre (ex. lien utilitaire), aligné sur la même ligne lorsque possible. */
+  titlePrefix?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -11,7 +13,14 @@ type PageHeaderProps = {
   titleClassName?: string;
 };
 
-export function PageHeader({ title, description, actions, className, titleClassName }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  titlePrefix,
+  description,
+  actions,
+  className,
+  titleClassName,
+}: PageHeaderProps) {
   return (
     <div
       className={cn(
@@ -20,7 +29,10 @@ export function PageHeader({ title, description, actions, className, titleClassN
       )}
     >
       <div className="space-y-1">
-        <h1 className={cn("text-2xl font-semibold tracking-tight text-foreground", titleClassName)}>{title}</h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {titlePrefix ? <span className="shrink-0">{titlePrefix}</span> : null}
+          <h1 className={cn("text-2xl font-semibold tracking-tight text-foreground", titleClassName)}>{title}</h1>
+        </div>
         {description ? (
           <div className="max-w-3xl text-sm text-muted-foreground">{description}</div>
         ) : null}

@@ -9,6 +9,7 @@ import {
   type CreateCommercialCallbackInput,
 } from "@/features/commercial-callbacks/schemas/callback.schema";
 import { getAccessContext } from "@/lib/auth/access-context";
+import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import { createClient } from "@/lib/supabase/server";
 
 export type CreateCommercialCallbackResult =
@@ -33,8 +34,11 @@ export async function createCommercialCallback(
   }
 
   const supabase = await createClient();
-  const assigned =
-    parsed.data.assigned_agent_user_id?.trim() || access.userId;
+  const requested = parsed.data.assigned_agent_user_id?.trim() || null;
+  const assigned = requested || access.userId;
+  if (!hasFullCeeWorkflowAccess(access) && assigned !== access.userId) {
+    return { ok: false, error: "Seuls les pilotes peuvent assigner un rappel à un autre collaborateur." };
+  }
   const createdBy = access.userId;
 
   const est = parsed.data.estimated_value_eur;

@@ -30,11 +30,19 @@ import { formatDateTimeFr } from "@/lib/format";
 type Props = {
   assignmentId: string | null;
   initialActivities: LeadGenerationAssignmentActivityListItem[];
-  /** Libellés légèrement simplifiés pour la vue agent. */
-  variant?: "default" | "agent";
   /** Pas de saisie (ex. vue support / autre titulaire d’assignation). */
   readOnly?: boolean;
 };
+
+function outcomeSelectLabel(outcome: string): string {
+  if (outcome === "__none__") {
+    return "Aucun";
+  }
+  if (LEAD_GENERATION_ACTIVITY_OUTCOMES.includes(outcome as LeadGenerationActivityOutcome)) {
+    return LEAD_GENERATION_ACTIVITY_OUTCOME_LABELS[outcome as LeadGenerationActivityOutcome];
+  }
+  return outcome;
+}
 
 function nextFollowUpIso(activities: LeadGenerationAssignmentActivityListItem[]): string | null {
   const now = Date.now();
@@ -51,7 +59,6 @@ function nextFollowUpIso(activities: LeadGenerationAssignmentActivityListItem[])
 export function LeadGenerationCommercialActivitySection({
   assignmentId,
   initialActivities,
-  variant = "default",
   readOnly = false,
 }: Props) {
   const router = useRouter();
@@ -116,9 +123,7 @@ export function LeadGenerationCommercialActivitySection({
       <CardHeader>
         <CardTitle className="text-base">Activité commerciale</CardTitle>
         <p className="text-xs text-muted-foreground">
-          {variant === "agent"
-            ? "Appels, e-mails et relances — votre historique sur cette fiche."
-            : "Journal des interactions commerciales sur cette fiche avant conversion en prospect CRM."}
+          Journal des interactions commerciales sur cette fiche avant conversion en prospect CRM.
         </p>
         {count > 0 ? (
           <ul className="mt-2 list-inside list-disc text-xs text-muted-foreground">
@@ -148,7 +153,7 @@ export function LeadGenerationCommercialActivitySection({
                 <Label htmlFor="lg-activity-type">Type</Label>
                 <Select value={activityType} onValueChange={(v) => setActivityType(v as LeadGenerationActivityType)}>
                   <SelectTrigger id="lg-activity-type" className="w-full">
-                    <SelectValue />
+                    <SelectValue>{LEAD_GENERATION_ACTIVITY_TYPE_LABELS[activityType]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {LEAD_GENERATION_ACTIVITY_TYPES.map((t) => (
@@ -166,10 +171,10 @@ export function LeadGenerationCommercialActivitySection({
                   onValueChange={(v) => setOutcome(v == null ? "__none__" : v)}
                 >
                   <SelectTrigger id="lg-outcome" className="w-full">
-                    <SelectValue placeholder="—" />
+                    <SelectValue placeholder="Aucun">{outcomeSelectLabel(outcome)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">—</SelectItem>
+                    <SelectItem value="__none__">Aucun</SelectItem>
                     {LEAD_GENERATION_ACTIVITY_OUTCOMES.map((o) => (
                       <SelectItem key={o} value={o}>
                         {LEAD_GENERATION_ACTIVITY_OUTCOME_LABELS[o]}
@@ -209,7 +214,7 @@ export function LeadGenerationCommercialActivitySection({
               />
             </div>
             <Button type="submit" size="sm" disabled={pending}>
-              {variant === "agent" ? "Ajouter une activité" : "Enregistrer l’activité"}
+              Enregistrer l’activité
             </Button>
           </form>
         ) : !assignmentId ? (

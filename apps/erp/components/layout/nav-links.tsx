@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -85,12 +85,67 @@ function sectionHasActiveChild(section: NavGroupSectionItem, pathname: string): 
   return section.items.some((s) => linkActive(s.href, pathname));
 }
 
+function nextSubstantiveIndex(entries: SidebarNavEntry[], startIndex: number): number {
+  for (let j = startIndex; j < entries.length; j++) {
+    const x = entries[j]!;
+    if (x.kind === "link" || x.kind === "group") return j;
+  }
+  return -1;
+}
+
+function nextHeadingIndex(entries: SidebarNavEntry[], afterIndex: number): number {
+  for (let j = afterIndex + 1; j < entries.length; j++) {
+    if (entries[j]!.kind === "heading") return j;
+  }
+  return -1;
+}
+
+/** Retire titres / séparateurs orphelins après filtrage RBAC (même logique que les SaaS multi-sections). */
+function normalizeStructural(entries: SidebarNavEntry[]): SidebarNavEntry[] {
+  const out: SidebarNavEntry[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i]!;
+
+    if (e.kind === "heading") {
+      const nxt = nextSubstantiveIndex(entries, i + 1);
+      if (nxt === -1) continue;
+      const nh = nextHeadingIndex(entries, i);
+      if (nh !== -1 && nxt > nh) continue;
+      out.push(e);
+      continue;
+    }
+
+    if (e.kind === "divider") {
+      if (out.length === 0) continue;
+      const last = out[out.length - 1]!;
+      if (last.kind === "divider" || last.kind === "heading") continue;
+      if (nextSubstantiveIndex(entries, i + 1) === -1) continue;
+      out.push(e);
+      continue;
+    }
+
+    out.push(e);
+  }
+
+  while (
+    out.length > 0 &&
+    (out[out.length - 1]!.kind === "divider" || out[out.length - 1]!.kind === "heading")
+  ) {
+    out.pop();
+  }
+
+  return out;
+}
+
 function filterNavigation(allowedNavHrefs: string[] | undefined): SidebarNavEntry[] {
   if (!allowedNavHrefs || allowedNavHrefs.length === 0) {
-    return sidebarNavigation;
+    return normalizeStructural(sidebarNavigation);
   }
-  return sidebarNavigation
+  const mapped = sidebarNavigation
     .map((entry) => {
+      if (entry.kind === "divider" || entry.kind === "heading") {
+        return entry;
+      }
       if (entry.kind === "link") {
         return allowedNavHrefs.includes(entry.href) ? entry : null;
       }
@@ -101,10 +156,12 @@ function filterNavigation(allowedNavHrefs: string[] | undefined): SidebarNavEntr
       return { ...entry, items };
     })
     .filter((e): e is SidebarNavEntry => e !== null);
+
+  return normalizeStructural(mapped);
 }
 
 const linkRowClass =
-  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors touch-manipulation";
+  "flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium leading-snug transition-colors touch-manipulation";
 
 type NavLinksProps = {
   onNavigate?: () => void;
@@ -188,26 +245,47 @@ export function NavLinks({ onNavigate, className, allowedNavHrefs }: NavLinksPro
   const { collapsedGroups, collapsedSections } = accordion;
 
   return (
-    <nav className={cn("flex flex-col gap-1", className)}>
-      {entries.map((entry, index) => {
-        const showDivider = index > 0;
+    <nav className={cn("flex flex-col gap-0.5", className)}>
+      {entries.map((entry) => {
+        if (entry.kind === "heading") {
+          return (
+            <div
+              key={entry.id}
+              className="px-3 pt-4 pb-1 first:pt-0.5"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40">
+                {entry.label}
+              </p>
+            </div>
+          );
+        }
+
+        if (entry.kind === "divider") {
+          return (
+            <div
+              key={entry.id}
+              className="mx-2 my-2 h-px bg-sidebar-border/70"
+              role="separator"
+            />
+          );
+        }
 
         if (entry.kind === "link") {
           const Icon = entry.icon;
           const active = linkActive(entry.href, pathname);
           return (
-            <div key={entry.href} className={cn(showDivider && "mt-3 border-t border-sidebar-border/60 pt-3")}>
+            <div key={entry.href}>
               <Link
                 href={entry.href}
                 onClick={onNavigate}
                 className={cn(
                   linkRowClass,
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                    : "text-sidebar-foreground/85 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                    ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-ring/25"
+                    : "text-sidebar-foreground/88 hover:bg-sidebar-accent/45 hover:text-sidebar-accent-foreground",
                 )}
               >
-                <Icon className="size-[18px] shrink-0 opacity-90" aria-hidden />
+                <Icon className="size-[17px] shrink-0 opacity-90" aria-hidden />
                 {entry.label}
               </Link>
             </div>
@@ -219,36 +297,40 @@ export function NavLinks({ onNavigate, className, allowedNavHrefs }: NavLinksPro
         const groupOpen = !collapsedGroups.includes(entry.id);
 
         return (
-          <div
-            key={entry.id}
-            className={cn("flex flex-col gap-0.5", showDivider && "mt-3 border-t border-sidebar-border/60 pt-3")}
-          >
+          <div key={entry.id} className="flex flex-col gap-0.5">
             <button
               type="button"
               onClick={() => toggleGroup(entry.id)}
               aria-expanded={groupOpen}
               className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold tracking-tight transition-colors",
+                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold tracking-tight transition-colors",
                 groupActive
-                  ? "text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/40",
+                  ? "bg-sidebar-accent/35 text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/82 hover:bg-sidebar-accent/40",
               )}
             >
               <span className="flex min-w-0 items-center gap-2.5">
-                <GroupIcon className="size-4 shrink-0 opacity-80" aria-hidden />
+                <span
+                  className={cn(
+                    "flex size-7 shrink-0 items-center justify-center rounded-md",
+                    groupActive ? "bg-sidebar-accent/50 text-sidebar-accent-foreground" : "bg-sidebar-accent/15 text-sidebar-foreground/75",
+                  )}
+                >
+                  <GroupIcon className="size-3.5" aria-hidden />
+                </span>
                 <span className="truncate">{entry.label}</span>
               </span>
-              <ChevronRight
+              <ChevronDown
                 className={cn(
-                  "size-4 shrink-0 opacity-70 transition-transform duration-200",
-                  groupOpen && "rotate-90",
+                  "size-4 shrink-0 opacity-60 transition-transform duration-200",
+                  groupOpen && "rotate-180",
                 )}
                 aria-hidden
               />
             </button>
 
             {groupOpen ? (
-              <ul className="flex flex-col gap-1 border-l-2 border-sidebar-border/70 pl-2.5 ml-1.5">
+              <ul className="ml-2 flex flex-col gap-0.5 border-l border-sidebar-border/55 pl-2.5">
                 {entry.items.map((item) => {
                   if (isNavSection(item)) {
                     const sectionActive = sectionHasActiveChild(item, pathname);
@@ -267,10 +349,10 @@ export function NavLinks({ onNavigate, className, allowedNavHrefs }: NavLinksPro
                           )}
                         >
                           <span className="min-w-0 truncate pr-1">{item.label}</span>
-                          <ChevronRight
+                          <ChevronDown
                             className={cn(
-                              "size-3.5 shrink-0 opacity-60 transition-transform duration-200",
-                              sectionOpen && "rotate-90",
+                              "size-3.5 shrink-0 opacity-55 transition-transform duration-200",
+                              sectionOpen && "rotate-180",
                             )}
                             aria-hidden
                           />

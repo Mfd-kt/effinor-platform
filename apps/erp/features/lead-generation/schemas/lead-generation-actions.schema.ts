@@ -151,6 +151,8 @@ export const logLeadGenerationAssignmentActivityActionInputSchema = z.object({
   outcome: z.enum(activityOutcomes).optional().nullable(),
   /** ISO ou valeur `datetime-local` ; vide = pas de relance planifiée. */
   nextActionAt: z.string().trim().max(40).optional().nullable(),
+  /** Complète l’activité « Appel lancé » créée au clic Aircall si elle est encore ouverte. */
+  mergeLatestCallStub: z.boolean().optional(),
 });
 
 const manualReviewTypes = [

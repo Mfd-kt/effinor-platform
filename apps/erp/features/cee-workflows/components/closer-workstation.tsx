@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleDollarSign } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
@@ -12,6 +12,10 @@ import { CloserWorkflowQueue } from "@/features/cee-workflows/components/closer-
 import type { AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
 import type { CloserQueueBuckets, CloserQueueItem } from "@/features/cee-workflows/lib/closer-workflow-activity";
 import { buildCloserQueuePath, type CloserQueueTab } from "@/features/cee-workflows/lib/closer-paths";
+import { createClient } from "@/lib/supabase/client";
+
+const LEAD_QUERY_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function queueItemsForSheet(queue: CloserQueueBuckets, sheetCode: string | null): CloserQueueBuckets {
   if (!sheetCode) return queue;
@@ -30,16 +34,88 @@ export function CloserWorkstation({
   queue,
   activeSheetId,
   initialQueueTab,
+  viewerUserId,
 }: {
   sheets: AgentAvailableSheet[];
   queue: CloserQueueBuckets;
   activeSheetId: string | null;
   initialQueueTab?: CloserQueueTab | null;
+  viewerUserId: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const handledLeadQueryRef = useRef<string | null>(null);
+  const closerRefreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeSheetCode = sheets.find((sheet) => sheet.id === activeSheetId)?.code ?? null;
   const filteredQueue = useMemo(() => queueItemsForSheet(queue, activeSheetCode), [queue, activeSheetCode]);
+
+  useEffect(() => {
+    const raw = searchParams.get("lead")?.trim() ?? "";
+    if (!raw || !LEAD_QUERY_UUID_RE.test(raw)) {
+      handledLeadQueryRef.current = null;
+      return;
+    }
+    if (handledLeadQueryRef.current === raw) {
+      return;
+    }
+    handledLeadQueryRef.current = raw;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("lead");
+    const q = params.toString();
+    const nextUrl = q ? `${pathname}?${q}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+    router.push(`/leads/${raw}`);
+  }, [searchParams, pathname, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const channelRef: {
+      current: ReturnType<Awaited<ReturnType<typeof createClient>>["channel"]> | null;
+    } = { current: null };
+
+    void (async () => {
+      const supabase = await createClient();
+      if (cancelled) return;
+
+      channelRef.current = supabase
+        .channel(`closer-workstation-wf-${viewerUserId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "lead_sheet_workflows",
+            filter: `assigned_closer_user_id=eq.${viewerUserId}`,
+          },
+          () => {
+            if (closerRefreshDebounceRef.current) {
+              clearTimeout(closerRefreshDebounceRef.current);
+            }
+            closerRefreshDebounceRef.current = setTimeout(() => {
+              closerRefreshDebounceRef.current = null;
+              router.refresh();
+            }, 400);
+          },
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (closerRefreshDebounceRef.current) {
+        clearTimeout(closerRefreshDebounceRef.current);
+        closerRefreshDebounceRef.current = null;
+      }
+      void createClient().then((supabase) => {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+        }
+      });
+    };
+  }, [viewerUserId, router]);
 
   function changeSheet(sheetId: string | null) {
     router.push(buildCloserQueuePath(sheetId));

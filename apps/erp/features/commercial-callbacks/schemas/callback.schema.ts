@@ -65,6 +65,8 @@ export const UpdateCommercialCallbackSchema = z.object({
   call_context_summary: z.string().max(2000).optional().nullable(),
   prospect_temperature: z.enum(PROSPECT_TEMPERATURES).optional().nullable(),
   estimated_value_eur: z.number().nonnegative().max(100_000_000).optional().nullable(),
+  /** Réassignation : réservée aux pilotes CEE côté serveur ; sinon seulement soi-même. */
+  assigned_agent_user_id: z.string().uuid().optional().nullable(),
 });
 
 export type UpdateCommercialCallbackInput = z.infer<typeof UpdateCommercialCallbackSchema>;

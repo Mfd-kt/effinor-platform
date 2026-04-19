@@ -27,7 +27,7 @@ export type LeadGenerationActivityOutcome = (typeof LEAD_GENERATION_ACTIVITY_OUT
 
 export const LEAD_GENERATION_ACTIVITY_TYPE_LABELS: Record<LeadGenerationActivityType, string> = {
   call: "Appel",
-  email: "Email",
+  email: "E-mail",
   note: "Note",
   status_update: "Mise à jour de statut",
   follow_up: "Relance / suivi",

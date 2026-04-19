@@ -79,7 +79,14 @@ export function LeadGenerationStockTable({ rows, enrichmentSelection }: Props) {
                 />
               </TableCell>
             ) : null}
-            <TableCell className="font-medium">{r.company_name}</TableCell>
+            <TableCell className="max-w-[min(100%,20rem)] font-medium">
+              <Link
+                href={`/lead-generation/${r.id}`}
+                className="text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {r.company_name}
+              </Link>
+            </TableCell>
             <TableCell>
               <div className="flex flex-col gap-1">
                 <LeadGenerationTierOutlineBadge tier={r.lead_tier ?? "raw"} compact />
