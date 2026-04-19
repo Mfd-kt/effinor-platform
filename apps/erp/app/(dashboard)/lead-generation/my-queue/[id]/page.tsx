@@ -26,6 +26,7 @@ import { getAccessContext } from "@/lib/auth/access-context";
 import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import {
   canAccessCeeWorkflowsModule,
+  canAccessLeadGenerationHub,
   canAccessLeadGenerationMyQueue,
   canBypassLeadGenMyQueueAsImpersonationActor,
 } from "@/lib/auth/module-access";
@@ -107,6 +108,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
       : null;
   const streetViewModel = buildLeadGenerationStreetViewModel(stock);
   const dropcontactElig = isEligibleForDropcontactEnrichment(stock);
+  const leadGenHub = await canAccessLeadGenerationHub(access);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8">
       {openedViaSupportBypass ? (
@@ -173,6 +175,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
 
       <LeadGenerationDropcontactPanel
         stockId={stock.id}
+        canResetDropcontact={leadGenHub}
         eligible={dropcontactElig.ok}
         disabled={
           Boolean(stock.converted_lead_id) ||

@@ -10,6 +10,7 @@ import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import { enrichLeadWithDropcontactAction } from "../actions/enrich-lead-generation-stock-dropcontact-action";
+import { resetLeadGenerationDropcontactAction } from "../actions/reset-lead-generation-dropcontact-action";
 
 function dropcontactStatusLabel(status: string): string {
   switch (status) {
@@ -28,6 +29,8 @@ function dropcontactStatusLabel(status: string): string {
 
 type Props = {
   stockId: string;
+  /** Pilotage lead gen : affiche le bouton de réinitialisation du cycle Dropcontact. */
+  canResetDropcontact?: boolean;
   eligible: boolean;
   disabled: boolean;
   dropcontactStatus: string;
@@ -43,6 +46,7 @@ type Props = {
 
 export function LeadGenerationDropcontactPanel({
   stockId,
+  canResetDropcontact = false,
   eligible,
   disabled,
   dropcontactStatus,
@@ -57,11 +61,13 @@ export function LeadGenerationDropcontactPanel({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [resetPending, startResetTransition] = useTransition();
   const [flash, setFlash] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
 
   const isPending = dropcontactStatus === "pending";
-  const busy = pending || isPending;
+  const busy = pending || resetPending || isPending;
   const canClick = eligible && !disabled && !busy;
+  const showResetButton = canResetDropcontact && !disabled && dropcontactStatus !== "idle";
 
   return (
     <Card className="border-border/90 bg-card/60 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
@@ -127,7 +133,7 @@ export function LeadGenerationDropcontactPanel({
               });
             }}
           >
-            {busy ? (
+            {pending || isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden />
                 Enrichissement en cours…
@@ -136,6 +142,36 @@ export function LeadGenerationDropcontactPanel({
               "Enrichir avec Dropcontact"
             )}
           </Button>
+          {showResetButton ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              disabled={resetPending}
+              onClick={() => {
+                const ok = window.confirm(
+                  "Réinitialiser le suivi Dropcontact sur cette fiche ? Vous pourrez relancer une demande d’enrichissement.",
+                );
+                if (!ok) return;
+                setFlash(null);
+                startResetTransition(async () => {
+                  const res = await resetLeadGenerationDropcontactAction(stockId);
+                  setFlash({ tone: res.ok ? "ok" : "err", text: res.message });
+                  router.refresh();
+                });
+              }}
+            >
+              {resetPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Réinitialisation…
+                </>
+              ) : (
+                "Réinitialiser le suivi (pilotage)"
+              )}
+            </Button>
+          ) : null}
         </div>
 
         {flash ? (

@@ -162,6 +162,7 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
 
       <LeadGenerationDropcontactPanel
         stockId={stock.id}
+        canResetDropcontact
         eligible={dropcontactElig.ok}
         disabled={
           Boolean(stock.converted_lead_id) ||
