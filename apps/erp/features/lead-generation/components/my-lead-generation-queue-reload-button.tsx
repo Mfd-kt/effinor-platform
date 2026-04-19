@@ -30,19 +30,132 @@ import {
 
 const CEE_SELECT_NONE = "__lg_my_queue_cee_none__";
 
-type Props = {
-  /** Stock actif servant au plafond 100 (par fiche, ou total si « sans fiche CEE »). */
-  stockForPlafond: number;
-  className?: string;
+type SharedProps = {
   ceeSheetOptions: LeadGenerationMyQueueCeeSheetOption[];
   selectedCeeSheetId: string;
   onSelectedCeeSheetIdChange: (id: string) => void;
   viewerUserId: string;
-  /** Au moins une entrée du select doit être choisie avant toute récupération. */
   ceeSelectionMandatory: boolean;
 };
 
-export function MyLeadGenerationQueueReloadButton({
+type FetchProps = SharedProps & {
+  /** Stock actif servant au plafond 100 (par fiche, ou total si « sans fiche CEE »). */
+  stockForPlafond: number;
+  className?: string;
+};
+
+function deriveSelection(p: SharedProps) {
+  const maxCap = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
+  const trimmedCee = p.selectedCeeSheetId.trim();
+  const isNoCeeSelected = trimmedCee === MY_QUEUE_NO_CEE_SHEET_SENTINEL;
+  const selectedCeeOption = p.ceeSheetOptions.find((o) => o.id === trimmedCee) ?? null;
+  const valueForSelect = isNoCeeSelected
+    ? MY_QUEUE_NO_CEE_SHEET_SENTINEL
+    : selectedCeeOption
+      ? selectedCeeOption.id
+      : CEE_SELECT_NONE;
+
+  const mustPick = p.ceeSelectionMandatory && p.ceeSheetOptions.length > 0;
+  const selectionOk = !mustPick || Boolean(selectedCeeOption) || isNoCeeSelected;
+  const perCeeRetrieve = Boolean(selectedCeeOption) && !isNoCeeSelected;
+
+  return {
+    maxCap,
+    trimmedCee,
+    isNoCeeSelected,
+    selectedCeeOption,
+    valueForSelect,
+    mustPick,
+    selectionOk,
+    perCeeRetrieve,
+  };
+}
+
+/** Filtre « sur quel produit CEE le carnet est chargé » — ne confond pas avec l’écran dossier Agent. */
+export function MyLeadQueueCeeSheetPicker({
+  ceeSheetOptions,
+  selectedCeeSheetId,
+  onSelectedCeeSheetIdChange,
+  viewerUserId,
+  ceeSelectionMandatory,
+  pending = false,
+  className,
+}: SharedProps & { pending?: boolean; className?: string }) {
+  const { maxCap, isNoCeeSelected, selectedCeeOption, valueForSelect, mustPick, selectionOk } = deriveSelection({
+    ceeSheetOptions,
+    selectedCeeSheetId,
+    onSelectedCeeSheetIdChange,
+    viewerUserId,
+    ceeSelectionMandatory,
+  });
+
+  return (
+    <div className={className}>
+      {ceeSheetOptions.length > 0 ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="my-queue-cee-sheet" className="text-xs font-medium">
+            Filtrer le carnet par fiche CEE
+          </Label>
+          <Select
+            value={valueForSelect}
+            onValueChange={(v) => {
+              const raw = v ?? CEE_SELECT_NONE;
+              const id = raw === CEE_SELECT_NONE ? "" : raw;
+              onSelectedCeeSheetIdChange(id);
+              if (viewerUserId.trim()) {
+                writeMyQueueSelectedCeeSheetId(viewerUserId, id);
+              }
+            }}
+            disabled={pending}
+          >
+            <SelectTrigger id="my-queue-cee-sheet" className="h-9 w-full max-w-md text-left text-sm sm:w-[min(100%,420px)]">
+              <SelectValue placeholder="Choisir une fiche dans la liste">
+                {isNoCeeSelected
+                  ? MY_QUEUE_NO_CEE_SHEET_LABEL
+                  : selectedCeeOption
+                    ? formatMyQueueCeeSheetOptionLabel(selectedCeeOption)
+                    : null}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {mustPick ? (
+                <SelectItem value={CEE_SELECT_NONE}>Choisir une fiche…</SelectItem>
+              ) : null}
+              <SelectItem value={MY_QUEUE_NO_CEE_SHEET_SENTINEL}>{MY_QUEUE_NO_CEE_SHEET_LABEL}</SelectItem>
+              {ceeSheetOptions.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {formatMyQueueCeeSheetOptionLabel(o)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {mustPick && !selectionOk ? (
+            <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+              Choisissez une fiche CEE ou « {MY_QUEUE_NO_CEE_SHEET_LABEL} » pour afficher vos prospections et en récupérer.
+            </p>
+          ) : isNoCeeSelected ? (
+            <p className="text-[11px] text-muted-foreground">
+              Fiches du carnet « prêt maintenant » sans fiche CEE liée. Le plafond de {maxCap} prospections actives
+              s’applique à votre total (toutes fiches confondues).
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Seules les prospections du carnet « prêt maintenant » liées à ce produit vous sont listées (selon vos
+              équipes).
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          Aucune fiche CEE n’est associée à votre profil : vous pouvez récupérer des prospections sur le carnet prêt dont
+          vous héritez.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function MyLeadQueueReadyPoolFetchButton({
   stockForPlafond,
   className,
   ceeSheetOptions,
@@ -50,7 +163,7 @@ export function MyLeadGenerationQueueReloadButton({
   onSelectedCeeSheetIdChange,
   viewerUserId,
   ceeSelectionMandatory,
-}: Props) {
+}: FetchProps) {
   const maxCap = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
   const headroom = Math.max(0, maxCap - stockForPlafond);
   const chunkSize = Math.min(MY_QUEUE_MANUAL_CHUNK_DEFAULT, headroom);
@@ -58,19 +171,15 @@ export function MyLeadGenerationQueueReloadButton({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const trimmedCee = selectedCeeSheetId.trim();
-  const isNoCeeSelected = trimmedCee === MY_QUEUE_NO_CEE_SHEET_SENTINEL;
-  const selectedCeeOption = ceeSheetOptions.find((o) => o.id === trimmedCee) ?? null;
-  const valueForSelect = isNoCeeSelected
-    ? MY_QUEUE_NO_CEE_SHEET_SENTINEL
-    : selectedCeeOption
-      ? selectedCeeOption.id
-      : CEE_SELECT_NONE;
+  const { trimmedCee, isNoCeeSelected, selectedCeeOption, selectionOk, perCeeRetrieve } = deriveSelection({
+    ceeSheetOptions,
+    selectedCeeSheetId,
+    onSelectedCeeSheetIdChange,
+    viewerUserId,
+    ceeSelectionMandatory,
+  });
 
-  const mustPick = ceeSelectionMandatory && ceeSheetOptions.length > 0;
   const globalScope = ceeSheetOptions.length === 0;
-  const selectionOk = !mustPick || Boolean(selectedCeeOption) || isNoCeeSelected;
-  const perCeeRetrieve = Boolean(selectedCeeOption) && !isNoCeeSelected;
   const atCap = selectionOk && stockForPlafond >= maxCap;
 
   function onClick() {
@@ -119,66 +228,6 @@ export function MyLeadGenerationQueueReloadButton({
 
   return (
     <div className={className}>
-      {ceeSheetOptions.length > 0 ? (
-        <div className="mb-3 space-y-1.5">
-          <Label htmlFor="my-queue-cee-sheet" className="text-xs font-medium">
-            Je travaille sur la fiche CEE
-          </Label>
-          <Select
-            value={valueForSelect}
-            onValueChange={(v) => {
-              const raw = v ?? CEE_SELECT_NONE;
-              const id = raw === CEE_SELECT_NONE ? "" : raw;
-              onSelectedCeeSheetIdChange(id);
-              if (viewerUserId.trim()) {
-                writeMyQueueSelectedCeeSheetId(viewerUserId, id);
-              }
-            }}
-            disabled={pending}
-          >
-            <SelectTrigger id="my-queue-cee-sheet" className="h-9 w-full max-w-md text-left text-sm sm:w-[min(100%,420px)]">
-              <SelectValue placeholder="Choisir une fiche dans la liste">
-                {isNoCeeSelected
-                  ? MY_QUEUE_NO_CEE_SHEET_LABEL
-                  : selectedCeeOption
-                    ? formatMyQueueCeeSheetOptionLabel(selectedCeeOption)
-                    : null}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {mustPick ? (
-                <SelectItem value={CEE_SELECT_NONE}>Choisir une fiche…</SelectItem>
-              ) : null}
-              <SelectItem value={MY_QUEUE_NO_CEE_SHEET_SENTINEL}>{MY_QUEUE_NO_CEE_SHEET_LABEL}</SelectItem>
-              {ceeSheetOptions.map((o) => (
-                <SelectItem key={o.id} value={o.id}>
-                  {formatMyQueueCeeSheetOptionLabel(o)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {mustPick && !selectionOk ? (
-            <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-              Choisissez une fiche CEE ou « {MY_QUEUE_NO_CEE_SHEET_LABEL} » pour afficher vos prospections et en récupérer.
-            </p>
-          ) : isNoCeeSelected ? (
-            <p className="text-[11px] text-muted-foreground">
-              Fiches du carnet « prêt maintenant » sans fiche CEE liée. Le plafond de {maxCap} prospections actives
-              s’applique à votre total (toutes fiches confondues).
-            </p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">
-              Seules les fiches du carnet « prêt maintenant » liées à cette fiche vous sont proposées (selon vos équipes).
-            </p>
-          )}
-        </div>
-      ) : (
-        <p className="mb-3 text-[11px] text-muted-foreground">
-          Aucune fiche CEE n’est associée à votre profil : vous pouvez récupérer des prospections sur le carnet prêt dont
-          vous héritez.
-        </p>
-      )}
-
       <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-3">
         <Button
           type="button"
@@ -186,11 +235,11 @@ export function MyLeadGenerationQueueReloadButton({
           size="sm"
           disabled={pending || !selectionOk || atCap || chunkSize <= 0}
           onClick={onClick}
-          className="gap-2"
+          className="gap-2 shrink-0"
           title={
             atCap
               ? perCeeRetrieve
-                ? "Stock maximum atteint pour cette fiche CEE"
+                ? "Plafond atteint : traitez les fiches ci-dessus ou libérez-en avant d’en récupérer."
                 : `Limite de ${maxCap} prospections au total`
               : undefined
           }
@@ -199,9 +248,7 @@ export function MyLeadGenerationQueueReloadButton({
           {pending
             ? "Récupération…"
             : atCap
-              ? perCeeRetrieve
-                ? "Stock maximum atteint pour cette fiche CEE"
-                : `Limite de ${maxCap} prospections au total`
+              ? "Plafond atteint — voir la liste"
               : !selectionOk
                 ? "Choisir un périmètre d’abord"
                 : chunkSize <= 0
@@ -210,11 +257,11 @@ export function MyLeadGenerationQueueReloadButton({
                     ? "Récupérer des fiches prêtes à appeler"
                     : isNoCeeSelected
                       ? "Récupérer des fiches sans fiche CEE"
-                      : "Récupérer des fiches pour cette fiche"}
+                      : "Récupérer d’autres fiches pour ce produit"}
         </Button>
-        <p className="text-[11px] text-muted-foreground sm:max-w-[280px]">
+        <p className="text-[11px] text-muted-foreground sm:max-w-[320px]">
           Source : carnet <span className="font-medium text-foreground/90">prêt maintenant</span> (téléphone renseigné,
-          non attribué).
+          non attribué). Les fiches déjà dans votre file restent visibles dans le tableau même si le plafond est atteint.
         </p>
       </div>
       {message ? (

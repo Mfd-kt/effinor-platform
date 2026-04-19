@@ -27,14 +27,17 @@ export type LeadGenerationEnrichmentStatus =
   | "completed"
   | "failed";
 
+/** Suivi Dropcontact (CHECK SQL — migration colonnes dédiées). */
+export type LeadGenerationDropcontactStatus = "idle" | "pending" | "completed" | "failed";
+
 /** Mini-étape 10.1 — fiabilité des suggestions (CHECK SQL, défaut `low`). */
 export type LeadGenerationEnrichmentConfidence = "low" | "medium" | "high";
 
 /** Étape 11 — origine des enrichissements `enriched_*` (CHECK SQL). */
-export type LeadGenerationEnrichmentSource = "heuristic" | "firecrawl";
+export type LeadGenerationEnrichmentSource = "heuristic" | "firecrawl" | "dropcontact";
 
 /** Extraction décideur B2B — colonnes `decision_maker_*` (CHECK SQL). */
-export type LeadGenerationDecisionMakerSource = "website" | "google" | "linkedin";
+export type LeadGenerationDecisionMakerSource = "website" | "google" | "linkedin" | "dropcontact";
 
 /** Confiance décideur : alignée sur la source (LinkedIn > site > recherche). */
 export type LeadGenerationDecisionMakerConfidence = "low" | "medium" | "high";

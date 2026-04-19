@@ -9,6 +9,9 @@ import { ConvertMyLeadAssignmentButton } from "@/features/lead-generation/compon
 import { LeadGenerationUnifiedAgentActivitySection } from "@/features/lead-generation/components/lead-generation-unified-agent-activity-section";
 import { LeadGenerationCommercialPriorityBadge } from "@/features/lead-generation/components/lead-generation-commercial-priority-badge";
 import { LeadGenerationDispatchQueueBadge } from "@/features/lead-generation/components/lead-generation-dispatch-queue-badge";
+import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
+import { LeadGenerationDropcontactPanel } from "@/features/lead-generation/components/lead-generation-dropcontact-panel";
+import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
 import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
 import { MyLeadQueueDecisionMakerFields } from "@/features/lead-generation/components/my-lead-queue-decision-maker-fields";
 import { MyLeadQueueTopActionBar } from "@/features/lead-generation/components/my-lead-queue-top-action-bar";
@@ -18,6 +21,7 @@ import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/l
 import { getLeadGenerationMyQueueStockPageDetail } from "@/features/lead-generation/queries/get-lead-generation-stock-for-agent";
 import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
 import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
+import { isEligibleForDropcontactEnrichment } from "@/features/lead-generation/dropcontact/build-dropcontact-request";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import {
@@ -102,6 +106,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
       ? "Suggestion : " + stock.enriched_email
       : null;
   const streetViewModel = buildLeadGenerationStreetViewModel(stock);
+  const dropcontactElig = isEligibleForDropcontactEnrichment(stock);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8">
       {openedViaSupportBypass ? (
@@ -116,18 +121,6 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
 
       <PageHeader
         title={stock.company_name}
-        titlePrefix={
-          streetViewModel.canShowSection ? (
-            <Link
-              href={streetViewModel.openMapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Ouvrir dans Google Maps
-            </Link>
-          ) : undefined
-        }
         description={
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <LeadGenerationDispatchQueueBadge
@@ -164,6 +157,41 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
           </>
         }
       />
+
+      <LeadGenerationQuickValidationPanel
+        stockId={stock.id}
+        mapsUrl={streetViewModel.openMapsUrl}
+        showMapsLink={streetViewModel.canShowSection}
+        disabled={
+          Boolean(stock.converted_lead_id) ||
+          stock.stock_status === "rejected" ||
+          lockActionsForSupportView ||
+          callTraceReadOnly
+        }
+        disableOutOfTarget={lockActionsForSupportView || callTraceReadOnly || !assignmentId}
+      />
+
+      <LeadGenerationDropcontactPanel
+        stockId={stock.id}
+        eligible={dropcontactElig.ok}
+        disabled={
+          Boolean(stock.converted_lead_id) ||
+          stock.stock_status === "rejected" ||
+          lockActionsForSupportView ||
+          callTraceReadOnly
+        }
+        dropcontactStatus={stock.dropcontact_status ?? "idle"}
+        dropcontactRequestedAt={stock.dropcontact_requested_at ?? null}
+        dropcontactCompletedAt={stock.dropcontact_completed_at ?? null}
+        dropcontactLastError={stock.dropcontact_last_error ?? null}
+        email={stock.email?.trim() || stock.enriched_email?.trim() || null}
+        phone={stock.phone?.trim() || stock.normalized_phone?.trim() || null}
+        decisionMakerName={stock.decision_maker_name ?? null}
+        decisionMakerRole={stock.decision_maker_role ?? null}
+        linkedinUrl={stock.linkedin_url ?? null}
+      />
+
+      <LeadGenerationCallReadinessCard stock={stock} />
 
       {assignmentIdForHistory ? (
         <MyLeadQueueTopActionBar

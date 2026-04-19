@@ -6,6 +6,7 @@ import type {
   LeadGenerationDecisionMakerConfidence,
   LeadGenerationDecisionMakerSource,
   LeadGenerationDispatchQueueStatus,
+  LeadGenerationDropcontactStatus,
   LeadGenerationEnrichmentConfidence,
   LeadGenerationEnrichmentSource,
   LeadGenerationEnrichmentStatus,
@@ -60,6 +61,13 @@ export type LeadGenerationStockRow = {
   created_at: string;
   updated_at: string;
   enrichment_status: LeadGenerationEnrichmentStatus;
+  /** Requête Dropcontact en cours ou terminée (webhook). */
+  dropcontact_request_id?: string | null;
+  dropcontact_status?: LeadGenerationDropcontactStatus;
+  dropcontact_requested_at?: string | null;
+  dropcontact_completed_at?: string | null;
+  dropcontact_last_error?: string | null;
+  dropcontact_raw_payload?: Json | null;
   enriched_at: string | null;
   enrichment_error: string | null;
   enriched_email: string | null;

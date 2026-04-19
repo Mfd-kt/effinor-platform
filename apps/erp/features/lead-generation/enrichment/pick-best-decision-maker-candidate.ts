@@ -25,6 +25,7 @@ export function scoreDecisionMakerCandidate(c: ScoredDecisionMakerCandidate): nu
   const hasRole = c.role?.trim() ? 3 : 0;
   const sourceBonus: Record<LeadGenerationDecisionMakerSource, number> = {
     linkedin: 3,
+    dropcontact: 2,
     website: 2,
     google: 1,
   };

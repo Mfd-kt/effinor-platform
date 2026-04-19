@@ -23,6 +23,7 @@ import {
 } from "@/features/lead-generation/components/lead-generation-premium-badges";
 import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
 import { LeadGenerationVerifySiteButton } from "@/features/lead-generation/components/lead-generation-verify-site-button";
+import { isEligibleForDropcontactEnrichment } from "@/features/lead-generation/dropcontact/build-dropcontact-request";
 import { isEligibleForLeadGenerationEnrichment } from "@/features/lead-generation/enrichment/enrich-lead-generation-stock";
 import { isEligibleForVerifiedLeadGenerationEnrichment } from "@/features/lead-generation/enrichment/verified-enrichment-eligibility";
 import { formatDuplicateMatchReasonsForDisplay } from "@/features/lead-generation/dedup/duplicate-match-labels";
@@ -35,7 +36,10 @@ import { getLeadGenerationAssignableAgents } from "@/features/lead-generation/qu
 import { getLeadGenerationStockActivities } from "@/features/lead-generation/queries/get-lead-generation-assignment-activities";
 import { getLeadGenerationAssignmentRecycleSnapshot } from "@/features/lead-generation/queries/get-lead-generation-assignment-recycle-snapshot";
 import { LeadGenerationClosingReadinessBadge } from "@/features/lead-generation/components/lead-generation-closing-readiness-badge";
+import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
 import { LeadGenerationDeleteStockButton } from "@/features/lead-generation/components/lead-generation-delete-stock-button";
+import { LeadGenerationDropcontactPanel } from "@/features/lead-generation/components/lead-generation-dropcontact-panel";
+import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
 import { LeadGenerationManualReviewPanel } from "@/features/lead-generation/components/lead-generation-manual-review-panel";
 import { getLeadGenerationManualReviews } from "@/features/lead-generation/queries/get-lead-generation-manual-reviews";
 import { getLeadGenerationStockById } from "@/features/lead-generation/queries/get-lead-generation-stock-by-id";
@@ -120,6 +124,7 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
   const defaultAgentId = await getAssignmentAgentId(stock.current_assignment_id);
   const enrichElig = isEligibleForLeadGenerationEnrichment(stock);
   const verifiedElig = isEligibleForVerifiedLeadGenerationEnrichment(stock);
+  const dropcontactElig = isEligibleForDropcontactEnrichment(stock);
 
   const rawJson = JSON.stringify(stock.raw_payload ?? {}, null, 2);
   const streetViewModel = buildLeadGenerationStreetViewModel(stock);
@@ -128,18 +133,6 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
     <div className="mx-auto w-full max-w-4xl space-y-8">
       <PageHeader
         title={stock.company_name}
-        titlePrefix={
-          streetViewModel.canShowSection ? (
-            <Link
-              href={streetViewModel.openMapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Ouvrir dans Google Maps
-            </Link>
-          ) : undefined
-        }
         description={[stock.city, stock.phone].filter(Boolean).join(" · ") || "Fiche stock lead generation"}
         actions={
           <div className="flex flex-wrap items-end justify-end gap-2">
@@ -155,6 +148,38 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
           </div>
         }
       />
+
+      <LeadGenerationQuickValidationPanel
+        stockId={stock.id}
+        mapsUrl={streetViewModel.openMapsUrl}
+        showMapsLink={streetViewModel.canShowSection}
+        disabled={
+          Boolean(stock.converted_lead_id) ||
+          stock.stock_status === "rejected" ||
+          stock.qualification_status === "duplicate"
+        }
+      />
+
+      <LeadGenerationDropcontactPanel
+        stockId={stock.id}
+        eligible={dropcontactElig.ok}
+        disabled={
+          Boolean(stock.converted_lead_id) ||
+          stock.stock_status === "rejected" ||
+          stock.qualification_status === "duplicate"
+        }
+        dropcontactStatus={stock.dropcontact_status ?? "idle"}
+        dropcontactRequestedAt={stock.dropcontact_requested_at ?? null}
+        dropcontactCompletedAt={stock.dropcontact_completed_at ?? null}
+        dropcontactLastError={stock.dropcontact_last_error ?? null}
+        email={stock.email?.trim() || stock.enriched_email?.trim() || null}
+        phone={stock.phone?.trim() || stock.normalized_phone?.trim() || null}
+        decisionMakerName={stock.decision_maker_name ?? null}
+        decisionMakerRole={stock.decision_maker_role ?? null}
+        linkedinUrl={stock.linkedin_url ?? null}
+      />
+
+      <LeadGenerationCallReadinessCard stock={stock} />
 
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline" className="text-xs">
@@ -442,7 +467,11 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
             {stock.enrichment_status === "completed" ? (
               <>
                 <Badge variant="secondary" className="text-xs font-normal">
-                  {(stock.enrichment_source ?? "heuristic") === "firecrawl" ? "Site public" : "Heuristique"}
+                  {(stock.enrichment_source ?? "heuristic") === "firecrawl"
+                    ? "Site public"
+                    : (stock.enrichment_source ?? "heuristic") === "dropcontact"
+                      ? "Dropcontact"
+                      : "Heuristique"}
                 </Badge>
                 <LeadGenerationEnrichmentConfidenceBadge level={stock.enrichment_confidence ?? "low"} />
               </>

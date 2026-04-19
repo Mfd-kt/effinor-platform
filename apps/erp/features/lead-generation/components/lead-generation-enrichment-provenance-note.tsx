@@ -34,5 +34,13 @@ export function LeadGenerationEnrichmentProvenanceNote({ stock }: { stock: LeadG
     );
   }
 
+  if (src === "dropcontact") {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Données complétées via Dropcontact sur demande — contrôler avant usage critique.
+      </p>
+    );
+  }
+
   return null;
 }

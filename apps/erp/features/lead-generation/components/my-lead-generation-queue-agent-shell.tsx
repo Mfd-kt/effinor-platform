@@ -22,7 +22,10 @@ import {
 } from "../lib/my-queue-follow-up";
 import { LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET } from "../lib/my-queue-manual-dispatch";
 import type { MyLeadGenerationQueueItem } from "../queries/get-my-lead-generation-queue";
-import { MyLeadGenerationQueueReloadButton } from "./my-lead-generation-queue-reload-button";
+import {
+  MyLeadQueueCeeSheetPicker,
+  MyLeadQueueReadyPoolFetchButton,
+} from "./my-lead-generation-queue-reload-button";
 import { MyLeadGenerationQueueTable } from "./my-lead-generation-queue-table";
 
 const FILTERS: { id: MyQueueQuickFilter; label: string }[] = [
@@ -132,79 +135,40 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
     return null;
   }, [needsCeePick, hasValidSelection, isNoCeeSelected, selectedOption]);
 
+  const fetchStock = needsCeePick ? stockForPlafond : globalActive;
+
   return (
     <div className="space-y-8">
       <section
         className={cn(
-          "space-y-5 rounded-xl border border-border/80 bg-card/50 p-4 shadow-sm sm:p-6",
+          "rounded-xl border border-border/80 bg-card/50 p-4 shadow-sm sm:p-5",
           "ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
         )}
       >
+        <p className="mb-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Lead generation</span> — vos prospections à traiter. Le menu
+          produit ci-dessous sert uniquement à filtrer le carnet (ce n’est pas l’écran dossier du poste Agent).
+        </p>
         {needsCeePick && !hasValidSelection ? (
-          <p className="rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2.5 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/[0.09] dark:text-amber-100">
-            Choisissez la <span className="font-semibold">fiche CEE</span> sur laquelle vous travaillez pour voir vos
-            priorités et votre liste.
+          <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2.5 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/[0.09] dark:text-amber-100">
+            Choisissez un <span className="font-semibold">produit CEE</span> (ou « sans fiche CEE ») pour afficher votre
+            liste et vos indicateurs.
           </p>
         ) : null}
 
-        {scopeTitle ? (
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Fiche CEE</p>
-              <p className="mt-0.5 text-base font-semibold text-foreground">{scopeTitle}</p>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
-          <div className="min-w-0 flex-1">
-            <MyLeadGenerationQueueReloadButton
-              stockForPlafond={needsCeePick ? stockForPlafond : globalActive}
-              ceeSheetOptions={ceeSheetOptions}
-              selectedCeeSheetId={selectedCeeSheetId}
-              onSelectedCeeSheetIdChange={setSelectedCeeSheetId}
-              viewerUserId={viewerUserId}
-              ceeSelectionMandatory={needsCeePick}
-            />
-          </div>
-
-          {needsCeePick && !hasValidSelection ? null : (
-            <div className="grid w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-lg border border-border/80 bg-background/60 px-3 py-2.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Stock actif</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
-                  {Math.max(0, stockForPlafond)} / {maxCap}
-                </p>
-              </div>
-              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 dark:bg-emerald-500/[0.08]">
-                <p className="text-[11px] font-medium text-muted-foreground">Places restantes</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                  {placesLeft}
-                </p>
-              </div>
-              <div className="rounded-lg border border-red-500/25 bg-red-500/[0.05] px-3 py-2.5 dark:bg-red-500/[0.07]">
-                <p className="text-[11px] font-medium text-muted-foreground">Rappels en retard</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">{kpis.overdue}</p>
-              </div>
-              <div className="rounded-lg border border-orange-500/25 bg-orange-500/[0.05] px-3 py-2.5 dark:bg-orange-500/[0.08]">
-                <p className="text-[11px] font-medium text-muted-foreground">À appeler aujourd’hui</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums text-orange-800 dark:text-orange-200">
-                  {kpis.dueToday}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/80 bg-background/60 px-3 py-2.5 sm:col-span-2 lg:col-span-1">
-                <p className="text-[11px] font-medium text-muted-foreground">Priorité haute</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">{kpis.highPriority}</p>
-              </div>
-            </div>
-          )}
-        </div>
+        <MyLeadQueueCeeSheetPicker
+          ceeSheetOptions={ceeSheetOptions}
+          selectedCeeSheetId={selectedCeeSheetId}
+          onSelectedCeeSheetIdChange={setSelectedCeeSheetId}
+          viewerUserId={viewerUserId}
+          ceeSelectionMandatory={needsCeePick}
+        />
       </section>
 
       {needsCeePick && !hasValidSelection ? null : (
         <section className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">À appeler en priorité</h2>
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Vos prospections à appeler</h2>
             {filter !== "all" ? (
               <p className="text-xs text-muted-foreground">
                 {filteredTableRows.length} fiche{filteredTableRows.length > 1 ? "s" : ""} sur {itemsInCeeScope.length}
@@ -239,12 +203,70 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
               {itemsInCeeScope.length === 0
                 ? isNoCeeSelected
                   ? "Aucune prospection sans fiche CEE dans votre file. Récupérez des fiches prêtes quand le carnet le permet."
-                  : "Aucune prospection dans votre file pour cette fiche. Récupérez des fiches prêtes quand le carnet le permet."
+                  : "Aucune prospection dans votre file pour ce produit. Récupérez des fiches prêtes quand le carnet le permet."
                 : "Aucune fiche ne correspond à ce filtre."}
             </p>
           ) : (
             <MyLeadGenerationQueueTable items={filteredTableRows} showCeeColumn={showCeeColumn} />
           )}
+        </section>
+      )}
+
+      {needsCeePick && !hasValidSelection ? null : (
+        <section
+          className={cn(
+            "space-y-5 rounded-xl border border-border/80 bg-card/50 p-4 shadow-sm sm:p-6",
+            "ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
+          )}
+        >
+          {scopeTitle ? (
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Produit CEE (filtre carnet)
+                </p>
+                <p className="mt-0.5 text-base font-semibold text-foreground">{scopeTitle}</p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="rounded-lg border border-border/80 bg-background/60 px-3 py-2.5">
+              <p className="text-[11px] font-medium text-muted-foreground">Stock actif</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
+                {Math.max(0, stockForPlafond)} / {maxCap}
+              </p>
+            </div>
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 dark:bg-emerald-500/[0.08]">
+              <p className="text-[11px] font-medium text-muted-foreground">Places restantes</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                {placesLeft}
+              </p>
+            </div>
+            <div className="rounded-lg border border-red-500/25 bg-red-500/[0.05] px-3 py-2.5 dark:bg-red-500/[0.07]">
+              <p className="text-[11px] font-medium text-muted-foreground">Rappels en retard</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">{kpis.overdue}</p>
+            </div>
+            <div className="rounded-lg border border-orange-500/25 bg-orange-500/[0.05] px-3 py-2.5 dark:bg-orange-500/[0.08]">
+              <p className="text-[11px] font-medium text-muted-foreground">À appeler aujourd’hui</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-orange-800 dark:text-orange-200">
+                {kpis.dueToday}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/80 bg-background/60 px-3 py-2.5 sm:col-span-2 lg:col-span-1">
+              <p className="text-[11px] font-medium text-muted-foreground">Priorité haute</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">{kpis.highPriority}</p>
+            </div>
+          </div>
+
+          <MyLeadQueueReadyPoolFetchButton
+            stockForPlafond={fetchStock}
+            ceeSheetOptions={ceeSheetOptions}
+            selectedCeeSheetId={selectedCeeSheetId}
+            onSelectedCeeSheetIdChange={setSelectedCeeSheetId}
+            viewerUserId={viewerUserId}
+            ceeSelectionMandatory={needsCeePick}
+          />
         </section>
       )}
     </div>
