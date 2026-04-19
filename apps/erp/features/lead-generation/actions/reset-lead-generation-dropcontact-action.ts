@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
+import {
+  canAccessLeadGenerationHub,
+  canBypassLeadGenMyQueueAsImpersonationActor,
+} from "@/lib/auth/module-access";
 import { createClient } from "@/lib/supabase/server";
 
 import type { LeadGenerationStockRow } from "../domain/stock-row";
@@ -26,8 +29,13 @@ export async function resetLeadGenerationDropcontactAction(
   }
 
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
-    return { ok: false, message: "Action réservée au pilotage (acquisition de leads)." };
+  if (access.kind !== "authenticated") {
+    return { ok: false, message: "Non authentifié." };
+  }
+  const hub = await canAccessLeadGenerationHub(access);
+  const impersonationSupport = canBypassLeadGenMyQueueAsImpersonationActor(access);
+  if (!hub && !impersonationSupport) {
+    return { ok: false, message: "Action réservée au pilotage (acquisition de leads) ou au support en impersonation." };
   }
 
   const supabase = await createClient();

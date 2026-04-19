@@ -175,7 +175,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
 
       <LeadGenerationDropcontactPanel
         stockId={stock.id}
-        canResetDropcontact={leadGenHub}
+        canResetDropcontact={leadGenHub || canBypassLeadGenMyQueueAsImpersonationActor(access)}
         eligible={dropcontactElig.ok}
         disabled={
           Boolean(stock.converted_lead_id) ||
@@ -184,6 +184,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
           callTraceReadOnly
         }
         dropcontactStatus={stock.dropcontact_status ?? "idle"}
+        dropcontactRequestId={stock.dropcontact_request_id ?? null}
         dropcontactRequestedAt={stock.dropcontact_requested_at ?? null}
         dropcontactCompletedAt={stock.dropcontact_completed_at ?? null}
         dropcontactLastError={stock.dropcontact_last_error ?? null}

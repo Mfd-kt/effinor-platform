@@ -16,7 +16,11 @@ import type { LeadGenerationStockRow } from "../domain/stock-row";
 
 export type EnrichLeadWithDropcontactResult = { ok: true; message: string } | { ok: false; message: string };
 
-async function canUseDropcontactOnStock(accessUserId: string, stock: LeadGenerationStockRow, hub: boolean): Promise<boolean> {
+export async function canUseDropcontactOnStock(
+  accessUserId: string,
+  stock: LeadGenerationStockRow,
+  hub: boolean,
+): Promise<boolean> {
   if (hub) return true;
   const aid = stock.current_assignment_id;
   if (!aid) return false;

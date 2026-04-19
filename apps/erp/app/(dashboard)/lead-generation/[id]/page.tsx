@@ -170,6 +170,7 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
           stock.qualification_status === "duplicate"
         }
         dropcontactStatus={stock.dropcontact_status ?? "idle"}
+        dropcontactRequestId={stock.dropcontact_request_id ?? null}
         dropcontactRequestedAt={stock.dropcontact_requested_at ?? null}
         dropcontactCompletedAt={stock.dropcontact_completed_at ?? null}
         dropcontactLastError={stock.dropcontact_last_error ?? null}

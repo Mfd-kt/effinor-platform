@@ -10,6 +10,7 @@ import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import { enrichLeadWithDropcontactAction } from "../actions/enrich-lead-generation-stock-dropcontact-action";
+import { pullLeadGenerationDropcontactResultAction } from "../actions/pull-lead-generation-dropcontact-result-action";
 import { resetLeadGenerationDropcontactAction } from "../actions/reset-lead-generation-dropcontact-action";
 
 function dropcontactStatusLabel(status: string): string {
@@ -34,6 +35,8 @@ type Props = {
   eligible: boolean;
   disabled: boolean;
   dropcontactStatus: string;
+  /** Présent quand une requête Dropcontact est partie (permet la récupération GET si le webhook tarde). */
+  dropcontactRequestId: string | null;
   dropcontactRequestedAt: string | null;
   dropcontactCompletedAt: string | null;
   dropcontactLastError: string | null;
@@ -50,6 +53,7 @@ export function LeadGenerationDropcontactPanel({
   eligible,
   disabled,
   dropcontactStatus,
+  dropcontactRequestId,
   dropcontactRequestedAt,
   dropcontactCompletedAt,
   dropcontactLastError,
@@ -62,11 +66,15 @@ export function LeadGenerationDropcontactPanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [resetPending, startResetTransition] = useTransition();
+  const [pullPending, startPullTransition] = useTransition();
   const [flash, setFlash] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
 
   const isPending = dropcontactStatus === "pending";
   const busy = pending || resetPending || isPending;
   const canClick = eligible && !disabled && !busy;
+  const hasDropcontactRequestId = Boolean(dropcontactRequestId?.trim());
+  const canPullResult =
+    dropcontactStatus === "pending" && hasDropcontactRequestId && !disabled && !pullPending && !pending;
   const showResetButton = canResetDropcontact && !disabled && dropcontactStatus !== "idle";
 
   return (
@@ -74,7 +82,8 @@ export function LeadGenerationDropcontactPanel({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Enrichissement</CardTitle>
         <CardDescription>
-          Une requête part vers Dropcontact ; le résultat revient sur le serveur via un webhook (pas dans le navigateur).
+          Une requête part vers Dropcontact ; le résultat revient d’habitude via webhook serveur. Si le statut reste bloqué,
+          utilisez « Récupérer le résultat » : le serveur interroge alors directement l’API Dropcontact.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">
@@ -100,13 +109,12 @@ export function LeadGenerationDropcontactPanel({
           ) : null}
           {dropcontactStatus === "pending" ? (
             <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200">
-              En attente de la réponse Dropcontact sur le serveur (webhook). Si cela dure plus de quelques minutes,
-              vérifiez côté hébergeur : URL exacte{" "}
-              <span className="font-mono text-[11px]">/api/dropcontact/webhook</span>, variables{" "}
+              En attente du webhook ou du traitement Dropcontact. Essayez d’abord « Récupérer le résultat » ci-dessous.
+              Si le blocage persiste, vérifiez côté hébergeur :{" "}
+              <span className="font-mono text-[11px]">/api/dropcontact/webhook</span>,{" "}
               <span className="font-mono text-[11px]">DROPCONTACT_WEBHOOK_CALLBACK_URL</span> ou{" "}
-              <span className="font-mono text-[11px]">NEXT_PUBLIC_APP_URL</span>,{" "}
-              <span className="font-mono text-[11px]">SUPABASE_SERVICE_ROLE_KEY</span>, et les logs des requêtes POST
-              webhook. En local sans URL publique, le webhook n’arrive pas.
+              <span className="font-mono text-[11px]">NEXT_PUBLIC_APP_URL</span>, et{" "}
+              <span className="font-mono text-[11px]">SUPABASE_SERVICE_ROLE_KEY</span>.
             </p>
           ) : null}
           {dropcontactStatus === "completed" ? (
@@ -142,6 +150,32 @@ export function LeadGenerationDropcontactPanel({
               "Enrichir avec Dropcontact"
             )}
           </Button>
+          {canPullResult || pullPending ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={!canPullResult}
+              onClick={() => {
+                setFlash(null);
+                startPullTransition(async () => {
+                  const res = await pullLeadGenerationDropcontactResultAction(stockId);
+                  setFlash({ tone: res.ok ? "ok" : "err", text: res.message });
+                  router.refresh();
+                });
+              }}
+            >
+              {pullPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Récupération…
+                </>
+              ) : (
+                "Récupérer le résultat"
+              )}
+            </Button>
+          ) : null}
           {showResetButton ? (
             <Button
               type="button"
