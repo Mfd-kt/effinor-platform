@@ -185,7 +185,15 @@ export function LeadGenerationQuickValidationPanel({
                     });
                     if (res.ok) {
                       setMessage({ tone: "ok", text: res.message });
-                      router.refresh();
+                      if (variant === "quantifier") {
+                        if (res.nextStockId) {
+                          router.replace(`/lead-generation/quantification/${res.nextStockId}`);
+                        } else {
+                          router.replace("/lead-generation/quantification");
+                        }
+                      } else {
+                        router.refresh();
+                      }
                     } else {
                       setMessage({ tone: "err", text: res.message });
                     }

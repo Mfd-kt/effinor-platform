@@ -68,8 +68,35 @@ const RETURNED_FROM_COMMERCIAL_PATCH_KEYS = [
   "returned_from_commercial_note",
 ] as const;
 
-function patchMissingReturnedFromCommercialInSchemaCache(message: string): boolean {
-  return message.includes("returned_from_commercial") && message.includes("schema cache");
+function postgrestErrorText(err: unknown): string {
+  if (err == null) return "";
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  if (typeof err === "object") {
+    const o = err as Record<string, unknown>;
+    const parts = [o.message, o.details, o.hint].filter(
+      (x): x is string => typeof x === "string" && x.length > 0,
+    );
+    if (parts.length > 0) return parts.join(" | ");
+  }
+  try {
+    return String(err);
+  } catch {
+    return "";
+  }
+}
+
+/** Réessai sans les champs retour commercial : PostgREST peut refuser le corps si colonnes absentes / cache désynchronisé. */
+function shouldRetryWithoutReturnedFromCommercialFields(message: string): boolean {
+  return message.toLowerCase().includes("returned_from_commercial");
+}
+
+function stockRowExposesReturnedFromCommercialColumns(stock: LeadGenerationStockRow): boolean {
+  return (
+    Object.prototype.hasOwnProperty.call(stock, "returned_from_commercial_at") ||
+    Object.prototype.hasOwnProperty.call(stock, "returned_from_commercial_by_user_id") ||
+    Object.prototype.hasOwnProperty.call(stock, "returned_from_commercial_note")
+  );
 }
 
 function omitPatchKeys(patch: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
@@ -263,18 +290,23 @@ export async function reviewLeadGenerationStock(
           qualification_status: "qualified",
           stock_status: "ready",
           rejection_reason: null,
-          returned_from_commercial_at: null,
-          returned_from_commercial_by_user_id: null,
-          returned_from_commercial_note: null,
+          ...(stockRowExposesReturnedFromCommercialColumns(stock)
+            ? {
+                returned_from_commercial_at: null,
+                returned_from_commercial_by_user_id: null,
+                returned_from_commercial_note: null,
+              }
+            : {}),
         };
         break;
       }
     }
 
     let { error: upErr } = await stockT.update(patch).eq("id", stockId);
+    const upErrText = postgrestErrorText(upErr);
     if (
       upErr &&
-      patchMissingReturnedFromCommercialInSchemaCache(upErr.message) &&
+      shouldRetryWithoutReturnedFromCommercialFields(upErrText) &&
       RETURNED_FROM_COMMERCIAL_PATCH_KEYS.some((k) => k in patch)
     ) {
       ({ error: upErr } = await stockT
@@ -282,12 +314,15 @@ export async function reviewLeadGenerationStock(
         .eq("id", stockId));
     }
     if (upErr) {
-      return { ok: false, error: upErr.message };
+      return { ok: false, error: postgrestErrorText(upErr) || "Mise à jour impossible." };
     }
 
     const { data: afterRow, error: afterErr } = await stockT.select("*").eq("id", stockId).maybeSingle();
     if (afterErr || !afterRow) {
-      return { ok: false, error: afterErr?.message ?? "Lecture après mise à jour impossible." };
+      return {
+        ok: false,
+        error: postgrestErrorText(afterErr) || "Lecture après mise à jour impossible.",
+      };
     }
 
     const new_snapshot = compactLeadGenerationStockAuditSnapshot(afterRow as LeadGenerationStockRow) as unknown as Json;

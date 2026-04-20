@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -37,6 +38,17 @@ type Props = {
   className?: string;
 };
 
+function replaceWithNextQuantificationOrList(
+  router: ReturnType<typeof useRouter>,
+  nextStockId: string | null,
+) {
+  if (nextStockId) {
+    router.replace(`/lead-generation/quantification/${nextStockId}`);
+  } else {
+    router.replace("/lead-generation/quantification");
+  }
+}
+
 function staleServerActionMessage(err: unknown): string | null {
   const msg = err instanceof Error ? err.message : String(err);
   if (msg.toLowerCase().includes("server action") && msg.toLowerCase().includes("was not found")) {
@@ -50,9 +62,24 @@ export function LeadGenerationQuantificationActions({ stockId, className }: Prop
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [ootReason, setOotReason] = useState<LeadGenOutOfTargetReasonCode>("oot:non_precise");
+  const [qualifyComment, setQualifyComment] = useState("");
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={`lg-q-comment-${stockId}`} className="text-[11px] text-muted-foreground">
+          Commentaire (optionnel)
+        </Label>
+        <Textarea
+          id={`lg-q-comment-${stockId}`}
+          value={qualifyComment}
+          onChange={(e) => setQualifyComment(e.target.value)}
+          disabled={pending}
+          placeholder="Note pour l’équipe ou le suivi (visible dans l’historique de revue)."
+          className="min-h-[72px] max-h-[200px] resize-y text-sm"
+          maxLength={4000}
+        />
+      </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
         <Button
           type="button"
@@ -62,10 +89,13 @@ export function LeadGenerationQuantificationActions({ stockId, className }: Prop
             setFeedback(null);
             startTransition(async () => {
               try {
-                const res = await quantifierQualifyLeadGenerationStockAction(stockId);
+                const res = await quantifierQualifyLeadGenerationStockAction(stockId, {
+                  comment: qualifyComment,
+                });
                 if (res.ok) {
+                  setQualifyComment("");
                   setFeedback({ tone: "ok", text: res.message });
-                  router.refresh();
+                  replaceWithNextQuantificationOrList(router, res.nextStockId);
                 } else {
                   setFeedback({ tone: "err", text: res.message });
                 }
@@ -117,7 +147,7 @@ export function LeadGenerationQuantificationActions({ stockId, className }: Prop
                 });
                 if (res.ok) {
                   setFeedback({ tone: "ok", text: res.message ?? "Hors cible enregistré." });
-                  router.refresh();
+                  replaceWithNextQuantificationOrList(router, res.nextStockId);
                 } else {
                   setFeedback({ tone: "err", text: res.message ?? "Action impossible." });
                 }

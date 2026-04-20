@@ -13,12 +13,13 @@ import type { Json } from "../domain/json";
 import type { LeadGenerationStockRow } from "../domain/stock-row";
 import { assertQuantifierMayActOnQuantificationStock } from "../lib/quantification-batch-ownership";
 import { lgTable } from "../lib/lg-db";
+import { resolveNextQuantificationStockId } from "../lib/resolve-next-quantification-stock-id";
 import { normalizeLeadGenOutOfTargetReasonCode } from "../lib/out-of-target";
 import { compactLeadGenerationStockAuditSnapshot } from "../services/review-lead-generation-stock";
 import { insertLeadGenerationManualReviewRow } from "../services/insert-lead-generation-manual-review";
 
 export type MarkLeadGenerationStockOutOfTargetResult =
-  | { ok: true; message: string }
+  | { ok: true; message: string; nextStockId: string | null }
   | { ok: false; message: string };
 
 /**
@@ -98,8 +99,10 @@ export async function markLeadGenerationStockOutOfTargetAction(
   }
 
   if (stock.stock_status === "rejected") {
-    return { ok: true, message: "La fiche a été marquée hors cible." };
+    return { ok: true, message: "La fiche a été marquée hors cible.", nextStockId: null };
   }
+
+  const nextStockId = await resolveNextQuantificationStockId(access, id);
 
   const aid = stock.current_assignment_id;
 
@@ -201,5 +204,5 @@ export async function markLeadGenerationStockOutOfTargetAction(
   revalidatePath("/lead-generation/quantification");
   revalidatePath(`/lead-generation/quantification/${id}`);
 
-  return { ok: true, message: "La fiche a été marquée hors cible." };
+  return { ok: true, message: "La fiche a été marquée hors cible.", nextStockId };
 }
