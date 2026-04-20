@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isLeadGenGoogleMapsRegionValue } from "../lib/google-maps-region-options";
 import { LEAD_GENERATION_SECTOR_OPTIONS } from "../lib/generate-campaign";
 import { LEAD_GENERATION_AUTOMATION_TYPES } from "../automation/types";
 import { LEAD_GENERATION_SETTINGS_KEYS } from "../settings/default-settings";
@@ -58,8 +59,15 @@ export const startGoogleMapsApifyImportActionInputSchema = z.object({
     .max(20, "Maximum 20 recherches."),
   maxCrawledPlacesPerSearch: z.number().int().min(1).max(500).optional(),
   includeWebResults: z.boolean().optional(),
-  /** Zone Maps ; vide = défaut serveur (France métropolitaine). */
-  locationQuery: z.string().trim().max(200).optional(),
+  /** Zone Maps (liste régions) ; vide = défaut serveur (France métropolitaine). */
+  locationQuery: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .refine((q) => !q || isLeadGenGoogleMapsRegionValue(q), {
+      message: "Choisissez une zone dans la liste.",
+    }),
   ceeSheetId: uuid,
   targetTeamId: uuid,
 });

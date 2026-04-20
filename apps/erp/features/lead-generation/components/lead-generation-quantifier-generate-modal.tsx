@@ -15,9 +15,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 import { quantifierStartGoogleMapsApifyImportAction } from "../actions/quantifier-start-google-maps-apify-import-action";
 import { DEFAULT_APIFY_GOOGLE_MAPS_LOCATION_QUERY } from "../apify/google-maps-actor-input";
+import { LeadGenerationGoogleMapsRegionSelect } from "./lead-generation-google-maps-region-select";
+import { parseGoogleMapsSearchLines } from "../lib/parse-google-maps-search-lines";
 import type { LeadGenerationCeeImportScope } from "../queries/get-lead-generation-cee-import-scope";
 
 import { LeadGenerationCeeTeamPickers } from "./lead-generation-cee-team-pickers";
@@ -29,9 +32,9 @@ type Props = {
 export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [keyword, setKeyword] = useState("");
+  const [searchLines, setSearchLines] = useState("");
   const [locationQuery, setLocationQuery] = useState(DEFAULT_APIFY_GOOGLE_MAPS_LOCATION_QUERY);
-  const [maxPlaces, setMaxPlaces] = useState("50");
+  const [maxPlaces, setMaxPlaces] = useState("");
   const [ceeSheetId, setCeeSheetId] = useState("");
   const [targetTeamId, setTargetTeamId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -39,9 +42,9 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
 
   function submit() {
     setMessage(null);
-    const kw = keyword.trim();
-    if (!kw) {
-      setMessage("Indiquez un mot-clé.");
+    const searches = parseGoogleMapsSearchLines(searchLines);
+    if (searches.length === 0) {
+      setMessage("Indiquez au moins une recherche (une idée par ligne).");
       return;
     }
     const maxN = maxPlaces.trim() === "" ? undefined : Number.parseInt(maxPlaces, 10);
@@ -56,7 +59,7 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
 
     startTransition(async () => {
       const res = await quantifierStartGoogleMapsApifyImportAction({
-        keyword: kw,
+        searchLines,
         locationQuery: locationQuery.trim() || undefined,
         ceeSheetId: ceeSheetId.trim(),
         targetTeamId: targetTeamId.trim(),
@@ -67,13 +70,16 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
         return;
       }
       setOpen(false);
-      setKeyword("");
+      setSearchLines("");
+      setMaxPlaces("");
       router.refresh();
     });
   }
 
+  const searchCount = parseGoogleMapsSearchLines(searchLines).length;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <Button type="button" size="sm">
           Générer des leads
@@ -84,41 +90,10 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
           <DialogTitle>Générer des leads (Google Maps)</DialogTitle>
           <DialogDescription>
             Les fiches créées arrivent en <strong>à valider</strong> : aucun commercial ne les reçoit tant qu’elles ne sont pas
-            qualifiées.
+            qualifiées. Même principe que sur le tableau de bord : une recherche par ligne, zone géographique standardisée.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="qg-keyword">Mot-clé</Label>
-            <Input
-              id="qg-keyword"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Ex. isolation thermique"
-              maxLength={200}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="qg-zone">Ville / zone</Label>
-            <Input
-              id="qg-zone"
-              value={locationQuery}
-              onChange={(e) => setLocationQuery(e.target.value)}
-              placeholder="Ex. Lyon"
-              maxLength={200}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="qg-max">Nombre max de résultats</Label>
-            <Input
-              id="qg-max"
-              type="number"
-              min={1}
-              max={500}
-              value={maxPlaces}
-              onChange={(e) => setMaxPlaces(e.target.value)}
-            />
-          </div>
           <LeadGenerationCeeTeamPickers
             scope={ceeScope}
             ceeSheetId={ceeSheetId}
@@ -128,13 +103,55 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
             disabled={pending}
             idPrefix="qg-cee"
           />
+          <div className="space-y-2">
+            <Label htmlFor="qg-search-lines">Recherches Google Maps</Label>
+            <Textarea
+              id="qg-search-lines"
+              value={searchLines}
+              onChange={(e) => setSearchLines(e.target.value)}
+              placeholder={"Isolation thermique Lyon\nPlombier Grenoble"}
+              rows={4}
+              className="min-h-[96px] text-sm"
+              disabled={pending}
+            />
+            <p className="text-[11px] text-muted-foreground">Une idée de recherche par ligne (comme sur Google Maps).</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="qg-zone">Zone géographique</Label>
+            <LeadGenerationGoogleMapsRegionSelect
+              id="qg-zone"
+              value={locationQuery}
+              onValueChange={setLocationQuery}
+              disabled={pending}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Liste des régions — même réglage que sur le dashboard pour éviter les erreurs de ciblage.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="qg-max">Nombre max. de fiches par recherche (optionnel)</Label>
+            <Input
+              id="qg-max"
+              type="number"
+              min={1}
+              max={500}
+              value={maxPlaces}
+              onChange={(e) => setMaxPlaces(e.target.value)}
+              placeholder="50"
+              disabled={pending}
+            />
+          </div>
           {message ? <p className="text-sm text-destructive">{message}</p> : null}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>
             Annuler
           </Button>
-          <Button type="button" onClick={submit} disabled={pending}>
+          <Button
+            type="button"
+            onClick={submit}
+            disabled={pending || searchCount === 0 || !ceeSheetId.trim() || !targetTeamId.trim()}
+          >
             Lancer l’import
           </Button>
         </DialogFooter>

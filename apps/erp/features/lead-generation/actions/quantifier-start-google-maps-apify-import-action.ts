@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { startGoogleMapsApifyImport } from "../apify/start-google-maps-apify-import";
 import type { StartGoogleMapsApifyImportOk } from "../apify/types";
 import type { LeadGenerationActionResult } from "../lib/action-result";
+import { parseGoogleMapsSearchLines } from "../lib/parse-google-maps-search-lines";
 import { quantifierStartGoogleMapsApifyImportActionInputSchema } from "../schemas/quantifier-google-maps-import.schema";
 import { resolveLeadGenerationImportBatchCeeContext } from "../services/resolve-lead-generation-import-batch-cee-context";
 
@@ -37,14 +38,17 @@ export async function quantifierStartGoogleMapsApifyImportAction(
       return { ok: false, error: cee.error };
     }
 
+    const searchStrings = parseGoogleMapsSearchLines(parsed.data.searchLines);
+    const campaignName = searchStrings[0] ?? "Import Maps";
+
     const out = await startGoogleMapsApifyImport({
-      searchStrings: [parsed.data.keyword.trim()],
+      searchStrings,
       locationQuery: parsed.data.locationQuery?.trim() || undefined,
       maxCrawledPlacesPerSearch: parsed.data.maxCrawledPlacesPerSearch,
       ceeSheetId: cee.data.cee_sheet_id,
       ceeSheetCode: cee.data.cee_sheet_code,
       targetTeamId: cee.data.target_team_id,
-      campaignName: parsed.data.keyword.trim(),
+      campaignName,
       createdByUserId: access.userId,
       stockInitialQualification: "to_validate",
     });

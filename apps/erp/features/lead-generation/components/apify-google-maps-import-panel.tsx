@@ -10,16 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { runImportEnrichFullPipelineAction } from "@/features/lead-generation/actions/run-import-enrich-full-pipeline-action";
 import { startGoogleMapsApifyImportAction } from "@/features/lead-generation/actions/start-google-maps-apify-import-action";
 import { DEFAULT_APIFY_GOOGLE_MAPS_LOCATION_QUERY } from "@/features/lead-generation/apify/google-maps-actor-input";
+import { parseGoogleMapsSearchLines } from "@/features/lead-generation/lib/parse-google-maps-search-lines";
 import type { LeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 
 import { LeadGenerationCeeTeamPickers } from "./lead-generation-cee-team-pickers";
-
-function parseSearchLines(raw: string): string[] {
-  return raw
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-}
+import { LeadGenerationGoogleMapsRegionSelect } from "./lead-generation-google-maps-region-select";
 
 /**
  * Bloc unique « lancer un scraping » (sync import déplacé vers la liste des imports récents).
@@ -41,7 +36,7 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
   function runStart() {
     setStartMessage(null);
     setStartResult(null);
-    const searchStrings = parseSearchLines(lines);
+    const searchStrings = parseGoogleMapsSearchLines(lines);
     const maxN = maxPlaces.trim() === "" ? undefined : Number.parseInt(maxPlaces, 10);
     if (maxN !== undefined && (Number.isNaN(maxN) || maxN < 1)) {
       setStartMessage("Indiquez un nombre d’établissements maximum valide (≥ 1).");
@@ -76,7 +71,7 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
   function runFullPipeline() {
     setPipelineMessage(null);
     setPipelineResult(null);
-    const searchStrings = parseSearchLines(lines);
+    const searchStrings = parseGoogleMapsSearchLines(lines);
     const maxN = maxPlaces.trim() === "" ? undefined : Number.parseInt(maxPlaces, 10);
     if (maxN !== undefined && (Number.isNaN(maxN) || maxN < 1)) {
       setPipelineMessage("Indiquez un nombre d’établissements maximum valide (≥ 1).");
@@ -118,8 +113,8 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
       <div className="space-y-3 rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold">Lancer un scraping Google Maps</h3>
         <p className="text-xs text-muted-foreground">
-          Saisissez vos requêtes comme sur Google Maps : une idée de recherche par ligne (ex. secteur +
-          ville). La zone géographique par défaut est la France métropolitaine ; vous pouvez l’ajuster.
+          Saisissez vos requêtes comme sur Google Maps : une idée de recherche par ligne. La zone géographique est choisie
+          dans une liste de régions (même liste que la génération côté quantification).
         </p>
         <LeadGenerationCeeTeamPickers
           scope={ceeScope}
@@ -143,12 +138,11 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
         </div>
         <div className="space-y-2">
           <Label htmlFor="apify-location-query">Zone géographique</Label>
-          <Input
+          <LeadGenerationGoogleMapsRegionSelect
             id="apify-location-query"
             value={locationQuery}
-            onChange={(e) => setLocationQuery(e.target.value)}
-            placeholder={DEFAULT_APIFY_GOOGLE_MAPS_LOCATION_QUERY}
-            autoComplete="off"
+            onValueChange={setLocationQuery}
+            disabled={anyPending}
           />
         </div>
         <div className="space-y-2">
@@ -175,7 +169,7 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
             onClick={runFullPipeline}
             disabled={
               pendingPipeline ||
-              parseSearchLines(lines).length === 0 ||
+              parseGoogleMapsSearchLines(lines).length === 0 ||
               !ceeSheetId.trim() ||
               !targetTeamId.trim()
             }
@@ -194,7 +188,7 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
           onClick={runStart}
           disabled={
             pendingStart ||
-            parseSearchLines(lines).length === 0 ||
+            parseGoogleMapsSearchLines(lines).length === 0 ||
             !ceeSheetId.trim() ||
             !targetTeamId.trim()
           }

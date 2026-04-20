@@ -86,9 +86,6 @@ export function LeadGenerationCeeTeamPickers({
     displayFallbacks?.targetTeamName,
   ]);
 
-  const selectedSheet = sheetSelectValue !== SHEET_NONE ? sheets.find((s) => s.id === sheetSelectValue) : null;
-  const selectedTeam = teamSelectValue !== TEAM_NONE ? teamsForSheet.find((t) => t.id === teamSelectValue) : null;
-
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-1.5 sm:col-span-2">
@@ -105,16 +102,11 @@ export function LeadGenerationCeeTeamPickers({
             onCeeSheetIdChange(next);
             onTargetTeamIdChange("");
           }}
-          disabled={disabled || sheets.length === 0}
+          disabled={disabled}
         >
           <SelectTrigger id={`${idPrefix}-sheet`} className="w-full">
-            <SelectValue placeholder="Choisir une fiche CEE">
-              {sheetSelectValue === SHEET_NONE
-                ? "— Choisir —"
-                : selectedSheet
-                  ? formatMyQueueCeeSheetOptionLabel(selectedSheet)
-                  : null}
-            </SelectValue>
+            {/* Pas d’enfants : Base UI dérive le libellé depuis le SelectItem correspondant au value. */}
+            <SelectValue placeholder="— Choisir —" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={SHEET_NONE}>— Choisir —</SelectItem>
@@ -125,6 +117,12 @@ export function LeadGenerationCeeTeamPickers({
             ))}
           </SelectContent>
         </Select>
+        {sheets.length === 0 ? (
+          <p className="text-xs text-destructive">
+            Aucune fiche CEE chargée (référentiel vide ou droits insuffisants). Les sélecteurs restent ouverts pour
+            diagnostic.
+          </p>
+        ) : null}
       </div>
       <div className="space-y-1.5 sm:col-span-2">
         <Label htmlFor={`${idPrefix}-team`}>Équipe cible</Label>
@@ -137,13 +135,15 @@ export function LeadGenerationCeeTeamPickers({
           disabled={disabled || !ceeSheetId.trim() || teamsForSheet.length === 0}
         >
           <SelectTrigger id={`${idPrefix}-team`} className="w-full">
-            <SelectValue placeholder={ceeSheetId.trim() ? "Choisir une équipe" : "Choisissez d’abord une fiche"}>
-              {teamSelectValue === TEAM_NONE
-                ? "— Choisir —"
-                : selectedTeam
-                  ? selectedTeam.name
-                  : null}
-            </SelectValue>
+            <SelectValue
+              placeholder={
+                ceeSheetId.trim()
+                  ? teamsForSheet.length === 0
+                    ? "Aucune équipe pour cette fiche"
+                    : "— Choisir —"
+                  : "Choisissez d’abord une fiche"
+              }
+            />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={TEAM_NONE}>— Choisir —</SelectItem>

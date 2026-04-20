@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { LeadGenerationQualificationQualityDashboard } from "@/features/lead-generation/components/lead-generation-qualification-quality-dashboard";
 import { LeadGenerationQuantificationActions } from "@/features/lead-generation/components/lead-generation-quantification-actions";
 import { LeadGenerationQuantifierGenerateModal } from "@/features/lead-generation/components/lead-generation-quantifier-generate-modal";
 import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { resolveQuantificationImportBatchScope } from "@/features/lead-generation/lib/quantification-viewer-scope";
 import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import type { LeadGenerationStockRow } from "@/features/lead-generation/domain/stock-row";
+import { getLeadGenerationQualificationQualityStats } from "@/features/lead-generation/queries/get-lead-generation-qualification-quality-stats";
 import { getLeadGenerationQuantificationQueue } from "@/features/lead-generation/queries/get-lead-generation-quantification-queue";
 import { getLeadGenerationQuantificationStats } from "@/features/lead-generation/queries/get-lead-generation-quantification-stats";
 import { getLeadGenerationQuantifierCeeOverview } from "@/features/lead-generation/queries/get-lead-generation-quantifier-cee-overview";
@@ -73,9 +75,10 @@ export default async function LeadGenerationQuantificationPage() {
     ceeScope = { sheets: [], teams: [] };
   }
 
-  const [rows, stats, ceeOverview, pilotage] = await Promise.all([
+  const [rows, stats, qualityStats, ceeOverview, pilotage] = await Promise.all([
     getLeadGenerationQuantificationQueue(200, batchScope),
     getLeadGenerationQuantificationStats(batchScope),
+    getLeadGenerationQualificationQualityStats(batchScope),
     getLeadGenerationQuantifierCeeOverview(batchScope),
     getLeadGenerationQuantifierPilotage(batchScope, { recentBatchLimit: 25 }),
   ]);
@@ -105,10 +108,12 @@ export default async function LeadGenerationQuantificationPage() {
         }
       />
 
+      <LeadGenerationQualificationQualityDashboard stats={qualityStats} />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-border/80 bg-card/50 px-4 py-3 shadow-sm">
           <p className="text-xs font-medium text-muted-foreground">À qualifier (file)</p>
-          <p className="text-2xl font-semibold tabular-nums">{stats.pendingCount}</p>
+          <p className="text-2xl font-semibold tabular-nums">{qualityStats.toQualifyNow}</p>
         </div>
         <div className="rounded-lg border border-border/80 bg-card/50 px-4 py-3 shadow-sm">
           <p className="text-xs font-medium text-muted-foreground">Qualifiées aujourd’hui</p>
