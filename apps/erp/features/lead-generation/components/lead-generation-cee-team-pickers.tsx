@@ -86,6 +86,33 @@ export function LeadGenerationCeeTeamPickers({
     displayFallbacks?.targetTeamName,
   ]);
 
+  /** Base UI : sans `items` sur Root, Select.Value affiche la valeur brute (UUID). */
+  const sheetSelectItems = useMemo(
+    () => [
+      { value: SHEET_NONE, label: "— Choisir —" },
+      ...sheets.map((s) => ({
+        value: s.id,
+        label: formatMyQueueCeeSheetOptionLabel(s),
+      })),
+    ],
+    [sheets],
+  );
+
+  const teamSelectItems = useMemo(() => {
+    const noneLabel = !ceeSheetId.trim()
+      ? "Choisissez d’abord une fiche"
+      : teamsForSheet.length === 0
+        ? "Aucune équipe pour cette fiche"
+        : "— Choisir —";
+    return [
+      { value: TEAM_NONE, label: noneLabel },
+      ...teamsForSheet.map((t) => ({
+        value: t.id,
+        label: t.name,
+      })),
+    ];
+  }, [ceeSheetId, teamsForSheet]);
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-1.5 sm:col-span-2">
@@ -95,6 +122,7 @@ export function LeadGenerationCeeTeamPickers({
           uniquement).
         </p>
         <Select
+          items={sheetSelectItems}
           value={sheetSelectValue}
           onValueChange={(v) => {
             const raw = v ?? SHEET_NONE;
@@ -105,7 +133,6 @@ export function LeadGenerationCeeTeamPickers({
           disabled={disabled}
         >
           <SelectTrigger id={`${idPrefix}-sheet`} className="w-full">
-            {/* Pas d’enfants : Base UI dérive le libellé depuis le SelectItem correspondant au value. */}
             <SelectValue placeholder="— Choisir —" />
           </SelectTrigger>
           <SelectContent>
@@ -127,6 +154,7 @@ export function LeadGenerationCeeTeamPickers({
       <div className="space-y-1.5 sm:col-span-2">
         <Label htmlFor={`${idPrefix}-team`}>Équipe cible</Label>
         <Select
+          items={teamSelectItems}
           value={teamSelectValue}
           onValueChange={(v) => {
             const raw = v ?? TEAM_NONE;
