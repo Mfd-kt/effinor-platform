@@ -50,9 +50,13 @@ function replaceWithNextQuantificationOrList(
 }
 
 function staleServerActionMessage(err: unknown): string | null {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (msg.toLowerCase().includes("server action") && msg.toLowerCase().includes("was not found")) {
-    return "La page est désynchronisée avec le serveur (souvent après une mise à jour). Rechargez la page (rechargement forcé : Cmd+Shift+R ou Ctrl+Shift+R), puis recliquez sur Qualifier.";
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  if (
+    (msg.includes("server action") && (msg.includes("was not found") || msg.includes("not found on the server"))) ||
+    msg.includes("failed-to-find-server-action") ||
+    msg.includes("failed to find server action")
+  ) {
+    return "La page est désynchronisée avec le serveur (souvent après une mise à jour). Rechargez la page (rechargement forcé : Cmd+Shift+R ou Ctrl+Shift+R), puis recliquez.";
   }
   return null;
 }
