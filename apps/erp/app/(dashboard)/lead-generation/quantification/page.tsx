@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadGenerationQualificationQualityDashboard } from "@/features/lead-generation/components/lead-generation-qualification-quality-dashboard";
 import { LeadGenerationQuantificationActions } from "@/features/lead-generation/components/lead-generation-quantification-actions";
+import { ImportBatchSyncButton } from "@/features/lead-generation/components/import-batch-sync-button";
 import { LeadGenerationQuantifierGenerateModal } from "@/features/lead-generation/components/lead-generation-quantifier-generate-modal";
 import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { resolveQuantificationImportBatchScope } from "@/features/lead-generation/lib/quantification-viewer-scope";
@@ -218,12 +219,17 @@ export default async function LeadGenerationQuantificationPage() {
                     {b.qualificationRatePercent != null ? `${b.qualificationRatePercent} %` : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <Link
-                      href={`/lead-generation/imports/${b.batchId}`}
-                      className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8")}
-                    >
-                      Lot
-                    </Link>
+                    <div className="flex flex-col items-end gap-2">
+                      <Link
+                        href={`/lead-generation/imports/${b.batchId}`}
+                        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8")}
+                      >
+                        Lot
+                      </Link>
+                      {b.importSource === "apify_google_maps" ? (
+                        <ImportBatchSyncButton batchId={b.batchId} compact />
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))

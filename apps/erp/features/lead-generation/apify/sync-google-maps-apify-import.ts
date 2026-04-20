@@ -12,7 +12,7 @@ import {
   APIFY_PARTIAL_IMPORT_META_KEY,
 } from "../lib/apify-partial-dataset-recovery";
 import { getApifyDatasetItems, getApifyEnv, getApifyRun, isApifyRunFinished } from "./client";
-import { mapGoogleMapsApifyItem } from "./map-google-maps-item";
+import { dedupeApifyGoogleMapsDatasetItems, mapGoogleMapsApifyItem } from "./map-google-maps-item";
 import type { SyncGoogleMapsApifyImportResult } from "./types";
 
 function resolveExternalRunId(row: {
@@ -214,6 +214,9 @@ export async function syncGoogleMapsApifyImport(input: {
       message,
     };
   }
+
+  /** Même lieu = plusieurs lignes côté Apify (ex. avis par blocs) : une seule fiche stock par placeId. */
+  rawItems = dedupeApifyGoogleMapsDatasetItems(rawItems);
 
   if (fin === "fail" && rawItems.length === 0) {
     const finishedAt = new Date().toISOString();

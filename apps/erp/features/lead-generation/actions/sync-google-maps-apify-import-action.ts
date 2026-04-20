@@ -1,9 +1,9 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub, canAccessLeadGenerationQuantification } from "@/lib/auth/module-access";
 
 import { syncGoogleMapsApifyImport } from "../apify/sync-google-maps-apify-import";
+import { canAccessLeadGenerationImportBatchAsUser } from "../lib/lead-generation-import-batch-access";
 import type { SyncGoogleMapsApifyImportResult } from "../apify/types";
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import { getLeadGenerationImportBatchById } from "../queries/get-lead-generation-import-batch-by-id";
@@ -30,9 +30,7 @@ export async function syncGoogleMapsApifyImportAction(
       return { ok: false, error: "Batch introuvable." };
     }
 
-    const hub = await canAccessLeadGenerationHub(access);
-    const quant = canAccessLeadGenerationQuantification(access);
-    if (!hub && !(quant && row.created_by_user_id === access.userId)) {
+    if (!(await canAccessLeadGenerationImportBatchAsUser(access, row))) {
       return { ok: false, error: "Accès refusé." };
     }
 

@@ -78,6 +78,36 @@ function pickExternalId(item: Record<string, unknown>): string | null {
   return pickString(item.placeId, item.place_id, item.placeid, item.cid, item.locationId, item.id);
 }
 
+/** Identifiant lieu Maps uniquement (pas `id` ligne Apify, qui diffère entre paquets d’avis). */
+function pickGoogleMapsPlaceDedupeKey(item: Record<string, unknown>): string | null {
+  return pickString(item.placeId, item.place_id, item.placeid, item.cid, item.locationId);
+}
+
+/**
+ * Clé de déduplication pour un item brut (plusieurs lignes dataset peuvent représenter le même lieu, ex. paquets d’avis).
+ */
+export function apifyGoogleMapsItemPlaceKey(item: unknown): string | null {
+  if (!isRecord(item)) return null;
+  return pickGoogleMapsPlaceDedupeKey(item);
+}
+
+/**
+ * Garde la première occurrence de chaque lieu (ordre dataset Apify). Sans clé identifiable, l’item est conservé tel quel.
+ */
+export function dedupeApifyGoogleMapsDatasetItems(items: unknown[]): unknown[] {
+  const seen = new Set<string>();
+  const out: unknown[] = [];
+  for (const item of items) {
+    const key = apifyGoogleMapsItemPlaceKey(item);
+    if (key) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 /**
  * Mappe un item brut du dataset Google Maps (Apify) vers une ligne d’ingestion.
  * Variantes de champs tolérées ; aucune donnée inventée.

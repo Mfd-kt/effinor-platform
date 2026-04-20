@@ -146,7 +146,7 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="apify-max-places">Nombre max. de fiches par recherche (optionnel)</Label>
+          <Label htmlFor="apify-max-places">Plafond de lieux par recherche (optionnel)</Label>
           <Input
             id="apify-max-places"
             type="number"
@@ -156,6 +156,10 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
             onChange={(e) => setMaxPlaces(e.target.value)}
             placeholder="50"
           />
+          <p className="text-[11px] text-muted-foreground">
+            Maximum envoyé à Apify par ligne de recherche (pas un nombre garanti). Les lignes dataset dupliquées pour le
+            même lieu sont fusionnées à la synchronisation.
+          </p>
         </div>
 
         <div className="space-y-3 rounded-md border border-primary/25 bg-primary/5 p-3">

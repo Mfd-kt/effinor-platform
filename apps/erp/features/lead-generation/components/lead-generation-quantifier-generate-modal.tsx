@@ -129,7 +129,7 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="qg-max">Nombre max. de fiches par recherche (optionnel)</Label>
+            <Label htmlFor="qg-max">Plafond de lieux par recherche (optionnel)</Label>
             <Input
               id="qg-max"
               type="number"
@@ -140,6 +140,11 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
               placeholder="50"
               disabled={pending}
             />
+            <p className="text-[11px] text-muted-foreground">
+              Valeur transmise à Apify comme maximum par ligne : le nombre réel peut être inférieur (fin de liste Maps)
+              et ne peut pas être garanti à l’identique. Les doublons technique « même lieu » dans le jeu Apify sont
+              fusionnés à l’import.
+            </p>
           </div>
           {message ? <p className="text-sm text-destructive">{message}</p> : null}
         </div>

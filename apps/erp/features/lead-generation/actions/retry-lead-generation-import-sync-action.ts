@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub, canAccessLeadGenerationQuantification } from "@/lib/auth/module-access";
 
 import { syncGoogleMapsApifyImport } from "../apify/sync-google-maps-apify-import";
+import { canAccessLeadGenerationImportBatchAsUser } from "../lib/lead-generation-import-batch-access";
 import type { SyncGoogleMapsApifyImportResult } from "../apify/types";
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import { assessLeadGenerationImportSyncRetryEligibility } from "../lib/lead-generation-import-sync-retry-eligibility";
@@ -117,9 +117,7 @@ export async function retryLeadGenerationImportSyncAction(
     return { ok: false, error: "Lot introuvable." };
   }
 
-  const hub = await canAccessLeadGenerationHub(access);
-  const quant = canAccessLeadGenerationQuantification(access);
-  if (!hub && !(quant && row.created_by_user_id === access.userId)) {
+  if (!(await canAccessLeadGenerationImportBatchAsUser(access, row))) {
     return { ok: false, error: "Accès refusé." };
   }
 

@@ -68,6 +68,7 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
     ...(external_status ? { external_status } : {}),
   };
 
+  /** Rôle quantificateur seul : listes et prévisualisations limitées aux lots créés par l’utilisateur courant (aligné sur la page détail et les actions sync). */
   const createdByFilter = quantifierOnly ? { created_by_user_id: access.userId } : {};
 
   let recentForPreview: Awaited<ReturnType<typeof getLeadGenerationImportBatches>> = [];

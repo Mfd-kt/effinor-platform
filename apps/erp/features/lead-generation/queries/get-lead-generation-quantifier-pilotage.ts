@@ -7,6 +7,8 @@ import { lgTable } from "../lib/lg-db";
 
 export type QuantifierBatchPilotageRow = {
   batchId: string;
+  /** `lead_generation_import_batches.source` (ex. apify_google_maps). */
+  importSource: string | null;
   sourceLabel: string | null;
   createdAt: string;
   ceeSheetCode: string | null;
@@ -126,6 +128,7 @@ export async function getLeadGenerationQuantifierPilotage(
     .select(
       `
       id,
+      source,
       source_label,
       created_at,
       cee_sheet_code,
@@ -154,6 +157,7 @@ export async function getLeadGenerationQuantifierPilotage(
     const prof = Array.isArray(profRaw) ? profRaw[0] ?? null : profRaw ?? null;
     return {
       id: String(raw.id),
+      source: (raw.source as string | null) ?? null,
       source_label: (raw.source_label as string | null) ?? null,
       created_at: String(raw.created_at),
       cee_sheet_code: (raw.cee_sheet_code as string | null) ?? null,
@@ -209,6 +213,7 @@ export async function getLeadGenerationQuantifierPilotage(
         : null;
     return {
       batchId: b.id,
+      importSource: b.source?.trim() || null,
       sourceLabel: b.source_label?.trim() || null,
       createdAt: b.created_at,
       ceeSheetCode: b.cee_sheet_code?.trim() || null,

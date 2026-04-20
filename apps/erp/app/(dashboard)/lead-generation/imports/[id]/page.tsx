@@ -30,6 +30,7 @@ import {
   canAccessLeadGenerationHub,
   canAccessLeadGenerationQuantification,
 } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationImportBatchAsUser } from "@/features/lead-generation/lib/lead-generation-import-batch-access";
 import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -94,7 +95,7 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
   }
 
   const quantifierOwnsBatch = quantifier && batch.created_by_user_id === access.userId;
-  if (!hub && !quantifierOwnsBatch) {
+  if (!(await canAccessLeadGenerationImportBatchAsUser(access, batch))) {
     notFound();
   }
   const quantifierRestricted = !hub && quantifierOwnsBatch;

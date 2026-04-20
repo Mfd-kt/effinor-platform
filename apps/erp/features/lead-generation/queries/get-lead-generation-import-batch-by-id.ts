@@ -77,6 +77,8 @@ export async function getLeadGenerationImportBatchById(
       cee_sheet_id,
       cee_sheet_code,
       target_team_id,
+      created_by_user_id,
+      stock_initial_qualification,
       sheet_meta:cee_sheets!cee_sheet_id(code, label),
       team_meta:cee_sheet_teams!target_team_id(name)
     `,

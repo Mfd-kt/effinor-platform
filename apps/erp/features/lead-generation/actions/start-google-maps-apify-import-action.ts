@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/auth/access-context";
 
 import { startGoogleMapsApifyImport } from "../apify/start-google-maps-apify-import";
 import type { StartGoogleMapsApifyImportOk } from "../apify/types";
@@ -18,6 +19,10 @@ export async function startGoogleMapsApifyImportAction(
   }
 
   try {
+    const access = await getAccessContext();
+    if (access.kind !== "authenticated") {
+      return { ok: false, error: "Non authentifié." };
+    }
     const supabase = await createClient();
     const cee = await resolveLeadGenerationImportBatchCeeContext(
       supabase,
@@ -32,6 +37,7 @@ export async function startGoogleMapsApifyImportAction(
       ceeSheetId: cee.data.cee_sheet_id,
       ceeSheetCode: cee.data.cee_sheet_code,
       targetTeamId: cee.data.target_team_id,
+      createdByUserId: access.userId,
     });
     if (!out.ok) {
       return {
