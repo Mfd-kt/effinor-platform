@@ -231,6 +231,11 @@ export async function canAccessLeadGenerationHub(access: AccessContext): Promise
   return isCeeTeamManager(access.userId);
 }
 
+/** Dashboard direction / pilotage des quantificateurs (même périmètre que {@link canAccessLeadGenerationHub}). */
+export async function canAccessLeadGenerationManagementDashboard(access: AccessContext): Promise<boolean> {
+  return canAccessLeadGenerationHub(access);
+}
+
 /**
  * Impersonation (super_admin → commercial) : le compte réel peut ouvrir la file / une fiche
  * même si le sujet n’a pas le rôle `sales_agent` (support).

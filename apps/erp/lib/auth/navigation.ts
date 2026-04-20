@@ -63,6 +63,7 @@ export async function buildAllowedNavHrefs(
     extra.push("/lead-generation/automation");
     extra.push("/lead-generation/analytics");
     extra.push("/lead-generation/learning");
+    extra.push("/lead-generation/management");
   }
   if (shouldShowLeadGenerationMyQueueNav(access)) {
     extra.push("/lead-generation/my-queue");

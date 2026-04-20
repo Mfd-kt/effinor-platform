@@ -68,6 +68,13 @@ export type LeadGenerationStockRow = {
   dropcontact_completed_at?: string | null;
   dropcontact_last_error?: string | null;
   dropcontact_raw_payload?: Json | null;
+  /** Recherche GPT (quantification) : dossier d’aide, pas décision automatique définitive. */
+  research_gpt_status?: string;
+  research_gpt_requested_at?: string | null;
+  research_gpt_completed_at?: string | null;
+  research_gpt_last_error?: string | null;
+  research_gpt_payload?: Json | null;
+  research_gpt_summary?: string | null;
   enriched_at: string | null;
   enrichment_error: string | null;
   enriched_email: string | null;

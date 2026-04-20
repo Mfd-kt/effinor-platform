@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LayoutTemplate,
+  LineChart,
   ListTodo,
   ListChecks,
   MapPinned,
@@ -124,6 +125,7 @@ export const sidebarNavigation: SidebarNavEntry[] = [
     icon: Target,
     items: [
       { href: "/lead-generation", label: "Pilotage", icon: LayoutDashboard },
+      { href: "/lead-generation/management", label: "Pilotage quantification", icon: LineChart },
       { href: "/lead-generation/quantification", label: "À qualifier", icon: ListChecks },
       { href: "/lead-generation/my-queue", label: "Ma file", icon: Inbox },
       { href: "/lead-generation/stock", label: "Stock", icon: Table2 },

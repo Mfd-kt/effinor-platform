@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadGenerationQualificationQualityDashboard } from "@/features/lead-generation/components/lead-generation-qualification-quality-dashboard";
-import { LeadGenerationQuantificationActions } from "@/features/lead-generation/components/lead-generation-quantification-actions";
 import { ImportBatchSyncButton } from "@/features/lead-generation/components/import-batch-sync-button";
 import { LeadGenerationQuantifierGenerateModal } from "@/features/lead-generation/components/lead-generation-quantifier-generate-modal";
 import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
@@ -59,7 +58,9 @@ function qualificationStatusLabel(stock: LeadGenerationStockRow): { label: strin
 
 export default async function LeadGenerationQuantificationPage() {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !canAccessLeadGenerationQuantification(access)) {
+  const hub = access.kind === "authenticated" ? await canAccessLeadGenerationHub(access) : false;
+  const quantifier = access.kind === "authenticated" && canAccessLeadGenerationQuantification(access);
+  if (access.kind !== "authenticated" || !(quantifier || hub)) {
     notFound();
   }
 
@@ -276,8 +277,16 @@ export default async function LeadGenerationQuantificationPage() {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-lg border border-border/80 shadow-sm">
-        <table className="w-full min-w-[1100px] text-sm">
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">File à traiter</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Cette liste est en lecture rapide : ouvrez une fiche pour commenter, qualifier ou marquer hors cible — les
+            actions ne sont pas disponibles ici.
+          </p>
+        </div>
+        <div className="overflow-x-auto rounded-lg border border-border/80 shadow-sm">
+        <table className="w-full min-w-[960px] text-sm">
           <thead className="border-b border-border/80 bg-muted/40">
             <tr>
               <th className="px-3 py-2.5 text-left font-medium">Société</th>
@@ -289,7 +298,7 @@ export default async function LeadGenerationQuantificationPage() {
               <th className="px-3 py-2.5 text-left font-medium">Maps</th>
               <th className="px-3 py-2.5 text-left font-medium">Statut</th>
               <th className="px-3 py-2.5 text-left font-medium">Origine</th>
-              <th className="px-3 py-2.5 text-right font-medium">Actions</th>
+              <th className="px-3 py-2.5 text-right font-medium whitespace-nowrap">Fiche</th>
             </tr>
           </thead>
           <tbody>
@@ -367,16 +376,13 @@ export default async function LeadGenerationQuantificationPage() {
                         {stock.returned_from_commercial_at ? "Retourné par le commercial" : "Nouveau"}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <Link
-                          href={`/lead-generation/quantification/${stock.id}`}
-                          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                        >
-                          Ouvrir
-                        </Link>
-                        <LeadGenerationQuantificationActions stockId={stock.id} />
-                      </div>
+                    <td className="px-3 py-2.5 text-right">
+                      <Link
+                        href={`/lead-generation/quantification/${stock.id}`}
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "inline-flex")}
+                      >
+                        Ouvrir la fiche
+                      </Link>
                     </td>
                   </tr>
                 );
@@ -384,6 +390,7 @@ export default async function LeadGenerationQuantificationPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

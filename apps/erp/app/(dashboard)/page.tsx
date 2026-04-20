@@ -11,6 +11,8 @@ import {
 } from "@/features/dashboard/components/cockpit/cockpit-role-views";
 import { DashboardDefault } from "@/features/dashboard/components/dashboard-default";
 import { DashboardTechnician } from "@/features/dashboard/components/dashboard-technician";
+import { LeadGenerationQuantifierDashboardView } from "@/features/lead-generation/components/lead-generation-quantifier-dashboard-view";
+import { getLeadGenerationQuantifierPersonalDashboard } from "@/features/lead-generation/queries/get-lead-generation-quantifier-personal-dashboard";
 import { DEFAULT_COCKPIT_FILTERS } from "@/features/dashboard/domain/cockpit";
 import { parseCockpitFilters } from "@/features/dashboard/lib/cockpit-filters";
 import { getCockpitBundle } from "@/features/dashboard/queries/get-cockpit-bundle";
@@ -28,6 +30,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const variant = await resolveCockpitVariant(access);
   if (variant === "default") {
+    if (access.roleCodes.includes("lead_generation_quantifier")) {
+      const quantifierData = await getLeadGenerationQuantifierPersonalDashboard(access.userId);
+      return <LeadGenerationQuantifierDashboardView data={quantifierData} />;
+    }
     return <DashboardDefault />;
   }
 
