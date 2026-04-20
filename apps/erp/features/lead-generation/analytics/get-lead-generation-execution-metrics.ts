@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 
+import { COMMERCIAL_PIPELINE_ACTIVE_STOCK_STATUS } from "../domain/commercial-pipeline-status";
 import { lgTable } from "../lib/lg-db";
 
 const ACTIVE_ASSIGNMENT_STATUSES = ["assigned", "opened", "in_progress"];
 
 export type LeadGenerationExecutionMetrics = {
   totalAssignments: number;
+  /** Assignations au statut pipeline « Nouveau » uniquement (stock neuf / plafond). */
   activeAssignments: number;
   recycledAssignments: number;
   totalActivities: number;
@@ -32,7 +34,8 @@ export async function getLeadGenerationExecutionMetrics(): Promise<LeadGeneratio
     assignments
       .select("id", { count: "exact", head: true })
       .in("assignment_status", ACTIVE_ASSIGNMENT_STATUSES)
-      .eq("outcome", "pending"),
+      .eq("outcome", "pending")
+      .eq("commercial_pipeline_status", COMMERCIAL_PIPELINE_ACTIVE_STOCK_STATUS),
     assignments.select("id", { count: "exact", head: true }).eq("assignment_status", "recycled"),
     activities.select("id", { count: "exact", head: true }),
     activities.select("assignment_id"),

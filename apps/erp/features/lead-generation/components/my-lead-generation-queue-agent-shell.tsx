@@ -20,7 +20,6 @@ import {
   itemMatchesQuickFilter,
   sortQueueItems,
 } from "../lib/my-queue-follow-up";
-import { LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET } from "../lib/my-queue-manual-dispatch";
 import type { MyLeadGenerationQueueItem } from "../queries/get-my-lead-generation-queue";
 import {
   MyLeadQueueCeeSheetPicker,
@@ -30,6 +29,9 @@ import { MyLeadGenerationQueueTable } from "./my-lead-generation-queue-table";
 
 const FILTERS: { id: MyQueueQuickFilter; label: string }[] = [
   { id: "all", label: "Toutes" },
+  { id: "pipeline_new", label: "Nouveau (stock)" },
+  { id: "pipeline_contacted", label: "Contacté / En action" },
+  { id: "pipeline_follow_up", label: "À rappeler" },
   { id: "overdue", label: "Rappels en retard" },
   { id: "today", label: "À appeler aujourd’hui" },
   { id: "high_priority", label: "Priorité haute" },
@@ -40,9 +42,16 @@ type Props = {
   items: MyLeadGenerationQueueItem[];
   ceeSheetOptions: LeadGenerationMyQueueCeeSheetOption[];
   viewerUserId: string;
+  /** Plafond effectif aligné sur {@link getLeadGenerationDispatchPolicy} (dispatch réel). */
+  effectiveStockCap: number;
 };
 
-export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewerUserId }: Props) {
+export function MyLeadGenerationQueueAgentShell({
+  items,
+  ceeSheetOptions,
+  viewerUserId,
+  effectiveStockCap,
+}: Props) {
   const [filter, setFilter] = useState<MyQueueQuickFilter>("all");
   const [selectedCeeSheetId, setSelectedCeeSheetId] = useState("");
 
@@ -95,7 +104,7 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
 
   const hasValidSelection = Boolean(selectedOption) || isNoCeeSelected;
 
-  const globalActive = useMemo(() => computeQueueKpis(items).active, [items]);
+  const globalFreshStock = useMemo(() => computeQueueKpis(items).freshStock, [items]);
 
   const itemsInCeeScope = useMemo(() => {
     if (!needsCeePick) {
@@ -110,14 +119,14 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
     return items.filter((i) => i.ceeSheetId === selectedOption.id);
   }, [items, needsCeePick, isNoCeeSelected, selectedOption]);
 
-  const activeInScope = computeQueueKpis(itemsInCeeScope).active;
+  const freshInScope = computeQueueKpis(itemsInCeeScope).freshStock;
 
-  const stockForPlafond = isNoCeeSelected ? globalActive : activeInScope;
+  const stockForPlafond = isNoCeeSelected ? globalFreshStock : freshInScope;
 
   const kpiItems = itemsInCeeScope;
   const kpis = useMemo(() => computeQueueKpis(kpiItems), [kpiItems]);
 
-  const maxCap = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
+  const maxCap = effectiveStockCap;
   const placesLeft = Math.max(0, maxCap - Math.max(0, stockForPlafond));
 
   const filteredTableRows = useMemo(() => {
@@ -135,7 +144,7 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
     return null;
   }, [needsCeePick, hasValidSelection, isNoCeeSelected, selectedOption]);
 
-  const fetchStock = needsCeePick ? stockForPlafond : globalActive;
+  const fetchStock = needsCeePick ? stockForPlafond : globalFreshStock;
 
   return (
     <div className="space-y-8">
@@ -147,7 +156,9 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
       >
         <p className="mb-3 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Votre file</span> — liste des contacts qui vous sont attribués.
-          Le filtre produit ci-dessous limite l’affichage par fiche CEE.
+          Le filtre produit ci-dessous limite l’affichage par fiche CEE. Seul le statut pipeline{" "}
+          <span className="font-medium text-foreground">Nouveau</span> compte pour votre stock disponible au sens plafond /
+          réinjection ; le reste est du suivi.
         </p>
         {needsCeePick && !hasValidSelection ? (
           <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2.5 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/[0.09] dark:text-amber-100">
@@ -162,6 +173,7 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
           onSelectedCeeSheetIdChange={setSelectedCeeSheetId}
           viewerUserId={viewerUserId}
           ceeSelectionMandatory={needsCeePick}
+          effectiveStockCap={effectiveStockCap}
         />
       </section>
 
@@ -231,10 +243,17 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
           ) : null}
 
           <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <div className="rounded-lg border border-border/80 bg-background/60 px-3 py-2.5">
-              <p className="text-[11px] font-medium text-muted-foreground">Stock actif</p>
+            <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2.5 dark:bg-emerald-500/[0.08]">
+              <p className="text-[11px] font-medium text-muted-foreground">Stock neuf (Nouveau)</p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
                 {Math.max(0, stockForPlafond)} / {maxCap}
+              </p>
+              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                {(() => {
+                  const n = Math.max(0, kpis.totalInQueue - kpis.freshStock);
+                  if (n === 0) return "Aucune fiche en suivi hors stock neuf.";
+                  return `${n} fiche${n > 1 ? "s" : ""} en suivi (Contacté / À rappeler).`;
+                })()}
               </p>
             </div>
             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 dark:bg-emerald-500/[0.08]">
@@ -266,6 +285,7 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
             onSelectedCeeSheetIdChange={setSelectedCeeSheetId}
             viewerUserId={viewerUserId}
             ceeSelectionMandatory={needsCeePick}
+            effectiveStockCap={effectiveStockCap}
           />
         </section>
       )}

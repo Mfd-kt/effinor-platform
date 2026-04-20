@@ -42,9 +42,11 @@ function shortId(id: string): string {
 
 type Props = {
   data: LeadGenerationManagementDashboard;
+  /** Masque l’en-tête de page quand rendu dans {@link LeadGenerationTeamPilotageShell}. */
+  embedded?: boolean;
 };
 
-export function LeadGenerationManagementDashboardView({ data }: Props) {
+export function LeadGenerationManagementDashboardView({ data, embedded = false }: Props) {
   const {
     overview,
     quantifiers,
@@ -60,10 +62,12 @@ export function LeadGenerationManagementDashboardView({ data }: Props) {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Pilotage quantification"
-        description="Performance des quantificateurs, qualité des lots et retours commerciaux — indicateurs opérationnels pour la direction."
-      />
+      {embedded ? null : (
+        <PageHeader
+          title="Suivi quantificateurs"
+          description="Indicateurs direction : performance des quantificateurs, qualité des lots et retours commerciaux (période filtrable ci-dessous)."
+        />
+      )}
 
       <LeadGenerationManagementDashboardFilters
         period={filters.period}

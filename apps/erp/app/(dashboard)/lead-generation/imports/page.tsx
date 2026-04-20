@@ -136,7 +136,7 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
             href={quantifierOnly ? "/lead-generation/quantification" : "/lead-generation"}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
-            {quantifierOnly ? "Quantification" : "Pilotage"}
+            {quantifierOnly ? "Quantification" : "Vue d’ensemble"}
           </Link>
         }
       />
@@ -158,7 +158,7 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
         ) : (
           <>
             <Link
-              href="/lead-generation/stock"
+              href="/lead-generation"
               className={cn(
                 buttonVariants({ variant: "ghost", size: "sm" }),
                 "text-muted-foreground hover:text-foreground",

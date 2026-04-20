@@ -23,10 +23,7 @@ import {
   type LeadGenerationMyQueueCeeSheetOption,
 } from "../lib/my-queue-cee-sheet-option";
 import { writeMyQueueSelectedCeeSheetId } from "../lib/my-queue-cee-sheet-preference";
-import {
-  LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET,
-  MY_QUEUE_MANUAL_CHUNK_DEFAULT,
-} from "../lib/my-queue-manual-dispatch";
+import { MY_QUEUE_MANUAL_CHUNK_DEFAULT } from "../lib/my-queue-manual-dispatch";
 
 const CEE_SELECT_NONE = "__lg_my_queue_cee_none__";
 
@@ -36,16 +33,18 @@ type SharedProps = {
   onSelectedCeeSheetIdChange: (id: string) => void;
   viewerUserId: string;
   ceeSelectionMandatory: boolean;
+  /** Même plafond que le dispatch serveur pour cet agent. */
+  effectiveStockCap: number;
 };
 
 type FetchProps = SharedProps & {
-  /** Stock actif servant au plafond 100 (par fiche, ou total si « sans fiche CEE »). */
+  /** Stock neuf (pipeline Nouveau) pour le plafond (par fiche, ou total si « sans fiche CEE »). */
   stockForPlafond: number;
   className?: string;
 };
 
 function deriveSelection(p: SharedProps) {
-  const maxCap = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
+  const maxCap = p.effectiveStockCap;
   const trimmedCee = p.selectedCeeSheetId.trim();
   const isNoCeeSelected = trimmedCee === MY_QUEUE_NO_CEE_SHEET_SENTINEL;
   const selectedCeeOption = p.ceeSheetOptions.find((o) => o.id === trimmedCee) ?? null;
@@ -78,6 +77,7 @@ export function MyLeadQueueCeeSheetPicker({
   onSelectedCeeSheetIdChange,
   viewerUserId,
   ceeSelectionMandatory,
+  effectiveStockCap,
   pending = false,
   className,
 }: SharedProps & { pending?: boolean; className?: string }) {
@@ -87,6 +87,7 @@ export function MyLeadQueueCeeSheetPicker({
     onSelectedCeeSheetIdChange,
     viewerUserId,
     ceeSelectionMandatory,
+    effectiveStockCap,
   });
 
   return (
@@ -160,8 +161,9 @@ export function MyLeadQueueReadyPoolFetchButton({
   onSelectedCeeSheetIdChange,
   viewerUserId,
   ceeSelectionMandatory,
+  effectiveStockCap,
 }: FetchProps) {
-  const maxCap = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
+  const maxCap = effectiveStockCap;
   const headroom = Math.max(0, maxCap - stockForPlafond);
   const chunkSize = Math.min(MY_QUEUE_MANUAL_CHUNK_DEFAULT, headroom);
   const router = useRouter();
@@ -174,6 +176,7 @@ export function MyLeadQueueReadyPoolFetchButton({
     onSelectedCeeSheetIdChange,
     viewerUserId,
     ceeSelectionMandatory,
+    effectiveStockCap,
   });
 
   const globalScope = ceeSheetOptions.length === 0;
@@ -197,8 +200,16 @@ export function MyLeadQueueReadyPoolFetchButton({
         setMessage({ type: "err", text: res.error });
         return;
       }
-      const { assignedCount, remainingNeed, requestedCount } = res.data;
+      const { assignedCount, remainingNeed, requestedCount, dispatchBlockedReason } = res.data;
       if (assignedCount === 0) {
+        if (dispatchBlockedReason?.trim()) {
+          setMessage({
+            type: "err",
+            text: dispatchBlockedReason,
+          });
+          router.refresh();
+          return;
+        }
         const capReached = res.data.previousStock >= maxCap;
         setMessage({
           type: "ok",

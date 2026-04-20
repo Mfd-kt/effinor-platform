@@ -1,9 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 
+import type { CommercialPipelineStatus } from "../domain/commercial-pipeline-status";
 import type {
   ConvertLeadGenerationAssignmentInput,
   ConvertLeadGenerationAssignmentResult,
 } from "../domain/convert-assignment-result";
+import { lgTable } from "../lib/lg-db";
+
+import { recordLeadGenerationConversionJournalEvents } from "./record-lead-generation-conversion-journal";
 
 type RpcRow = { result_code: string; lead_id: string | null };
 
@@ -43,6 +47,12 @@ export async function convertLeadGenerationAssignmentToLead(
   input: ConvertLeadGenerationAssignmentInput,
 ): Promise<ConvertLeadGenerationAssignmentResult> {
   const supabase = await createClient();
+  const assignments = lgTable(supabase, "lead_generation_assignments");
+
+  const { data: beforeRow } = await assignments
+    .select("stock_id, agent_id, commercial_pipeline_status, outcome")
+    .eq("id", input.assignmentId)
+    .maybeSingle();
 
   const { data, error } = await supabase.rpc("convert_lead_generation_assignment_to_lead", {
     p_assignment_id: input.assignmentId,
@@ -55,7 +65,36 @@ export async function convertLeadGenerationAssignmentToLead(
 
   const raw = data as RpcRow[] | RpcRow | null | undefined;
   const row = Array.isArray(raw) ? raw[0] : raw ?? undefined;
-  return mapRpcRow(row);
+  const result = mapRpcRow(row);
+
+  if (result.status === "success" && beforeRow) {
+    const b = beforeRow as {
+      stock_id: string;
+      agent_id: string;
+      commercial_pipeline_status: string | null;
+      outcome: string;
+    };
+    const { data: afterRow } = await assignments
+      .select("commercial_pipeline_status, outcome")
+      .eq("id", input.assignmentId)
+      .maybeSingle();
+    if (afterRow) {
+      const a = afterRow as { commercial_pipeline_status: string | null; outcome: string };
+      await recordLeadGenerationConversionJournalEvents(supabase, {
+        assignmentId: input.assignmentId,
+        agentId: input.agentId,
+        stockId: b.stock_id,
+        beforePipeline: (b.commercial_pipeline_status ?? "new") as CommercialPipelineStatus,
+        beforeOutcome: b.outcome,
+        afterPipeline: (a.commercial_pipeline_status ?? "converted") as CommercialPipelineStatus,
+        afterOutcome: a.outcome,
+        rpcName: "convert_lead_generation_assignment_to_lead",
+        leadId: result.leadId,
+      });
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -67,6 +106,12 @@ export async function finalizeLeadGenerationConversionWithExistingLead(input: {
   leadId: string;
 }): Promise<ConvertLeadGenerationAssignmentResult> {
   const supabase = await createClient();
+  const assignments = lgTable(supabase, "lead_generation_assignments");
+
+  const { data: beforeRow } = await assignments
+    .select("stock_id, agent_id, commercial_pipeline_status, outcome")
+    .eq("id", input.assignmentId)
+    .maybeSingle();
 
   const { data, error } = await supabase.rpc("finalize_lead_generation_conversion_with_existing_lead", {
     p_assignment_id: input.assignmentId,
@@ -80,5 +125,34 @@ export async function finalizeLeadGenerationConversionWithExistingLead(input: {
 
   const raw = data as RpcRow[] | RpcRow | null | undefined;
   const row = Array.isArray(raw) ? raw[0] : raw ?? undefined;
-  return mapRpcRow(row);
+  const result = mapRpcRow(row);
+
+  if (result.status === "success" && beforeRow) {
+    const b = beforeRow as {
+      stock_id: string;
+      agent_id: string;
+      commercial_pipeline_status: string | null;
+      outcome: string;
+    };
+    const { data: afterRow } = await assignments
+      .select("commercial_pipeline_status, outcome")
+      .eq("id", input.assignmentId)
+      .maybeSingle();
+    if (afterRow) {
+      const a = afterRow as { commercial_pipeline_status: string | null; outcome: string };
+      await recordLeadGenerationConversionJournalEvents(supabase, {
+        assignmentId: input.assignmentId,
+        agentId: input.agentId,
+        stockId: b.stock_id,
+        beforePipeline: (b.commercial_pipeline_status ?? "new") as CommercialPipelineStatus,
+        beforeOutcome: b.outcome,
+        afterPipeline: (a.commercial_pipeline_status ?? "converted") as CommercialPipelineStatus,
+        afterOutcome: a.outcome,
+        rpcName: "finalize_lead_generation_conversion_with_existing_lead",
+        leadId: input.leadId,
+      });
+    }
+  }
+
+  return result;
 }

@@ -1,0 +1,13 @@
+{
+  "subject": "Saint-Étienne — efficacité énergétique (Ateliers Dupont)",
+  "email_body": "Bonjour Marie Bernard,\n\nNous reprenons contact concernant votre activité de fabrication à Saint-Étienne et la configuration de votre site industriel.\n\nDans le cadre des dispositifs d’efficacité énergétique soutenus par TotalEnergies, nous identifions souvent des leviers sur les ateliers chauffés et les grands volumes.\n\nSeriez-vous disponible pour un court échange afin de voir si votre site peut être concerné par ces dispositifs ?",
+  "used_signals": [
+    "company_name",
+    "city",
+    "activity",
+    "contact_full_name",
+    "building_signals.industrial_site",
+    "building_signals.heating_type"
+  ],
+  "confidence": "high"
+}

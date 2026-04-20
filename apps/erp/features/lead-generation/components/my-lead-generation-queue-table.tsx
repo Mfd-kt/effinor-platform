@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 
 import { getRelanceDisplay, type RelanceBucket } from "../lib/my-queue-follow-up";
 import type { MyLeadGenerationQueueItem } from "../queries/get-my-lead-generation-queue";
+import { CommercialPipelineBadge } from "./commercial-pipeline-badge";
+import { CommercialSlaBadge } from "./commercial-sla-badge";
 import { LeadGenerationCommercialPriorityBadge } from "./lead-generation-commercial-priority-badge";
 import { LeadGenerationDispatchQueueBadge } from "./lead-generation-dispatch-queue-badge";
 
@@ -55,11 +57,17 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Pro
               <TableHead className="min-w-[148px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Relance
               </TableHead>
+              <TableHead className="min-w-[148px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Pipeline
+              </TableHead>
+              <TableHead className="min-w-[120px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                SLA
+              </TableHead>
               <TableHead className="min-w-[140px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Score / priorité
               </TableHead>
               <TableHead className="min-w-[120px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Statut
+                File dispatch
               </TableHead>
               <TableHead className="min-w-[220px] px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Actions
@@ -137,6 +145,12 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Pro
                     )}
                   >
                     {rel.label}
+                  </TableCell>
+                  <TableCell className="max-w-[180px] px-3 py-3 align-middle">
+                    <CommercialPipelineBadge status={r.commercialPipelineStatus} compact />
+                  </TableCell>
+                  <TableCell className="max-w-[140px] px-3 py-3 align-middle">
+                    <CommercialSlaBadge status={r.slaStatus} compact />
                   </TableCell>
                   <TableCell className="px-3 py-3 align-middle">
                     <div className="flex flex-col gap-1.5">

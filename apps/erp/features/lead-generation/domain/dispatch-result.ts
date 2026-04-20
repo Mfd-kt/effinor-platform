@@ -14,6 +14,8 @@ export type DispatchLeadGenerationStockResult = {
   selectedQueueStatus: LeadGenerationDispatchSelectedQueueStatus;
   newStock: number;
   assignedStockIds: string[];
+  /** Injection suspendue (suivi saturé, SLA, etc.). */
+  dispatchBlockedReason?: string | null;
 };
 
 /** Résultat de `dispatchLeadGenerationStockForAgents` (un résultat par agent, ordre préservé). */

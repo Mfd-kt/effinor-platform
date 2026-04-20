@@ -103,6 +103,7 @@ export async function updateQuantifierLeadGenerationContactFieldsAction(
   revalidatePath("/lead-generation/quantification");
   revalidatePath(`/lead-generation/quantification/${stockId}`);
   revalidatePath(`/lead-generation/${stockId}`);
+  revalidatePath("/lead-generation");
   revalidatePath("/lead-generation/stock");
 
   return { ok: true, data: { updated: true } };

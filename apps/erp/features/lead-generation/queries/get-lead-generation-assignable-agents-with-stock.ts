@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
+import { COMMERCIAL_PIPELINE_ACTIVE_STOCK_STATUS } from "../domain/commercial-pipeline-status";
 import { lgTable } from "../lib/lg-db";
 
 import { getLeadGenerationAssignableAgents, type LeadGenerationAssignableAgent } from "./get-lead-generation-assignable-agents";
@@ -11,8 +12,7 @@ export type LeadGenerationAssignableAgentWithStock = LeadGenerationAssignableAge
 };
 
 /**
- * Commerciaux assignables avec nombre de fiches actives en portefeuille
- * (assignments `assigned` | `opened` | `in_progress`, outcome `pending`).
+ * Commerciaux assignables avec nombre de fiches **stock neuf** (pipeline `new` uniquement).
  */
 export async function getLeadGenerationAssignableAgentsWithStock(): Promise<LeadGenerationAssignableAgentWithStock[]> {
   const agents = await getLeadGenerationAssignableAgents();
@@ -28,7 +28,8 @@ export async function getLeadGenerationAssignableAgentsWithStock(): Promise<Lead
     .select("agent_id")
     .in("agent_id", ids)
     .in("assignment_status", [...ACTIVE_STATUSES])
-    .eq("outcome", "pending");
+    .eq("outcome", "pending")
+    .eq("commercial_pipeline_status", COMMERCIAL_PIPELINE_ACTIVE_STOCK_STATUS);
 
   if (error) {
     throw new Error(`Stock actif agents lead-generation : ${error.message}`);

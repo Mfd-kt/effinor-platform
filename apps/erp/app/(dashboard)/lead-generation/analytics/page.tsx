@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { getLeadGenerationAutomationMetrics } from "@/features/lead-generation/analytics/get-lead-generation-automation-metrics";
 import { getLeadGenerationConversionMetrics } from "@/features/lead-generation/analytics/get-lead-generation-conversion-metrics";
 import { getLeadGenerationExecutionMetrics } from "@/features/lead-generation/analytics/get-lead-generation-execution-metrics";
@@ -11,10 +9,11 @@ import { getLeadGenerationStockMetrics } from "@/features/lead-generation/analyt
 import { LeadGenerationAutomationMetricsTable } from "@/features/lead-generation/components/lead-generation-automation-metrics-table";
 import { LeadGenerationMetricCard } from "@/features/lead-generation/components/lead-generation-metric-card";
 import { LeadGenerationSourceMetricsTable } from "@/features/lead-generation/components/lead-generation-source-metrics-table";
+import { LeadGenerationAgentPerformanceLeaderboard } from "@/features/lead-generation/components/lead-generation-agent-performance-leaderboard";
 import { LeadGenerationStatusBreakdown } from "@/features/lead-generation/components/lead-generation-status-breakdown";
+import { getLeadGenerationAgentPerformanceLeaderboard } from "@/features/lead-generation/queries/get-lead-generation-agent-performance-leaderboard";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
-import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +23,13 @@ export default async function LeadGenerationAnalyticsPage() {
     notFound();
   }
 
-  const [imports, stock, execution, conversion, automation] = await Promise.all([
+  const [imports, stock, execution, conversion, automation, agentLeaderboard] = await Promise.all([
     getLeadGenerationImportMetrics(),
     getLeadGenerationStockMetrics(),
     getLeadGenerationExecutionMetrics(),
     getLeadGenerationConversionMetrics(),
     getLeadGenerationAutomationMetrics(),
+    getLeadGenerationAgentPerformanceLeaderboard(),
   ]);
 
   return (
@@ -37,11 +37,6 @@ export default async function LeadGenerationAnalyticsPage() {
       <PageHeader
         title="Analytics Lead Generation"
         description="Vue synthétique acquisition, qualité du stock, exécution commerciale et conversion."
-        actions={
-          <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            Retour Lead Generation
-          </Link>
-        }
       />
 
       <section className="space-y-3">
@@ -84,13 +79,25 @@ export default async function LeadGenerationAnalyticsPage() {
         <h2 className="text-sm font-semibold text-foreground">Exécution commerciale</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <LeadGenerationMetricCard label="Total assignments" value={execution.totalAssignments} />
-          <LeadGenerationMetricCard label="Assignments actifs" value={execution.activeAssignments} />
+          <LeadGenerationMetricCard
+            label="Stock neuf (Nouveau)"
+            value={execution.activeAssignments}
+            hint="Seules les assignations au statut pipeline Nouveau — base plafond / réinjection."
+          />
           <LeadGenerationMetricCard label="Assignments recyclés" value={execution.recycledAssignments} />
           <LeadGenerationMetricCard label="Activités commerciales" value={execution.totalActivities} />
           <LeadGenerationMetricCard label="Fiches avec activité" value={execution.assignmentsWithActivity} />
           <LeadGenerationMetricCard label="Fiches sans activité" value={execution.assignmentsWithoutActivity} />
           <LeadGenerationMetricCard label="Relances en retard" value={execution.overdueFollowUps} />
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Performance agents (pipeline)</h2>
+        <p className="text-xs text-muted-foreground">
+          Stock neuf, suivi (Contacté / À rappeler), retards SLA, plafond dynamique et suspension d’injection selon la charge.
+        </p>
+        <LeadGenerationAgentPerformanceLeaderboard rows={agentLeaderboard} />
       </section>
 
       <section className="space-y-3">

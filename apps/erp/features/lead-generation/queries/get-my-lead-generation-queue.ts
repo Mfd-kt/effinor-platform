@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
+import type { CommercialPipelineStatus } from "../domain/commercial-pipeline-status";
+import type { CommercialSlaStatus } from "../domain/commercial-pipeline-sla";
 import type { LeadGenerationCommercialPriority, LeadGenerationDispatchQueueStatus } from "../domain/statuses";
 import { formatMyQueueCeeSheetOptionLabel } from "../lib/my-queue-cee-sheet-option";
 import { lgTable } from "../lib/lg-db";
@@ -35,6 +37,10 @@ export type MyLeadGenerationQueueItem = {
   hasOverdueFollowUp: boolean;
   /** Plus ancienne relance dépassée (tri des retards). */
   earliestOverdueAt: string | null;
+  /** Pipeline commercial (seul `new` compte pour le stock neuf / plafond). */
+  commercialPipelineStatus: CommercialPipelineStatus;
+  slaDueAt: string | null;
+  slaStatus: CommercialSlaStatus | null;
 };
 
 /**
@@ -51,6 +57,9 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
       assigned_at,
       last_activity_at,
       attempt_count,
+      commercial_pipeline_status,
+      sla_due_at,
+      sla_status,
       stock:lead_generation_stock!lead_generation_assignments_stock_id_fkey (
         id,
         company_name,
@@ -132,6 +141,9 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
     assigned_at: string;
     last_activity_at: string | null;
     attempt_count: number;
+    commercial_pipeline_status: string | null;
+    sla_due_at: string | null;
+    sla_status: string | null;
     stock: StockRow | StockRow[] | null;
   };
 
@@ -199,7 +211,13 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
     if (s.qualification_status !== "qualified") {
       return false;
     }
-    return s.current_assignment_id === r.id;
+    if (s.current_assignment_id !== r.id) {
+      return false;
+    }
+    if ((r.commercial_pipeline_status ?? "new") === "converted") {
+      return false;
+    }
+    return true;
   });
 
   const assignmentIds = active.map((r) => r.id);
@@ -217,6 +235,9 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
       stockId: s.id,
       ceeSheetId,
       ceeSheetDisplay,
+      commercialPipelineStatus: (r.commercial_pipeline_status ?? "new") as CommercialPipelineStatus,
+      slaDueAt: r.sla_due_at,
+      slaStatus: (r.sla_status ?? null) as CommercialSlaStatus | null,
       companyName: s.company_name,
       phone: s.phone ?? s.normalized_phone ?? null,
       email: s.email,

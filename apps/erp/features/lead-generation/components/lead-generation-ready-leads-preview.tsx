@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button-variants";
-import { buildLeadGenerationStockQuickFiltreUrl } from "@/features/lead-generation/lib/build-lead-generation-list-url";
+import {
+  buildLeadGenerationStockPageUrl,
+  buildLeadGenerationStockQuickFiltreUrl,
+} from "@/features/lead-generation/lib/build-lead-generation-list-url";
 import type { LeadGenerationStockListItem } from "@/features/lead-generation/queries/get-lead-generation-stock";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +56,7 @@ export function LeadGenerationReadyLeadsPreview({ rows }: Props) {
 export function LeadGenerationStockFullLink({ className }: { className?: string }) {
   return (
     <Link
-      href="/lead-generation/stock"
+      href={buildLeadGenerationStockPageUrl({})}
       className={cn(
         buttonVariants({ variant: "outline", size: "sm" }),
         "border-border/80 bg-transparent font-medium text-muted-foreground hover:text-foreground",

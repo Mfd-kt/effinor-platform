@@ -63,6 +63,15 @@ export type {
   LeadGenerationDispatchSelectedQueueStatus,
 } from "./domain/dispatch-result";
 export { dispatchLeadGenerationStockForAgent, dispatchLeadGenerationStockForAgents } from "./services/dispatch-lead-generation-stock";
+export type { LeadGenerationAssignmentEventKind } from "./domain/lead-generation-assignment-event";
+export {
+  getLeadGenerationPipelineEventCounts,
+  getLeadGenerationPipelineMilestoneSample,
+} from "./queries/get-lead-generation-pipeline-event-analytics";
+export type {
+  LeadGenerationPipelineEventCounts,
+  LeadGenerationPipelineMilestoneSample,
+} from "./queries/get-lead-generation-pipeline-event-analytics";
 export { computeAgentActiveStock } from "./lib/compute-agent-active-stock";
 export type { AgentActiveStockSnapshot } from "./lib/compute-agent-active-stock";
 export * from "./types";

@@ -237,6 +237,31 @@ export async function canAccessLeadGenerationManagementDashboard(access: AccessC
 }
 
 /**
+ * Réduit les entrées du menu « Acquisition de leads » (Pilotage, pilotage quantif., cockpit, stock, réglages uniquement).
+ * S’applique aux admin / directeur·rice commercial·e / manager d’équipe CEE hors rôle terrain.
+ * Les profils `super_admin`, `sales_agent` ou `lead_generation_quantifier` gardent la liste complète filtrée par habilitation.
+ */
+export async function shouldUseLeanLeadGenerationHubSidebar(access: AccessContext): Promise<boolean> {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  const rc = access.roleCodes;
+  if (rc.includes("super_admin")) {
+    return false;
+  }
+  if (rc.includes("lead_generation_quantifier")) {
+    return false;
+  }
+  if (rc.includes("sales_agent")) {
+    return false;
+  }
+  if (rc.includes("admin") || rc.includes("sales_director")) {
+    return true;
+  }
+  return await isCeeTeamManager(access.userId);
+}
+
+/**
  * Impersonation (super_admin → commercial) : le compte réel peut ouvrir la file / une fiche
  * même si le sujet n’a pas le rôle `sales_agent` (support).
  */

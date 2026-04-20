@@ -22,6 +22,7 @@ export async function dedupeLeadGenerationStockStrictAction(): Promise<
   try {
     const data = await dedupeLeadGenerationStockStrictPhoneAndName();
     revalidatePath("/lead-generation");
+    revalidatePath("/lead-generation");
     revalidatePath("/lead-generation/stock");
     revalidatePath("/lead-generation/imports");
     revalidatePath("/lead-generation/my-queue");

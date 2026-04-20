@@ -41,7 +41,7 @@ export function LeadGenerationDeleteStockButton({
         setMessage(humanizeLeadGenerationActionError(res.error));
         return;
       }
-      router.push("/lead-generation/stock");
+      router.push("/lead-generation");
       router.refresh();
     });
   }

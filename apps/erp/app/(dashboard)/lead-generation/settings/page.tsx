@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadGenerationSettingsPanel } from "@/features/lead-generation/components/lead-generation-settings-panel";
 import { getLeadGenerationSettings } from "@/features/lead-generation/settings/get-lead-generation-settings";
 import { getAccessContext } from "@/lib/auth/access-context";
@@ -25,11 +24,6 @@ export default async function LeadGenerationSettingsPage() {
       <PageHeader
         title="Lead Generation — Réglages"
         description="Réglages métier et outils d’analyse — tout reste accessible depuis cette page."
-        actions={
-          <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            Pilotage
-          </Link>
-        }
       />
 
       <section aria-label="Outils et suivi" className="grid gap-3 sm:grid-cols-2">
@@ -80,7 +74,7 @@ export default async function LeadGenerationSettingsPage() {
           </span>
         </Link>
         <Link
-          href="/lead-generation/stock"
+          href="/lead-generation"
           className={cn(
             "flex items-start gap-3 rounded-xl border border-border/80 bg-card/40 p-4 shadow-sm transition-colors hover:bg-muted/30",
             "ring-1 ring-black/[0.03] dark:ring-white/[0.05]",

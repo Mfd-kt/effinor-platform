@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationQuantification } from "@/lib/auth/module-access";
@@ -10,6 +11,8 @@ import { assertQuantifierMayActOnQuantificationStock } from "../lib/quantificati
 import { resolveNextQuantificationStockId } from "../lib/resolve-next-quantification-stock-id";
 import { evaluateLeadGenerationDispatchQueue } from "../queue/evaluate-dispatch-queue";
 import { getLeadGenerationStockById } from "../queries/get-lead-generation-stock-by-id";
+import { orchestrateQualifiedProspectEmailAfterQuantifierQualify } from "@/features/lead-emails/services/orchestrate-qualified-prospect-email";
+
 import { reviewLeadGenerationStock } from "../services/review-lead-generation-stock";
 
 const MAX_QUALIFIER_COMMENT_LEN = 4000;
@@ -70,6 +73,16 @@ export async function quantifierQualifyLeadGenerationStockAction(
     return { ok: false, message: res.error };
   }
 
+  after(() => {
+    void orchestrateQualifiedProspectEmailAfterQuantifierQualify({
+      stockId: id,
+      manualReviewId: res.data.reviewId,
+      qualificationNotes: reviewNotes,
+    }).catch((e) => {
+      console.error("[quantifier-qualify] qualified prospect email", e);
+    });
+  });
+
   try {
     await evaluateLeadGenerationDispatchQueue({ stockId: id });
   } catch {
@@ -78,6 +91,7 @@ export async function quantifierQualifyLeadGenerationStockAction(
 
   revalidatePath("/lead-generation/quantification");
   revalidatePath(`/lead-generation/quantification/${id}`);
+  revalidatePath("/lead-generation");
   revalidatePath("/lead-generation/stock");
 
   return { ok: true, message: "Fiche validée.", nextStockId };

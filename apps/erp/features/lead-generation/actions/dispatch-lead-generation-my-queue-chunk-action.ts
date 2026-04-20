@@ -5,19 +5,15 @@ import { z } from "zod";
 
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
+import { createClient } from "@/lib/supabase/server";
 
 import type { DispatchLeadGenerationStockResult } from "../domain/dispatch-result";
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import { MY_QUEUE_NO_CEE_SHEET_SENTINEL } from "../lib/my-queue-cee-sheet-option";
-import { MY_QUEUE_MANUAL_CHUNK_DEFAULT, MY_QUEUE_MAX_ACTIVE_STOCK } from "../lib/my-queue-manual-dispatch";
+import { MY_QUEUE_MANUAL_CHUNK_DEFAULT } from "../lib/my-queue-manual-dispatch";
 import { getLeadGenerationMyQueueCeeSheetOptions } from "../queries/get-lead-generation-my-queue-cee-sheet-options";
+import { getLeadGenerationDispatchPolicyConfig } from "../queries/get-lead-generation-dispatch-policy-config";
 import { dispatchLeadGenerationMyQueueChunkForAgent } from "../services/dispatch-lead-generation-stock";
-
-const inputSchema = z.object({
-  chunkSize: z.number().int().min(1).max(MY_QUEUE_MAX_ACTIVE_STOCK).optional(),
-  /** Fiche CEE (UUID) ou sentinelle « sans fiche ». */
-  ceeSheetId: z.string().min(1).max(120).optional(),
-});
 
 /**
  * Récupère un lot de fiches `ready_now` pour l’agent connecté (ex. +20 depuis « Mes fiches à traiter »).
@@ -29,6 +25,16 @@ export async function dispatchLeadGenerationMyQueueChunkAction(
   if (access.kind !== "authenticated" || !canAccessLeadGenerationMyQueue(access)) {
     return { ok: false, error: "Accès refusé." };
   }
+
+  const supabase = await createClient();
+  const policyCfg = await getLeadGenerationDispatchPolicyConfig(supabase);
+  const maxChunkRequest = policyCfg.effectiveCapMax;
+
+  const inputSchema = z.object({
+    chunkSize: z.number().int().min(1).max(maxChunkRequest).optional(),
+    /** Fiche CEE (UUID) ou sentinelle « sans fiche ». */
+    ceeSheetId: z.string().min(1).max(120).optional(),
+  });
 
   const parsed = inputSchema.safeParse(input ?? {});
   if (!parsed.success) {

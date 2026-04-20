@@ -7,6 +7,7 @@ import { logDropcontact } from "./dropcontact-log";
  */
 export function revalidateLeadStockDropcontactPaths(stockId: string, origin: string): void {
   revalidatePath("/lead-generation");
+  revalidatePath("/lead-generation");
   revalidatePath("/lead-generation/stock");
   revalidatePath(`/lead-generation/${stockId}`);
   revalidatePath("/lead-generation/my-queue");

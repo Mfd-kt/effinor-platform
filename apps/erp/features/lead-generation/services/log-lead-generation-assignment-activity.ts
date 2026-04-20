@@ -6,9 +6,13 @@ import type {
   LeadGenerationActivityOutcome,
   LeadGenerationActivityType,
 } from "../domain/assignment-activity";
+import type { CommercialPipelineStatus } from "../domain/commercial-pipeline-status";
+import { nextCommercialPipelineStatusAfterActivity } from "../lib/next-commercial-pipeline-status";
 import { LG_CALL_STARTED_ACTIVITY_LABEL, LG_CALL_STUB_MERGE_MS } from "../lib/lg-call-draft";
 import { lgTable } from "../lib/lg-db";
 
+import { emitLeadGenerationPipelineEventsAfterActivity } from "../lib/emit-lead-generation-assignment-pipeline-events";
+import { refreshLeadGenerationAssignmentSla } from "./refresh-lead-generation-assignment-sla";
 import { syncLeadGenerationFollowUpReminderTask } from "./sync-lead-generation-follow-up-reminder-task";
 
 export type LeadGenerationAssignmentActivityRow = {
@@ -81,7 +85,7 @@ export async function logLeadGenerationAssignmentActivity(
   const assignments = lgTable(supabase, "lead_generation_assignments");
 
   const { data: assignment, error: aErr } = await assignments
-    .select("id, stock_id, agent_id, opened_at, attempt_count")
+    .select("id, stock_id, agent_id, opened_at, attempt_count, commercial_pipeline_status, outcome")
     .eq("id", input.assignmentId)
     .maybeSingle();
 
@@ -98,7 +102,17 @@ export async function logLeadGenerationAssignmentActivity(
     agent_id: string;
     opened_at: string | null;
     attempt_count: number;
+    commercial_pipeline_status: string | null;
+    outcome: string;
   };
+
+  const cur = (row.commercial_pipeline_status ?? "new") as CommercialPipelineStatus;
+  const nextPipe = nextCommercialPipelineStatusAfterActivity({
+    current: cur,
+    nextActionAt: input.nextActionAt,
+  });
+  const pipelinePatch: Record<string, unknown> =
+    nextPipe === cur ? {} : { commercial_pipeline_status: nextPipe };
 
   const isOwner = row.agent_id === input.actorUserId;
   if (!isOwner && !input.allowAsAdmin) {
@@ -142,6 +156,7 @@ export async function logLeadGenerationAssignmentActivity(
     const assignmentPatch: Record<string, unknown> = {
       last_activity_at: nowIso,
       updated_at: nowIso,
+      ...pipelinePatch,
     };
     if (!row.opened_at) {
       assignmentPatch.opened_at = nowIso;
@@ -176,6 +191,7 @@ export async function logLeadGenerationAssignmentActivity(
     const assignmentPatch: Record<string, unknown> = {
       last_activity_at: nowIso,
       updated_at: nowIso,
+      ...pipelinePatch,
     };
     if (!row.opened_at) {
       assignmentPatch.opened_at = nowIso;
@@ -190,6 +206,19 @@ export async function logLeadGenerationAssignmentActivity(
     }
   }
 
+  await emitLeadGenerationPipelineEventsAfterActivity({
+    supabase,
+    assignmentId: row.id,
+    stockId: row.stock_id,
+    agentId: row.agent_id,
+    previousPipeline: cur,
+    nextPipeline: nextPipe,
+    fromOutcome: row.outcome ?? "pending",
+    toOutcome: row.outcome ?? "pending",
+    occurredAtIso: nowIso,
+    activityContext: { activityType: input.activityType, activityLabel: input.activityLabel },
+  });
+
   if (!input.skipFollowUpReminderSync) {
     await syncLeadGenerationFollowUpReminderTask({
       supabase,
@@ -200,6 +229,8 @@ export async function logLeadGenerationAssignmentActivity(
       followUpAtIso: input.nextActionAt ?? null,
     });
   }
+
+  await refreshLeadGenerationAssignmentSla(supabase, row.id, { notifyOnBreach: true });
 
   return { activity: resultRow };
 }

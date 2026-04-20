@@ -1,0 +1,25 @@
+{
+  "company_name": "Ateliers Dupont SAS",
+  "activity": "Métallurgie · fabrication",
+  "city": "Saint-Étienne",
+  "postal_code": "42000",
+  "contact_first_name": "Marie",
+  "contact_last_name": "Bernard",
+  "contact_full_name": "Marie Bernard",
+  "contact_role": "Responsable site",
+  "email": "m.bernard@example.com",
+  "phone": "+33477123456",
+  "building_signals": {
+    "industrial_site": true,
+    "heated_building": true,
+    "heating_type": "gaz ; atelier chauffé",
+    "surface": "grande surface",
+    "height": "hauteur moyenne à forte"
+  },
+  "qualification_notes": "Bon alignement CEE déstratification si volume confirmé.",
+  "source": "google_maps_batch",
+  "enrichment_hints": {
+    "gpt_sector": "industrial",
+    "gpt_activity_excerpt": "Fabrication de pièces mécaniques, atelier principal sous hangar."
+  }
+}

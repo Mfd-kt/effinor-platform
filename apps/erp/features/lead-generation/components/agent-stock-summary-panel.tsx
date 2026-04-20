@@ -36,7 +36,9 @@ export function AgentStockSummaryPanel({ agents }: Props) {
       setSummaryText(
         [
           `Fiches attribuées (total historique) : ${s.totalAssigned}`,
-          `Fiches actives en portefeuille : ${s.totalActive}`,
+          `Stock neuf (pipeline Nouveau — plafond / réinjection) : ${s.totalActive}`,
+          `Contacté / En action (pending) : ${s.totalContacted}`,
+          `À rappeler (pending) : ${s.totalFollowUp}`,
           `Fiches consommées / traitées : ${s.totalConsumed}`,
           `Converties en fiche prospect : ${s.totalConverted}`,
           `Rejetées : ${s.totalRejected}`,

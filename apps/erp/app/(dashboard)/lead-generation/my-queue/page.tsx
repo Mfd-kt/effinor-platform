@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { MyLeadGenerationQueueAgentShell } from "@/features/lead-generation/components/my-lead-generation-queue-agent-shell";
+import { getLeadGenerationDispatchPolicy } from "@/features/lead-generation/lib/agent-dispatch-policy";
 import { getLeadGenerationMyQueueCeeSheetOptions } from "@/features/lead-generation/queries/get-lead-generation-my-queue-cee-sheet-options";
 import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
+import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
   canAccessLeadGenerationHub,
@@ -38,6 +40,9 @@ export default async function MyLeadGenerationQueuePage() {
 
   const hub = await canAccessLeadGenerationHub(access);
 
+  const supabase = await createClient();
+  const dispatchPolicy = await getLeadGenerationDispatchPolicy(supabase, access.userId);
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
       <PageHeader
@@ -47,7 +52,7 @@ export default async function MyLeadGenerationQueuePage() {
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {hub ? (
               <Link
-                href="/lead-generation/stock"
+                href="/lead-generation"
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
                   "text-muted-foreground hover:text-foreground",
@@ -69,6 +74,7 @@ export default async function MyLeadGenerationQueuePage() {
         items={items}
         ceeSheetOptions={ceeSheetOptions}
         viewerUserId={access.userId}
+        effectiveStockCap={dispatchPolicy.effectiveStockCap}
       />
     </div>
   );

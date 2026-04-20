@@ -197,6 +197,7 @@ export async function markLeadGenerationStockOutOfTargetAction(
   }
 
   revalidatePath("/lead-generation");
+  revalidatePath("/lead-generation");
   revalidatePath("/lead-generation/stock");
   revalidatePath(`/lead-generation/${id}`);
   revalidatePath("/lead-generation/my-queue");

@@ -1,10 +1,22 @@
+import {
+  COMMERCIAL_PIPELINE_ACTIVE_STOCK_STATUS,
+  type CommercialPipelineStatus,
+} from "../domain/commercial-pipeline-status";
 import type { LeadGenerationCommercialPriority } from "../domain/statuses";
 import type { MyLeadGenerationQueueItem } from "../queries/get-my-lead-generation-queue";
 
 /** Fuseau métier pour « aujourd’hui / demain » cohérents côté file commerciale. */
 const PARIS_TZ = "Europe/Paris";
 
-export type MyQueueQuickFilter = "all" | "overdue" | "today" | "high_priority" | "ready_now";
+export type MyQueueQuickFilter =
+  | "all"
+  | "pipeline_new"
+  | "pipeline_contacted"
+  | "pipeline_follow_up"
+  | "overdue"
+  | "today"
+  | "high_priority"
+  | "ready_now";
 
 export type RelanceBucket = "overdue" | "today" | "tomorrow" | "future" | "none";
 
@@ -103,7 +115,10 @@ export function isDueTodayFuture(item: MyLeadGenerationQueueItem, now: Date = ne
 }
 
 export type QueueKpis = {
-  active: number;
+  /** Toutes les lignes affichées (suivi + stock neuf). */
+  totalInQueue: number;
+  /** Stock neuf — seul compteur aligné sur le plafond / réinjection. */
+  freshStock: number;
   overdue: number;
   dueToday: number;
   highPriority: number;
@@ -111,11 +126,16 @@ export type QueueKpis = {
 
 export function computeQueueKpis(items: MyLeadGenerationQueueItem[], now: Date = new Date()): QueueKpis {
   return {
-    active: items.length,
+    totalInQueue: items.length,
+    freshStock: items.filter((i) => i.commercialPipelineStatus === COMMERCIAL_PIPELINE_ACTIVE_STOCK_STATUS).length,
     overdue: items.filter((i) => i.hasOverdueFollowUp).length,
     dueToday: items.filter((i) => isDueTodayFuture(i, now)).length,
     highPriority: items.filter((i) => i.commercialPriority === "critical" || i.commercialPriority === "high").length,
   };
+}
+
+function matchesPipelineFilter(item: MyLeadGenerationQueueItem, status: CommercialPipelineStatus): boolean {
+  return item.commercialPipelineStatus === status;
 }
 
 export function itemMatchesQuickFilter(
@@ -126,6 +146,12 @@ export function itemMatchesQuickFilter(
   switch (filter) {
     case "all":
       return true;
+    case "pipeline_new":
+      return matchesPipelineFilter(item, COMMERCIAL_PIPELINE_ACTIVE_STOCK_STATUS);
+    case "pipeline_contacted":
+      return matchesPipelineFilter(item, "contacted");
+    case "pipeline_follow_up":
+      return matchesPipelineFilter(item, "follow_up");
     case "overdue":
       return item.hasOverdueFollowUp;
     case "today":

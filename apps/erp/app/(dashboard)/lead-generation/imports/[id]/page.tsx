@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImportBatchCeeTeamEditor } from "@/features/lead-generation/components/import-batch-cee-team-editor";
 import { ImportBatchRetrySyncButton } from "@/features/lead-generation/components/import-batch-retry-sync-button";
 import { ImportBatchSyncButton } from "@/features/lead-generation/components/import-batch-sync-button";
-import { LeadGenerationEnrichmentToolbar } from "@/features/lead-generation/components/lead-generation-enrichment-toolbar";
-import { LeadGenerationStockTable } from "@/features/lead-generation/components/lead-generation-stock-table";
+import { LeadGenerationStockListView } from "@/features/lead-generation/components/lead-generation-stock-list-view";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
 import { formatMyQueueCeeSheetOptionLabel } from "@/features/lead-generation/lib/my-queue-cee-sheet-option";
 import { buildLeadGenerationStockPageUrl, type LeadGenerationListSearchState } from "@/features/lead-generation/lib/build-lead-generation-list-url";
@@ -22,9 +21,7 @@ import { humanizeLeadGenerationActionError } from "@/features/lead-generation/li
 import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import { getLeadGenerationImportBatchById } from "@/features/lead-generation/queries/get-lead-generation-import-batch-by-id";
 import { getLeadGenerationStock } from "@/features/lead-generation/queries/get-lead-generation-stock";
-import { getLeadGenerationStockIdsByImportBatch } from "@/features/lead-generation/queries/get-lead-generation-stock-ids-by-import-batch";
 import { getLeadGenerationStockSummary } from "@/features/lead-generation/queries/get-lead-generation-stock-summary";
-import { countDispatchableReadyNowPoolWithFilters } from "@/features/lead-generation/services/auto-dispatch-lead-generation-stock-round-robin";
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
   canAccessLeadGenerationHub,
@@ -131,20 +128,16 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
   const linkBase: LeadGenerationListSearchState = { import_batch: id };
   let stockRows: Awaited<ReturnType<typeof getLeadGenerationStock>> = [];
   let stockSummary: Awaited<ReturnType<typeof getLeadGenerationStockSummary>> | null = null;
-  let readyPoolCount = 0;
-  let allStockIds: string[] = [];
   let stockLoadError: string | null = null;
 
   try {
-    [stockRows, stockSummary, readyPoolCount, allStockIds] = await Promise.all([
+    [stockRows, stockSummary] = await Promise.all([
       getLeadGenerationStock({
         filters: stockFilters,
         limit: IMPORT_DETAIL_PAGE_SIZE,
         offset,
       }),
       getLeadGenerationStockSummary(stockFilters),
-      countDispatchableReadyNowPoolWithFilters(stockFilters),
-      getLeadGenerationStockIdsByImportBatch(id),
     ]);
   } catch (e) {
     stockLoadError = e instanceof Error ? e.message : "Impossible de charger les fiches de cet import.";
@@ -328,13 +321,12 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
                 </>
               ) : (
                 <>
-                  Liste paginée ({IMPORT_DETAIL_PAGE_SIZE} fiches par page) — toutes les fiches du lot sont accessibles
-                  ici. Outils d’enrichissement, scoring, file et distribution limités à ce lot. Alternative :{" "}
+                  Liste paginée ({IMPORT_DETAIL_PAGE_SIZE} fiches par page). Vue Stock globale :{" "}
                   <Link
                     href={buildLeadGenerationStockPageUrl(linkBase)}
                     className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-auto p-0 align-baseline")}
                   >
-                    vue Stock filtrée
+                    même lot, filtres complets
                   </Link>
                   .
                 </>
@@ -342,22 +334,13 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
             </p>
           </CardHeader>
           <CardContent>
-            {quantifierRestricted ? (
-              <div className="overflow-x-auto">
-                <LeadGenerationStockTable rows={stockRows} />
-              </div>
-            ) : (
-              <LeadGenerationEnrichmentToolbar
-                rows={stockRows}
-                summary={stockSummary}
-                page={page}
-                pageSize={IMPORT_DETAIL_PAGE_SIZE}
-                readyPoolCount={readyPoolCount}
-                linkBase={linkBase}
-                dispatchFilters={stockFilters}
-                importBatchScope={{ importBatchId: id, allStockIds }}
-              />
-            )}
+            <LeadGenerationStockListView
+              rows={stockRows}
+              summary={stockSummary}
+              page={page}
+              pageSize={IMPORT_DETAIL_PAGE_SIZE}
+              linkBase={linkBase}
+            />
             <div className="mt-4 flex flex-wrap items-center gap-3">
               {prevHref ? (
                 <Link href={prevHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>

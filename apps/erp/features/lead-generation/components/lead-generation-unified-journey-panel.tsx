@@ -19,7 +19,10 @@ import {
   type UnifiedPipelineStepKey,
   type UnifiedPipelineStepRecord,
 } from "../services/unified-pipeline-state";
-import { buildLeadGenerationStockLockedPipelineLotUrl } from "../lib/build-lead-generation-list-url";
+import {
+  buildLeadGenerationStockLockedPipelineLotUrl,
+  buildLeadGenerationStockQuickFiltreUrl,
+} from "../lib/build-lead-generation-list-url";
 import type { LeadGenerationCeeImportScope } from "../queries/get-lead-generation-cee-import-scope";
 import { LeadGenerationGenerateCampaignModal } from "./lead-generation-generate-campaign-modal";
 
@@ -202,7 +205,7 @@ export function LeadGenerationUnifiedJourneyPanel({ pipelineLock, assignableAgen
             </Link>
           ) : (
             <Link
-              href="/lead-generation/stock?filtre=contact_gap"
+              href={buildLeadGenerationStockQuickFiltreUrl("contact_gap")}
               className={`${buttonVariants({ variant: "secondary", size: "sm" })} inline-flex w-full justify-center sm:w-auto`}
             >
               Ouvrir le stock (fiches à compléter)

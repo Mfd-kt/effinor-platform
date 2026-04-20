@@ -20,7 +20,15 @@ import {
   canAccessTechnicalVisitsDirectoryNav,
   shouldHideTerrainSuiviSidebar,
   shouldShowLeadGenerationMyQueueNav,
+  shouldUseLeanLeadGenerationHubSidebar,
 } from "./module-access";
+
+/** Liens `/lead-generation` affichés au menu quand {@link shouldUseLeanLeadGenerationHubSidebar} est vrai. */
+const LEAN_LEAD_GENERATION_SIDEBAR_HREFS = new Set([
+  "/lead-generation",
+  "/lead-generation/management",
+  "/lead-generation/settings",
+]);
 
 const CORE_HREFS = ["/", "/tasks", "/account", "/agent-operations", "/digests"] as const;
 
@@ -59,7 +67,6 @@ export async function buildAllowedNavHrefs(
     extra.push("/lead-generation");
     extra.push("/lead-generation/settings");
     extra.push("/lead-generation/imports");
-    extra.push("/lead-generation/stock");
     extra.push("/lead-generation/automation");
     extra.push("/lead-generation/analytics");
     extra.push("/lead-generation/learning");
@@ -92,11 +99,26 @@ export async function buildAllowedNavHrefs(
 
   const uniq = (paths: string[]) => [...new Set(paths)];
 
+  const merged = uniq([...base, ...extra]);
+  const lean =
+    access.kind === "authenticated" && (await shouldUseLeanLeadGenerationHubSidebar(access));
+  const navigable = lean
+    ? merged.filter(
+        (h) => !h.startsWith("/lead-generation") || LEAN_LEAD_GENERATION_SIDEBAR_HREFS.has(h),
+      )
+    : merged;
+
   if (rc.includes("super_admin")) {
-    return uniq([...base, ...extra, "/settings/users", "/settings/roles", "/settings/cee", "/settings/products"]);
+    return uniq([
+      ...navigable,
+      "/settings/users",
+      "/settings/roles",
+      "/settings/cee",
+      "/settings/products",
+    ]);
   }
   if (ceeTeamManager) {
-    return uniq([...base, ...extra, "/settings/users"]);
+    return uniq([...navigable, "/settings/users"]);
   }
-  return uniq([...base, ...extra]);
+  return navigable;
 }

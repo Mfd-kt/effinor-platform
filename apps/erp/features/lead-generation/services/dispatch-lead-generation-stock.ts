@@ -7,15 +7,16 @@ import type {
   DispatchLeadGenerationStockResult,
 } from "../domain/dispatch-result";
 import { buildDispatchLeadGenerationStockClaimRpcParams } from "../lib/build-dispatch-lead-generation-rpc-params";
+import { getLeadGenerationDispatchPolicy } from "../lib/agent-dispatch-policy";
 import { computeAgentActiveStock, computeAgentActiveStockForCeeSheet } from "../lib/compute-agent-active-stock";
+import { MY_QUEUE_MANUAL_CHUNK_DEFAULT } from "../lib/my-queue-manual-dispatch";
 import {
-  LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET,
-  MY_QUEUE_MANUAL_CHUNK_DEFAULT,
-} from "../lib/my-queue-manual-dispatch";
+  maybeRecordLeadGenerationDispatchResumed,
+  recordLeadGenerationDispatchAssignedEvents,
+  recordLeadGenerationDispatchBlockedEvent,
+} from "../lib/lead-generation-dispatch-journal";
+import { refreshLeadGenerationAssignmentSla } from "./refresh-lead-generation-assignment-sla";
 import type { GetLeadGenerationStockFilters } from "../queries/get-lead-generation-stock";
-
-const TARGET_STOCK = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
-const THRESHOLD_STOCK = 50;
 
 const SELECTED_QUEUE = "ready_now" as const;
 
@@ -50,6 +51,7 @@ function resultFromClaim(
   requestedCount: number,
   rows: RpcClaimRow[],
   newStock: number,
+  dispatchBlockedReason?: string | null,
 ): DispatchLeadGenerationStockResult {
   const assignedStockIds = rows.map((r) => r.stock_id);
   const assignedCount = assignedStockIds.length;
@@ -62,21 +64,42 @@ function resultFromClaim(
     selectedQueueStatus: SELECTED_QUEUE,
     newStock,
     assignedStockIds,
+    dispatchBlockedReason: dispatchBlockedReason ?? null,
   };
 }
 
 /**
- * Recharge le stock dispatchable d’un agent : si le stock actif &lt; 50, complète jusqu’à viser 100 lignes actives.
- * L’attribution des fiches utilise une RPC Postgres (`FOR UPDATE SKIP LOCKED`) pour éviter les courses.
+ * Recharge le stock neuf : si sous le seuil (moitié du plafond effectif), complète jusqu’au plafond
+ * (plafond ajusté par {@link getLeadGenerationDispatchPolicy}).
  */
 export async function dispatchLeadGenerationStockForAgent(
   agentId: string,
 ): Promise<DispatchLeadGenerationStockResult> {
   const supabase = await createClient();
 
+  const policy = await getLeadGenerationDispatchPolicy(supabase, agentId);
+  if (policy.suspendInjection) {
+    await recordLeadGenerationDispatchBlockedEvent(supabase, agentId, policy.suspensionReason);
+    const { count: previousStock } = await computeAgentActiveStock(supabase, agentId);
+    return {
+      agentId,
+      previousStock,
+      requestedCount: 0,
+      assignedCount: 0,
+      remainingNeed: 0,
+      selectedQueueStatus: SELECTED_QUEUE,
+      newStock: previousStock,
+      assignedStockIds: [],
+      dispatchBlockedReason: policy.suspensionReason,
+    };
+  }
+
+  const targetStock = policy.effectiveStockCap;
+  const thresholdStock = Math.max(20, Math.floor(targetStock * 0.5));
+
   const { count: previousStock } = await computeAgentActiveStock(supabase, agentId);
 
-  if (previousStock >= THRESHOLD_STOCK) {
+  if (previousStock >= thresholdStock) {
     return {
       agentId,
       previousStock,
@@ -89,7 +112,7 @@ export async function dispatchLeadGenerationStockForAgent(
     };
   }
 
-  const toAssign = TARGET_STOCK - previousStock;
+  const toAssign = targetStock - previousStock;
   if (toAssign <= 0) {
     return {
       agentId,
@@ -104,6 +127,11 @@ export async function dispatchLeadGenerationStockForAgent(
   }
 
   const rows = await runDispatchClaimRpc(supabase, agentId, toAssign, undefined);
+  await recordLeadGenerationDispatchAssignedEvents(supabase, agentId, rows);
+  for (const r of rows) {
+    await refreshLeadGenerationAssignmentSla(supabase, r.assignment_id, { notifyOnBreach: true });
+  }
+  await maybeRecordLeadGenerationDispatchResumed(supabase, agentId, rows.length);
   const { count: newStock } = await computeAgentActiveStock(supabase, agentId);
 
   return resultFromClaim(agentId, previousStock, toAssign, rows, newStock ?? previousStock);
@@ -111,7 +139,7 @@ export async function dispatchLeadGenerationStockForAgent(
 
 /**
  * Attribue jusqu’à `chunkSize` fiches `ready_now` à l’agent, sans seuil « stock &lt; 50 »,
- * mais en ne dépassant jamais le plafond par fiche CEE (voir `LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET`) lorsqu’une fiche est sélectionnée.
+ * mais en ne dépassant jamais le plafond par fiche CEE (voir config dispatch en base) lorsqu’une fiche est sélectionnée.
  */
 export async function dispatchLeadGenerationMyQueueChunkForAgent(
   agentId: string,
@@ -120,7 +148,29 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
 ): Promise<DispatchLeadGenerationStockResult> {
   const supabase = await createClient();
   const sheet = ceeSheetId?.trim();
-  const cap = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
+
+  const policy = await getLeadGenerationDispatchPolicy(supabase, agentId);
+  if (policy.suspendInjection) {
+    await recordLeadGenerationDispatchBlockedEvent(supabase, agentId, policy.suspensionReason);
+    const { count: previousStockGlobal } = await computeAgentActiveStock(supabase, agentId);
+    const { count: previousStockCee } = sheet
+      ? await computeAgentActiveStockForCeeSheet(supabase, agentId, sheet)
+      : { count: previousStockGlobal };
+    const previousStock = sheet ? previousStockCee : previousStockGlobal;
+    return {
+      agentId,
+      previousStock,
+      requestedCount: 0,
+      assignedCount: 0,
+      remainingNeed: 0,
+      selectedQueueStatus: SELECTED_QUEUE,
+      newStock: previousStock,
+      assignedStockIds: [],
+      dispatchBlockedReason: policy.suspensionReason,
+    };
+  }
+
+  const cap = policy.effectiveStockCap;
 
   const { count: previousStockGlobal } = await computeAgentActiveStock(supabase, agentId);
   const { count: previousStockCee } = sheet
@@ -148,6 +198,11 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
 
   const filters: GetLeadGenerationStockFilters | undefined = sheet ? { cee_sheet_id: sheet } : undefined;
   const rows = await runDispatchClaimRpc(supabase, agentId, lim, filters);
+  await recordLeadGenerationDispatchAssignedEvents(supabase, agentId, rows);
+  for (const r of rows) {
+    await refreshLeadGenerationAssignmentSla(supabase, r.assignment_id, { notifyOnBreach: true });
+  }
+  await maybeRecordLeadGenerationDispatchResumed(supabase, agentId, rows.length);
   const { count: newStockAfter } = sheet
     ? await computeAgentActiveStockForCeeSheet(supabase, agentId, sheet)
     : await computeAgentActiveStock(supabase, agentId);

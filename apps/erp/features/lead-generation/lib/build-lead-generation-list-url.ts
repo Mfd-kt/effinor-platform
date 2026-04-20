@@ -20,8 +20,7 @@ function trim(s: string | undefined): string | undefined {
   return t === "" ? undefined : t;
 }
 
-export function buildLeadGenerationListUrl(state: LeadGenerationListSearchState): string {
-  const p = new URLSearchParams();
+function appendListStateToParams(p: URLSearchParams, state: LeadGenerationListSearchState): void {
   const cs = trim(state.company_search);
   const ss = trim(state.stock_status);
   const qs = trim(state.qualification_status);
@@ -43,23 +42,21 @@ export function buildLeadGenerationListUrl(state: LeadGenerationListSearchState)
   if (importBatch) p.set("import_batch", importBatch);
   if (dq) p.set("dispatch_queue_status", dq);
   if (cr) p.set("closing_readiness_status", cr);
+}
 
+/** Carnet filtré (`/lead-generation`). */
+export function buildLeadGenerationStockPageUrl(state: LeadGenerationListSearchState): string {
+  const p = new URLSearchParams();
+  appendListStateToParams(p, state);
   const q = p.toString();
   return q ? `/lead-generation?${q}` : "/lead-generation";
 }
 
-/** Même logique que la liste cockpit, sur la page Stock dédiée. */
-export function buildLeadGenerationStockPageUrl(state: LeadGenerationListSearchState): string {
-  const u = buildLeadGenerationListUrl(state);
-  if (u === "/lead-generation") return "/lead-generation/stock";
-  return u.replace("/lead-generation?", "/lead-generation/stock?");
-}
-
-/** Liens rapides depuis le cockpit (vue stock filtrée). */
+/** Liens rapides depuis le cockpit (vue carnet filtrée). */
 export function buildLeadGenerationStockQuickFiltreUrl(
   kind: "pret" | "enrichir" | "rejet" | "premium" | "contact_gap",
 ): string {
-  return `/lead-generation/stock?filtre=${kind}`;
+  return `/lead-generation?filtre=${kind}`;
 }
 
 /** Fiches « email ou site manquant » limitées au lot du dernier parcours (déverrouille le bouton une fois traitées). */

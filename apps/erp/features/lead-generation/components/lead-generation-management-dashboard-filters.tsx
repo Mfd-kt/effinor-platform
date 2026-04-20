@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
 import { cn } from "@/lib/utils";
@@ -18,23 +18,30 @@ type Props = {
   ceeSheets: ManagementFilterOption[];
 };
 
-function buildQuery(next: {
-  period?: ManagementDashboardPeriod;
-  quantifierUserId?: string | null;
-  ceeSheetId?: string | null;
-}): string {
-  const p = new URLSearchParams();
+function buildQuery(
+  current: URLSearchParams,
+  next: {
+    period?: ManagementDashboardPeriod;
+    quantifierUserId?: string | null;
+    ceeSheetId?: string | null;
+  },
+): string {
+  const p = new URLSearchParams(current.toString());
+  p.set("view", "suivi");
   p.set("p", next.period ?? "7d");
   const q = next.quantifierUserId;
   if (q) {
     p.set("q", q);
+  } else {
+    p.delete("q");
   }
   const cee = next.ceeSheetId;
   if (cee) {
     p.set("cee", cee);
+  } else {
+    p.delete("cee");
   }
-  const s = p.toString();
-  return s ? `?${s}` : "";
+  return `?${p.toString()}`;
 }
 
 export function LeadGenerationManagementDashboardFilters({
@@ -45,6 +52,7 @@ export function LeadGenerationManagementDashboardFilters({
   ceeSheets,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
   const periods: { id: ManagementDashboardPeriod; label: string }[] = [
@@ -64,7 +72,13 @@ export function LeadGenerationManagementDashboardFilters({
             disabled={pending}
             onClick={() => {
               startTransition(() => {
-                router.push(`/lead-generation/management${buildQuery({ period: x.id, quantifierUserId, ceeSheetId })}`);
+                router.push(
+                  `/lead-generation/management${buildQuery(searchParams, {
+                    period: x.id,
+                    quantifierUserId,
+                    ceeSheetId,
+                  })}`,
+                );
               });
             }}
             className={cn(
@@ -88,7 +102,13 @@ export function LeadGenerationManagementDashboardFilters({
             onChange={(e) => {
               const v = e.target.value || null;
               startTransition(() => {
-                router.push(`/lead-generation/management${buildQuery({ period, quantifierUserId: v, ceeSheetId })}`);
+                router.push(
+                  `/lead-generation/management${buildQuery(searchParams, {
+                    period,
+                    quantifierUserId: v,
+                    ceeSheetId,
+                  })}`,
+                );
               });
             }}
           >
@@ -109,7 +129,13 @@ export function LeadGenerationManagementDashboardFilters({
             onChange={(e) => {
               const v = e.target.value || null;
               startTransition(() => {
-                router.push(`/lead-generation/management${buildQuery({ period, quantifierUserId, ceeSheetId: v })}`);
+                router.push(
+                  `/lead-generation/management${buildQuery(searchParams, {
+                    period,
+                    quantifierUserId,
+                    ceeSheetId: v,
+                  })}`,
+                );
               });
             }}
           >

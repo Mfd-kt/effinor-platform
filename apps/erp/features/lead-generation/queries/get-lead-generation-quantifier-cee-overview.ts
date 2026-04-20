@@ -1,13 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 
 import { computeAgentActiveStockForCeeSheet } from "../lib/compute-agent-active-stock";
-import { LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET } from "../lib/my-queue-manual-dispatch";
 import { listImportBatchIdsForQuantificationOwner } from "../lib/quantification-batch-ownership";
 import type { QuantificationImportBatchScope } from "../lib/quantification-viewer-scope";
 import { lgTable } from "../lib/lg-db";
 import { countDispatchableReadyNowPoolWithFilters } from "../services/auto-dispatch-lead-generation-stock-round-robin";
 import { getLeadGenerationAssignableAgents } from "./get-lead-generation-assignable-agents";
 import { getLeadGenerationCeeImportScope } from "./get-lead-generation-cee-import-scope";
+import { getLeadGenerationDispatchPolicyConfig } from "./get-lead-generation-dispatch-policy-config";
 
 export type LeadGenerationQuantifierCeeOverviewRow = {
   ceeSheetId: string;
@@ -34,6 +34,8 @@ export async function getLeadGenerationQuantifierCeeOverview(
   }
 
   const supabase = await createClient();
+  const dispatchCfg = await getLeadGenerationDispatchPolicyConfig(supabase);
+  const capBase = dispatchCfg.capBasePerCeeSheet;
   const batches = lgTable(supabase, "lead_generation_import_batches");
   const stock = lgTable(supabase, "lead_generation_stock");
   const agents = await getLeadGenerationAssignableAgents();
@@ -75,13 +77,13 @@ export async function getLeadGenerationQuantifierCeeOverview(
     let remainingSlotsBottleneck: number | null = null;
     if (agents.length > 0) {
       let maxActive = 0;
-      let minRemaining = LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET;
+      let minRemaining = capBase;
       for (const agent of agents) {
         const { count: active } = await computeAgentActiveStockForCeeSheet(supabase, agent.id, sheet.id);
         maxActive = Math.max(maxActive, active);
         minRemaining = Math.min(
           minRemaining,
-          Math.max(0, LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET - active),
+          Math.max(0, capBase - active),
         );
       }
       maxActiveAssignmentsAmongAgents = maxActive;
@@ -93,7 +95,7 @@ export async function getLeadGenerationQuantifierCeeOverview(
       ceeSheetCode: sheet.code?.trim() || sheet.id,
       toValidateCount,
       qualifiedReadyNowPool,
-      perAgentActiveCap: LEAD_GEN_MAX_ACTIVE_STOCK_PER_CEE_SHEET,
+      perAgentActiveCap: capBase,
       maxActiveAssignmentsAmongAgents,
       remainingSlotsBottleneck,
     });

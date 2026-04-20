@@ -14,7 +14,10 @@ export function lgTable(
     | "lead_generation_manual_reviews"
     | "lead_generation_automation_runs"
     | "lead_generation_pipeline_runs"
-    | "lead_generation_settings",
+    | "lead_generation_settings"
+    | "lead_generation_qualified_prospect_emails"
+    | "lead_generation_assignment_events"
+    | "lead_generation_dispatch_policy_config",
 ): ReturnType<SupabaseClient["from"]> {
   /** Cast : tables absentes du `Database` généré ; chaînage PostgREST conservé pour l’exécution. */
   return client.from(name as never) as ReturnType<SupabaseClient["from"]>;
