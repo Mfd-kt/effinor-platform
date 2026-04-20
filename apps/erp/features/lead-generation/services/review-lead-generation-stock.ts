@@ -62,6 +62,24 @@ function decisionLabel(decision: string): string {
 const NOW_REASON = (notes: string | null | undefined, fallback: string) =>
   notes?.trim() || fallback;
 
+const RETURNED_FROM_COMMERCIAL_PATCH_KEYS = [
+  "returned_from_commercial_at",
+  "returned_from_commercial_by_user_id",
+  "returned_from_commercial_note",
+] as const;
+
+function patchMissingReturnedFromCommercialInSchemaCache(message: string): boolean {
+  return message.includes("returned_from_commercial") && message.includes("schema cache");
+}
+
+function omitPatchKeys(patch: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
+  const out = { ...patch };
+  for (const k of keys) {
+    delete out[k];
+  }
+  return out;
+}
+
 /**
  * Validation humaine assistée : met à jour la fiche, enregistre l’audit et le marqueur manuel.
  */
@@ -253,7 +271,16 @@ export async function reviewLeadGenerationStock(
       }
     }
 
-    const { error: upErr } = await stockT.update(patch).eq("id", stockId);
+    let { error: upErr } = await stockT.update(patch).eq("id", stockId);
+    if (
+      upErr &&
+      patchMissingReturnedFromCommercialInSchemaCache(upErr.message) &&
+      RETURNED_FROM_COMMERCIAL_PATCH_KEYS.some((k) => k in patch)
+    ) {
+      ({ error: upErr } = await stockT
+        .update(omitPatchKeys(patch, RETURNED_FROM_COMMERCIAL_PATCH_KEYS))
+        .eq("id", stockId));
+    }
     if (upErr) {
       return { ok: false, error: upErr.message };
     }

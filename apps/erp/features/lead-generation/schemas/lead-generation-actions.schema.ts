@@ -80,6 +80,28 @@ export const retryLeadGenerationImportSyncActionInputSchema = z.object({
   batchId: uuid,
 });
 
+function emptyStringToUndefined(v: unknown): unknown {
+  return typeof v === "string" && v.trim() === "" ? undefined : v;
+}
+
+/** Saisie manuelle des champs contact côté quantificateur (fiche à qualifier). */
+export const updateQuantifierLeadGenerationContactFieldsInputSchema = z
+  .object({
+    stockId: uuid,
+    email: z.preprocess(emptyStringToUndefined, z.string().email("E-mail invalide.").max(320).optional()),
+    phone: z.preprocess(emptyStringToUndefined, z.string().trim().max(40).optional()),
+    decisionMakerName: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
+    decisionMakerRole: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
+    linkedinUrl: z.preprocess(emptyStringToUndefined, z.string().trim().max(2000).optional()),
+  })
+  .refine(
+    (d) =>
+      d.linkedinUrl === undefined ||
+      /^https:\/\//i.test(d.linkedinUrl) ||
+      /^http:\/\//i.test(d.linkedinUrl),
+    { message: "URL LinkedIn : utilisez http:// ou https://.", path: ["linkedinUrl"] },
+  );
+
 export const runManualCsvLeadGenerationImportActionInputSchema = z.object({
   csvText: z
     .string()

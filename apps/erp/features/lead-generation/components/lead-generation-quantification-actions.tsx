@@ -37,6 +37,14 @@ type Props = {
   className?: string;
 };
 
+function staleServerActionMessage(err: unknown): string | null {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.toLowerCase().includes("server action") && msg.toLowerCase().includes("was not found")) {
+    return "La page est désynchronisée avec le serveur (souvent après une mise à jour). Rechargez la page (rechargement forcé : Cmd+Shift+R ou Ctrl+Shift+R), puis recliquez sur Qualifier.";
+  }
+  return null;
+}
+
 export function LeadGenerationQuantificationActions({ stockId, className }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -53,12 +61,20 @@ export function LeadGenerationQuantificationActions({ stockId, className }: Prop
           onClick={() => {
             setFeedback(null);
             startTransition(async () => {
-              const res = await quantifierQualifyLeadGenerationStockAction(stockId);
-              if (res.ok) {
-                setFeedback({ tone: "ok", text: res.message });
-                router.refresh();
-              } else {
-                setFeedback({ tone: "err", text: res.message });
+              try {
+                const res = await quantifierQualifyLeadGenerationStockAction(stockId);
+                if (res.ok) {
+                  setFeedback({ tone: "ok", text: res.message });
+                  router.refresh();
+                } else {
+                  setFeedback({ tone: "err", text: res.message });
+                }
+              } catch (e) {
+                const hint = staleServerActionMessage(e);
+                setFeedback({
+                  tone: "err",
+                  text: hint ?? (e instanceof Error ? e.message : "Action impossible."),
+                });
               }
             });
           }}
@@ -95,14 +111,22 @@ export function LeadGenerationQuantificationActions({ stockId, className }: Prop
           onClick={() => {
             setFeedback(null);
             startTransition(async () => {
-              const res = await markLeadGenerationStockOutOfTargetAction(stockId, {
-                outOfTargetReasonCode: ootReason,
-              });
-              if (res.ok) {
-                setFeedback({ tone: "ok", text: res.message ?? "Hors cible enregistré." });
-                router.refresh();
-              } else {
-                setFeedback({ tone: "err", text: res.message ?? "Action impossible." });
+              try {
+                const res = await markLeadGenerationStockOutOfTargetAction(stockId, {
+                  outOfTargetReasonCode: ootReason,
+                });
+                if (res.ok) {
+                  setFeedback({ tone: "ok", text: res.message ?? "Hors cible enregistré." });
+                  router.refresh();
+                } else {
+                  setFeedback({ tone: "err", text: res.message ?? "Action impossible." });
+                }
+              } catch (e) {
+                const hint = staleServerActionMessage(e);
+                setFeedback({
+                  tone: "err",
+                  text: hint ?? (e instanceof Error ? e.message : "Action impossible."),
+                });
               }
             });
           }}
