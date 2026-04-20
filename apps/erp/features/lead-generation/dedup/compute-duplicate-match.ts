@@ -14,7 +14,9 @@ export type LeadGenerationDuplicateMatchReason =
   | "exact_domain_and_similar_name"
   | "similar_name_same_city_and_postal"
   | "similar_name_and_same_city"
-  | "similar_name_and_same_postal";
+  | "similar_name_and_same_postal"
+  /** Doublon d’une fiche déjà hors cible — exclusion automatique à l’ingestion. */
+  | "auto_duplicate_of_out_of_target";
 
 export type LeadGenerationDuplicateMatchResult = {
   isDuplicate: boolean;

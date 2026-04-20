@@ -1,7 +1,7 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub, canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub, canAccessLeadGenerationQuantification } from "@/lib/auth/module-access";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -15,26 +15,17 @@ import { summarizeDropcontactPayloadForLog } from "../dropcontact/payload-log-su
 import { revalidateLeadStockDropcontactPaths } from "../dropcontact/revalidate-lead-stock-dropcontact-paths";
 import { getDropcontactApiKey, sendDropcontactEnrichmentRequest } from "../dropcontact/client";
 import type { LeadGenerationStockRow } from "../domain/stock-row";
+import {
+  canApplyLeadGenerationDropcontactToStock,
+  canInitiateLeadGenerationDropcontact,
+} from "../lib/lead-generation-dropcontact-access";
+import { assertQuantifierMayActOnQuantificationStock } from "../lib/quantification-batch-ownership";
+import { getLeadGenerationStockById } from "../queries/get-lead-generation-stock-by-id";
 import { lgTable } from "../lib/lg-db";
 
 export type EnrichLeadWithDropcontactResult =
   | { ok: true; message: string; variant?: "success" | "warn" }
   | { ok: false; message: string };
-
-export async function canUseDropcontactOnStock(
-  accessUserId: string,
-  stock: LeadGenerationStockRow,
-  hub: boolean,
-): Promise<boolean> {
-  if (hub) return true;
-  const aid = stock.current_assignment_id;
-  if (!aid) return false;
-  const supabase = await createClient();
-  const assignments = lgTable(supabase, "lead_generation_assignments");
-  const { data } = await assignments.select("agent_id").eq("id", aid).maybeSingle();
-  const row = data as { agent_id: string } | null;
-  return row?.agent_id === accessUserId;
-}
 
 /**
  * POST Dropcontact → enregistrement request_id → polling GET serveur (comme n8n).
@@ -54,10 +45,10 @@ export async function enrichLeadWithDropcontactAction(stockId: string): Promise<
   }
 
   const hub = await canAccessLeadGenerationHub(access);
-  const queue = canAccessLeadGenerationMyQueue(access);
-  if (!hub && !queue) {
+  const quantifier = canAccessLeadGenerationQuantification(access);
+  if (!(await canInitiateLeadGenerationDropcontact(access))) {
     logDropcontact("enrich", "Abandon : accès refusé", { leadId: id });
-    return { ok: false, message: "Accès refusé." };
+    return { ok: false, message: "Dropcontact réservé au pilotage ou au quantificateur." };
   }
 
   if (!getDropcontactApiKey()) {
@@ -72,13 +63,21 @@ export async function enrichLeadWithDropcontactAction(stockId: string): Promise<
   const supabase = await createClient();
   const stockTable = lgTable(supabase, "lead_generation_stock");
 
-  const { data: row, error: loadErr } = await stockTable.select("*").eq("id", id).maybeSingle();
-  if (loadErr || !row) {
-    logDropcontact("enrich", "Abandon : fiche introuvable", { leadId: id, loadError: loadErr?.message });
+  const detail = await getLeadGenerationStockById(id);
+  if (!detail) {
+    logDropcontact("enrich", "Abandon : fiche introuvable", { leadId: id });
     return { ok: false, message: "Fiche introuvable." };
   }
 
-  const stock = row as LeadGenerationStockRow;
+  const stock = detail.stock;
+
+  if (quantifier && !hub) {
+    const gate = await assertQuantifierMayActOnQuantificationStock(supabase, access, stock, detail.import_batch);
+    if (!gate.ok) {
+      logDropcontact("enrich", "Abandon : périmètre quantificateur", { leadId: id, message: gate.message });
+      return { ok: false, message: gate.message };
+    }
+  }
 
   if (stock.converted_lead_id) {
     logDropcontact("enrich", "Abandon : fiche convertie", { leadId: id });
@@ -90,9 +89,13 @@ export async function enrichLeadWithDropcontactAction(stockId: string): Promise<
     return { ok: false, message: "Action impossible pour le moment." };
   }
 
-  if (!(await canUseDropcontactOnStock(access.userId, stock, hub))) {
-    logDropcontact("enrich", "Abandon : fiche non attribuée", { leadId: id, userId: access.userId });
-    return { ok: false, message: "Cette fiche ne vous est pas attribuée." };
+  if (!canApplyLeadGenerationDropcontactToStock(stock, { hub, quantifier })) {
+    logDropcontact("enrich", "Abandon : périmètre fiche", { leadId: id, userId: access.userId });
+    return {
+      ok: false,
+      message:
+        "Cette fiche n’est pas éligible au Dropcontact avec votre rôle (hors file à qualifier ou hors pilotage).",
+    };
   }
 
   const elig = isEligibleForDropcontactEnrichment(stock);

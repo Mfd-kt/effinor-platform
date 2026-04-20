@@ -1,0 +1,125 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+import { markLeadGenerationStockOutOfTargetAction } from "../actions/mark-lead-generation-stock-out-of-target-action";
+import { quantifierQualifyLeadGenerationStockAction } from "../actions/quantifier-qualify-lead-generation-stock-action";
+import {
+  LEAD_GEN_OUT_OF_TARGET_REASON_CODES,
+  type LeadGenOutOfTargetReasonCode,
+} from "../lib/out-of-target";
+
+const OOT_REASON_LABEL_FR: Record<LeadGenOutOfTargetReasonCode, string> = {
+  "oot:batiment_non_eligible": "Bâtiment non éligible",
+  "oot:activite_non_cible": "Activité non cible",
+  "oot:residentiel": "Résidentiel",
+  "oot:pas_de_hauteur": "Pas de hauteur / volume",
+  "oot:pas_de_chauffage_visible": "Pas de chauffage visible",
+  "oot:doublon_hors_cible": "Doublon hors cible",
+  "oot:retour_terrain_non_cible": "Retour terrain non cible",
+  "oot:non_precise": "Non précisé",
+};
+
+type Props = {
+  stockId: string;
+  className?: string;
+};
+
+export function LeadGenerationQuantificationActions({ stockId, className }: Props) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [feedback, setFeedback] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const [ootReason, setOotReason] = useState<LeadGenOutOfTargetReasonCode>("oot:non_precise");
+
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+        <Button
+          type="button"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            setFeedback(null);
+            startTransition(async () => {
+              const res = await quantifierQualifyLeadGenerationStockAction(stockId);
+              if (res.ok) {
+                setFeedback({ tone: "ok", text: res.message });
+                router.refresh();
+              } else {
+                setFeedback({ tone: "err", text: res.message });
+              }
+            });
+          }}
+        >
+          Qualifier
+        </Button>
+        <div className="flex min-w-[200px] flex-col gap-1">
+          <Label htmlFor={`lg-q-oot-${stockId}`} className="text-[11px] text-muted-foreground">
+            Motif hors cible
+          </Label>
+          <Select
+            value={ootReason}
+            onValueChange={(v) => setOotReason(v as LeadGenOutOfTargetReasonCode)}
+            disabled={pending}
+          >
+            <SelectTrigger id={`lg-q-oot-${stockId}`} className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LEAD_GEN_OUT_OF_TARGET_REASON_CODES.map((code) => (
+                <SelectItem key={code} value={code} className="text-xs">
+                  {OOT_REASON_LABEL_FR[code]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="border-destructive/40 text-destructive hover:bg-destructive/10"
+          disabled={pending}
+          onClick={() => {
+            setFeedback(null);
+            startTransition(async () => {
+              const res = await markLeadGenerationStockOutOfTargetAction(stockId, {
+                outOfTargetReasonCode: ootReason,
+              });
+              if (res.ok) {
+                setFeedback({ tone: "ok", text: res.message ?? "Hors cible enregistré." });
+                router.refresh();
+              } else {
+                setFeedback({ tone: "err", text: res.message ?? "Action impossible." });
+              }
+            });
+          }}
+        >
+          Hors cible
+        </Button>
+      </div>
+      {feedback ? (
+        <p
+          className={cn(
+            "text-sm",
+            feedback.tone === "ok" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive",
+          )}
+        >
+          {feedback.text}
+        </p>
+      ) : null}
+    </div>
+  );
+}

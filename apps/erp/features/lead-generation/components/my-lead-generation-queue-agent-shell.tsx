@@ -33,7 +33,7 @@ const FILTERS: { id: MyQueueQuickFilter; label: string }[] = [
   { id: "overdue", label: "Rappels en retard" },
   { id: "today", label: "À appeler aujourd’hui" },
   { id: "high_priority", label: "Priorité haute" },
-  { id: "ready_now", label: "Prêt maintenant" },
+  { id: "ready_now", label: "Priorité file" },
 ];
 
 type Props = {
@@ -146,8 +146,8 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
         )}
       >
         <p className="mb-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Lead generation</span> — vos prospections à traiter. Le menu
-          produit ci-dessous sert uniquement à filtrer le carnet (ce n’est pas l’écran dossier du poste Agent).
+          <span className="font-medium text-foreground">Votre file</span> — liste des contacts qui vous sont attribués.
+          Le filtre produit ci-dessous limite l’affichage par fiche CEE.
         </p>
         {needsCeePick && !hasValidSelection ? (
           <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2.5 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/[0.09] dark:text-amber-100">
@@ -202,9 +202,9 @@ export function MyLeadGenerationQueueAgentShell({ items, ceeSheetOptions, viewer
             <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
               {itemsInCeeScope.length === 0
                 ? isNoCeeSelected
-                  ? "Aucune prospection sans fiche CEE dans votre file. Récupérez des fiches prêtes quand le carnet le permet."
-                  : "Aucune prospection dans votre file pour ce produit. Récupérez des fiches prêtes quand le carnet le permet."
-                : "Aucune fiche ne correspond à ce filtre."}
+                  ? "Aucun contact dans ce périmètre. Récupérez des fiches disponibles ci-dessous si des places restent."
+                  : "Aucun contact dans votre file pour ce produit. Utilisez le bouton de récupération si des fiches sont disponibles."
+                : "Aucune ligne ne correspond à ce filtre."}
             </p>
           ) : (
             <MyLeadGenerationQueueTable items={filteredTableRows} showCeeColumn={showCeeColumn} />

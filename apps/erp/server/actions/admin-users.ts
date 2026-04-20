@@ -36,7 +36,12 @@ function roleCodeFromRolesJoin(roles: unknown): string | null {
   return null;
 }
 
-const CEE_MANAGER_CREATABLE_ROLE_CODES = new Set(["sales_agent", "confirmer", "closer"]);
+const CEE_MANAGER_CREATABLE_ROLE_CODES = new Set([
+  "sales_agent",
+  "confirmer",
+  "closer",
+  "lead_generation_quantifier",
+]);
 
 type UsersSettingsActor =
   | { kind: "none" }

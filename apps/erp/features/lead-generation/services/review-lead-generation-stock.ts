@@ -9,7 +9,7 @@ import {
 import type { LeadGenerationStockRow } from "../domain/stock-row";
 import { lgTable } from "../lib/lg-db";
 
-function compactSnapshot(row: LeadGenerationStockRow): Record<string, unknown> {
+export function compactLeadGenerationStockAuditSnapshot(row: LeadGenerationStockRow): Record<string, unknown> {
   return {
     qualification_status: row.qualification_status,
     stock_status: row.stock_status,
@@ -30,6 +30,9 @@ function compactSnapshot(row: LeadGenerationStockRow): Record<string, unknown> {
     manual_override_reason: row.manual_override_reason,
     manually_reviewed_at: row.manually_reviewed_at,
     manually_reviewed_by_user_id: row.manually_reviewed_by_user_id,
+    returned_from_commercial_at: row.returned_from_commercial_at,
+    returned_from_commercial_by_user_id: row.returned_from_commercial_by_user_id,
+    returned_from_commercial_note: row.returned_from_commercial_note,
     lead_tier: row.lead_tier,
     premium_score: row.premium_score,
     premium_reasons: row.premium_reasons,
@@ -49,6 +52,9 @@ function decisionLabel(decision: string): string {
     clear_enrichment_suggestions: "enrichissement_vidé",
     reopen_stock: "fiche_rouverte",
     close_stock: "fiche_clôturée",
+    quantifier_qualify: "quantificateur_validée",
+    quantifier_out_of_target: "quantificateur_hors_cible",
+    commercial_return_to_quantification: "retour_commercial_quantification",
   };
   return m[decision] ?? decision;
 }
@@ -87,7 +93,7 @@ export async function reviewLeadGenerationStock(
     return { ok: false, error: "Fiche déjà convertie en prospect : actions de revue limitées." };
   }
 
-  const previous_snapshot = compactSnapshot(stock) as unknown as Json;
+  const previous_snapshot = compactLeadGenerationStockAuditSnapshot(stock) as unknown as Json;
   const nowIso = new Date().toISOString();
 
   const marker = {
@@ -221,6 +227,30 @@ export async function reviewLeadGenerationStock(
         };
         break;
       }
+      case "quantifier_qualify": {
+        if (stock.qualification_status !== "pending" && stock.qualification_status !== "to_validate") {
+          return { ok: false, error: "Cette fiche n’est plus « à valider »." };
+        }
+        if (stock.converted_lead_id) {
+          return { ok: false, error: "Fiche déjà convertie." };
+        }
+        if (stock.current_assignment_id != null) {
+          return { ok: false, error: "Fiche déjà attribuée à un commercial : contactez le pilotage." };
+        }
+        if (stock.duplicate_of_stock_id != null) {
+          return { ok: false, error: "Fiche doublon : action réservée au pilotage." };
+        }
+        patch = {
+          ...patch,
+          qualification_status: "qualified",
+          stock_status: "ready",
+          rejection_reason: null,
+          returned_from_commercial_at: null,
+          returned_from_commercial_by_user_id: null,
+          returned_from_commercial_note: null,
+        };
+        break;
+      }
     }
 
     const { error: upErr } = await stockT.update(patch).eq("id", stockId);
@@ -233,7 +263,7 @@ export async function reviewLeadGenerationStock(
       return { ok: false, error: afterErr?.message ?? "Lecture après mise à jour impossible." };
     }
 
-    const new_snapshot = compactSnapshot(afterRow as LeadGenerationStockRow) as unknown as Json;
+    const new_snapshot = compactLeadGenerationStockAuditSnapshot(afterRow as LeadGenerationStockRow) as unknown as Json;
 
     const { data: ins, error: insErr } = await reviewsT
       .insert({

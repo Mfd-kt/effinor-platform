@@ -19,6 +19,7 @@ import {
 import {
   humanizeSimpleCockpitStepError,
   readSimpleCockpitStorage,
+  type SimpleCockpitStoredV1,
   summarizeCreateMapsForLastRun,
   summarizeDispatchForLastRun,
   summarizePrepareForLastRun,
@@ -63,7 +64,8 @@ export function LeadGenerationSimpleCockpit({ metrics, agents = [], ceeScope }: 
   const [pending, startTransition] = useTransition();
   const [busyStep, setBusyStep] = useState<"create" | "prepare" | "dispatch" | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [stored, setStored] = useState(() => readSimpleCockpitStorage());
+  /** Toujours `null` au 1er rendu (SSR = client) : le stockage local n’est lu qu’après montage pour éviter les erreurs d’hydratation. */
+  const [stored, setStored] = useState<SimpleCockpitStoredV1 | null>(null);
   const [inlineError, setInlineError] = useState<{ step: "prepare" | "dispatch"; message: string } | null>(null);
 
   useEffect(() => {
@@ -161,7 +163,7 @@ export function LeadGenerationSimpleCockpit({ metrics, agents = [], ceeScope }: 
                 {formatShortDate(last.create.at)} — {summarizeCreateMapsForLastRun(last.create)}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Aucun passage enregistré sur cet appareil.</p>
+              <div className="text-xs text-muted-foreground">Aucun passage enregistré sur cet appareil.</div>
             )}
           </CardContent>
           <CardFooter className="pt-0">
@@ -202,7 +204,7 @@ export function LeadGenerationSimpleCockpit({ metrics, agents = [], ceeScope }: 
                 {formatShortDate(last.prepare.at)} — {summarizePrepareForLastRun(last.prepare)}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Aucun passage enregistré sur cet appareil.</p>
+              <div className="text-xs text-muted-foreground">Aucun passage enregistré sur cet appareil.</div>
             )}
             {inlineError?.step === "prepare" ? (
               <p className="rounded-md border border-destructive/25 bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
@@ -277,7 +279,7 @@ export function LeadGenerationSimpleCockpit({ metrics, agents = [], ceeScope }: 
                 {formatShortDate(last.dispatch.at)} — {summarizeDispatchForLastRun(last.dispatch)}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Aucun passage enregistré sur cet appareil.</p>
+              <div className="text-xs text-muted-foreground">Aucun passage enregistré sur cet appareil.</div>
             )}
             {inlineError?.step === "dispatch" ? (
               <p className="rounded-md border border-destructive/25 bg-destructive/10 px-2 py-1.5 text-xs text-destructive">

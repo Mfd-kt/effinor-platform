@@ -11,7 +11,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Bloc sobre : l’essentiel pour joindre le prospect après enrichissement ou saisie. */
+/** Bloc sobre : coordonnées utiles pour l’appel (données déjà présentes sur la fiche). */
 export function LeadGenerationCallReadinessCard({ stock }: { stock: LeadGenerationStockRow }) {
   const phone = stock.phone?.trim() || stock.normalized_phone?.trim() || "—";
   const email = stock.email?.trim() || stock.enriched_email?.trim() || "—";

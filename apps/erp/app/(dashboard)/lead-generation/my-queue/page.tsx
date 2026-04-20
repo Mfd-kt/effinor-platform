@@ -42,7 +42,7 @@ export default async function MyLeadGenerationQueuePage() {
     <div className="mx-auto w-full max-w-6xl space-y-8">
       <PageHeader
         title="Mes fiches à traiter"
-        description="Priorité aux rappels : qui appeler, quand, et l’essentiel pour enchaîner."
+        description="Contacts déjà validés pour le terrain : appels, relances et notes — priorité aux rappels."
         actions={
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {hub ? (

@@ -1,5 +1,8 @@
 "use server";
 
+import { getAccessContext } from "@/lib/auth/access-context";
+import { canAccessLeadGenerationHub, canAccessLeadGenerationQuantification } from "@/lib/auth/module-access";
+
 import { syncGoogleMapsApifyImport } from "../apify/sync-google-maps-apify-import";
 import type { SyncGoogleMapsApifyImportResult } from "../apify/types";
 import type { LeadGenerationActionResult } from "../lib/action-result";
@@ -16,10 +19,21 @@ export async function syncGoogleMapsApifyImportAction(
   }
 
   try {
+    const access = await getAccessContext();
+    if (access.kind !== "authenticated") {
+      return { ok: false, error: "Non authentifié." };
+    }
+
     const batchId = parsed.data.batchId;
     const row = await getLeadGenerationImportBatchById(batchId);
     if (!row) {
       return { ok: false, error: "Batch introuvable." };
+    }
+
+    const hub = await canAccessLeadGenerationHub(access);
+    const quant = canAccessLeadGenerationQuantification(access);
+    if (!hub && !(quant && row.created_by_user_id === access.userId)) {
+      return { ok: false, error: "Accès refusé." };
     }
 
     if (row.source === "apify_yellow_pages" || row.source === "apify_multi_source") {

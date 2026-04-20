@@ -55,6 +55,13 @@ export function computeLeadGenerationDispatchQueue(
     return finalize(row, "do_not_dispatch", "stock non actif");
   }
 
+  if (row.qualification_status !== "qualified") {
+    if (row.qualification_status === "to_validate" || row.qualification_status === "pending") {
+      return finalize(row, "do_not_dispatch", "non qualifié — validation quantificateur requise");
+    }
+    return finalize(row, "do_not_dispatch", "fiche non qualifiée pour diffusion");
+  }
+
   // B — Déjà dans un circuit commercial (pas « à distribuer maintenant » comme neuf)
   if (row.stock_status === "assigned" || row.stock_status === "in_progress") {
     return finalize(row, "review", "déjà attribuée ou en cours");

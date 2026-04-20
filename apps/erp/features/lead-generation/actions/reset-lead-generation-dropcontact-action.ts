@@ -3,6 +3,7 @@
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
   canAccessLeadGenerationHub,
+  canAccessLeadGenerationQuantification,
   canBypassLeadGenMyQueueAsImpersonationActor,
 } from "@/lib/auth/module-access";
 import { createClient } from "@/lib/supabase/server";
@@ -10,6 +11,8 @@ import { createClient } from "@/lib/supabase/server";
 import { logDropcontact } from "../dropcontact/dropcontact-log";
 import { revalidateLeadStockDropcontactPaths } from "../dropcontact/revalidate-lead-stock-dropcontact-paths";
 import type { LeadGenerationStockRow } from "../domain/stock-row";
+import { isLeadGenerationStockInQuantificationQueue } from "../lib/is-lead-generation-quantification-candidate";
+import { assertQuantifierMayActOnQuantificationStock } from "../lib/quantification-batch-ownership";
 import { lgTable } from "../lib/lg-db";
 
 export type ResetLeadGenerationDropcontactResult =
@@ -33,10 +36,8 @@ export async function resetLeadGenerationDropcontactAction(
     return { ok: false, message: "Non authentifié." };
   }
   const hub = await canAccessLeadGenerationHub(access);
+  const quantifier = canAccessLeadGenerationQuantification(access);
   const impersonationSupport = canBypassLeadGenMyQueueAsImpersonationActor(access);
-  if (!hub && !impersonationSupport) {
-    return { ok: false, message: "Action réservée au pilotage (acquisition de leads) ou au support en impersonation." };
-  }
 
   const supabase = await createClient();
   const stockTable = lgTable(supabase, "lead_generation_stock");
@@ -47,6 +48,30 @@ export async function resetLeadGenerationDropcontactAction(
   }
 
   const stock = row as LeadGenerationStockRow;
+
+  const quantifierOnOwnFile = quantifier && isLeadGenerationStockInQuantificationQueue(stock);
+  if (!hub && !impersonationSupport && !quantifierOnOwnFile) {
+    return {
+      ok: false,
+      message: "Réinitialisation Dropcontact réservée au pilotage, au quantificateur (file à qualifier) ou au support.",
+    };
+  }
+
+  if (quantifier && !hub && !impersonationSupport && quantifierOnOwnFile) {
+    const batches = lgTable(supabase, "lead_generation_import_batches");
+    let importBatch: { created_by_user_id: string | null } | null = null;
+    if (stock.import_batch_id?.trim()) {
+      const { data: bRow } = await batches
+        .select("created_by_user_id")
+        .eq("id", stock.import_batch_id.trim())
+        .maybeSingle();
+      importBatch = bRow as { created_by_user_id: string | null } | null;
+    }
+    const gate = await assertQuantifierMayActOnQuantificationStock(supabase, access, stock, importBatch);
+    if (!gate.ok) {
+      return { ok: false, message: gate.message };
+    }
+  }
 
   if (stock.converted_lead_id) {
     return { ok: false, message: "Cette fiche est déjà convertie." };

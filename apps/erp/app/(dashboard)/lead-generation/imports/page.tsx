@@ -12,7 +12,10 @@ import { buildImportBatchesListUrl, type ImportBatchesListSearchState } from "@/
 import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import { getLeadGenerationImportBatches } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
+import {
+  canAccessLeadGenerationHub,
+  canAccessLeadGenerationQuantifierImports,
+} from "@/lib/auth/module-access";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -34,9 +37,15 @@ type PageProps = {
 
 export default async function LeadGenerationImportsPage({ searchParams }: PageProps) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
+  if (access.kind !== "authenticated") {
     notFound();
   }
+  const hub = await canAccessLeadGenerationHub(access);
+  const quantifierImports = canAccessLeadGenerationQuantifierImports(access);
+  if (!hub && !quantifierImports) {
+    notFound();
+  }
+  const quantifierOnly = !hub && quantifierImports;
 
   const sp = await searchParams;
   const source = spStr(sp, "source");
@@ -59,24 +68,35 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
     ...(external_status ? { external_status } : {}),
   };
 
+  const createdByFilter = quantifierOnly ? { created_by_user_id: access.userId } : {};
+
   let recentForPreview: Awaited<ReturnType<typeof getLeadGenerationImportBatches>> = [];
   try {
-    recentForPreview = await getLeadGenerationImportBatches({ limit: RECENT_IMPORTS, offset: 0 });
+    recentForPreview = await getLeadGenerationImportBatches({
+      limit: RECENT_IMPORTS,
+      offset: 0,
+      filters: quantifierOnly ? createdByFilter : undefined,
+    });
   } catch {
     recentForPreview = [];
   }
 
   let ceeImportScope: Awaited<ReturnType<typeof getLeadGenerationCeeImportScope>> = { sheets: [], teams: [] };
   try {
-    ceeImportScope = await getLeadGenerationCeeImportScope();
+    ceeImportScope = quantifierOnly ? { sheets: [], teams: [] } : await getLeadGenerationCeeImportScope();
   } catch {
     ceeImportScope = { sheets: [], teams: [] };
   }
 
+  const listFilters =
+    Object.keys(filterPayload).length > 0 || quantifierOnly
+      ? { ...filterPayload, ...createdByFilter }
+      : undefined;
+
   let rows;
   try {
     rows = await getLeadGenerationImportBatches({
-      filters: Object.keys(filterPayload).length > 0 ? filterPayload : undefined,
+      filters: listFilters,
       limit: PAGE_SIZE,
       offset,
     });
@@ -105,10 +125,17 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
     <div className="mx-auto w-full max-w-7xl space-y-8">
       <PageHeader
         title="Imports Lead Generation"
-        description="Importer des fiches, lancer un scraping cartes, synchroniser les lots."
+        description={
+          quantifierOnly
+            ? "Vos lots lancés depuis la quantification (synchronisation Apify)."
+            : "Importer des fiches, lancer un scraping cartes, synchroniser les lots."
+        }
         actions={
-          <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            Pilotage
+          <Link
+            href={quantifierOnly ? "/lead-generation/quantification" : "/lead-generation"}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            {quantifierOnly ? "Quantification" : "Pilotage"}
           </Link>
         }
       />
@@ -117,40 +144,62 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
         aria-label="Navigation acquisition"
         className="flex flex-wrap gap-2 border-b border-border/70 pb-4 text-sm"
       >
-        <Link
-          href="/lead-generation/stock"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Stock
-        </Link>
-        <Link
-          href="/lead-generation/my-queue"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Ma file à traiter
-        </Link>
+        {quantifierOnly ? (
+          <Link
+            href="/lead-generation/quantification"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Quantification
+          </Link>
+        ) : (
+          <>
+            <Link
+              href="/lead-generation/stock"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Stock
+            </Link>
+            <Link
+              href="/lead-generation/my-queue"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Ma file à traiter
+            </Link>
+          </>
+        )}
       </nav>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Importer un fichier CSV</h2>
-        <ManualCsvImportPanel ceeScope={ceeImportScope} />
-      </section>
+      {!quantifierOnly ? (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Importer un fichier CSV</h2>
+          <ManualCsvImportPanel ceeScope={ceeImportScope} />
+        </section>
+      ) : null}
+
+      {!quantifierOnly ? (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Scraping Google Maps</h2>
+          <ApifyGoogleMapsImportPanel ceeScope={ceeImportScope} />
+        </section>
+      ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Scraping Google Maps</h2>
-        <ApifyGoogleMapsImportPanel ceeScope={ceeImportScope} />
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Derniers imports</h2>
+        <h2 className="text-sm font-semibold text-foreground">
+          {quantifierOnly ? "Vos derniers lots" : "Derniers imports"}
+        </h2>
         <p className="text-xs text-muted-foreground">
-          Les {RECENT_IMPORTS} derniers lots. Synchronisez lorsque le fournisseur a terminé.
+          {quantifierOnly
+            ? `Les ${RECENT_IMPORTS} derniers lots que vous avez lancés. Synchronisez lorsque le scraping est terminé.`
+            : `Les ${RECENT_IMPORTS} derniers lots. Synchronisez lorsque le fournisseur a terminé.`}
         </p>
         <LeadGenerationRecentImports rows={recentForPreview} />
       </section>

@@ -88,6 +88,10 @@ export type LeadGenerationStockRow = {
   manual_override_reason: string | null;
   manually_reviewed_at: string | null;
   manually_reviewed_by_user_id: string | null;
+  /** Dernier renvoi par un commercial vers la quantification (relecture). */
+  returned_from_commercial_at?: string | null;
+  returned_from_commercial_by_user_id?: string | null;
+  returned_from_commercial_note?: string | null;
   /** Décideur B2B — extraction publique uniquement (pas d’invention). */
   decision_maker_name?: string | null;
   decision_maker_role?: string | null;
@@ -133,4 +137,9 @@ export type LeadGenerationImportBatchRow = {
   finished_at: string | null;
   created_at: string;
   updated_at: string;
+  cee_sheet_id?: string | null;
+  cee_sheet_code?: string | null;
+  target_team_id?: string | null;
+  created_by_user_id?: string | null;
+  stock_initial_qualification?: "qualified" | "to_validate";
 };

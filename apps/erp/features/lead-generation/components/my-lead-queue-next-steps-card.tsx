@@ -91,7 +91,7 @@ export function MyLeadQueueAnalysisSummary({ stock, activities, phoneDisplay }: 
       {(stock.enrichment_status === "completed" && stock.enrichment_source === "firecrawl") ||
       (stock.email && stock.enrichment_confidence === "high") ? (
         <p className="text-xs text-muted-foreground">
-          Données enrichies ou fiables — adaptez votre discours en conséquence.
+          Données présentes sur la fiche — adaptez votre discours en conséquence.
         </p>
       ) : null}
     </div>

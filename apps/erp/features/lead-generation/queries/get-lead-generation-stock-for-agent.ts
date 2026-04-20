@@ -79,6 +79,9 @@ export async function getLeadGenerationStockDetailForAgent(
     if (!detail) {
       return null;
     }
+    if (detail.stock.qualification_status !== "qualified") {
+      return null;
+    }
 
     return {
       ...detail,

@@ -10,7 +10,6 @@ import { LeadGenerationUnifiedAgentActivitySection } from "@/features/lead-gener
 import { LeadGenerationCommercialPriorityBadge } from "@/features/lead-generation/components/lead-generation-commercial-priority-badge";
 import { LeadGenerationDispatchQueueBadge } from "@/features/lead-generation/components/lead-generation-dispatch-queue-badge";
 import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
-import { LeadGenerationDropcontactPanel } from "@/features/lead-generation/components/lead-generation-dropcontact-panel";
 import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
 import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
 import { MyLeadQueueDecisionMakerFields } from "@/features/lead-generation/components/my-lead-queue-decision-maker-fields";
@@ -21,12 +20,10 @@ import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/l
 import { getLeadGenerationMyQueueStockPageDetail } from "@/features/lead-generation/queries/get-lead-generation-stock-for-agent";
 import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
 import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
-import { isEligibleForDropcontactEnrichment } from "@/features/lead-generation/dropcontact/build-dropcontact-request";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import {
   canAccessCeeWorkflowsModule,
-  canAccessLeadGenerationHub,
   canAccessLeadGenerationMyQueue,
   canBypassLeadGenMyQueueAsImpersonationActor,
 } from "@/lib/auth/module-access";
@@ -102,13 +99,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
   }
 
   const primaryEmail = stock.email?.trim() || stock.enriched_email?.trim() || null;
-  const emailHint =
-    stock.email?.trim() && stock.enriched_email?.trim() && stock.email.trim() !== stock.enriched_email.trim()
-      ? "Suggestion : " + stock.enriched_email
-      : null;
   const streetViewModel = buildLeadGenerationStreetViewModel(stock);
-  const dropcontactElig = isEligibleForDropcontactEnrichment(stock);
-  const leadGenHub = await canAccessLeadGenerationHub(access);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8">
       {openedViaSupportBypass ? (
@@ -164,6 +155,7 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
         stockId={stock.id}
         mapsUrl={streetViewModel.openMapsUrl}
         showMapsLink={streetViewModel.canShowSection}
+        variant="agent"
         disabled={
           Boolean(stock.converted_lead_id) ||
           stock.stock_status === "rejected" ||
@@ -171,28 +163,6 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
           callTraceReadOnly
         }
         disableOutOfTarget={lockActionsForSupportView || callTraceReadOnly || !assignmentId}
-      />
-
-      <LeadGenerationDropcontactPanel
-        stockId={stock.id}
-        canResetDropcontact={leadGenHub || canBypassLeadGenMyQueueAsImpersonationActor(access)}
-        eligible={dropcontactElig.ok}
-        disabled={
-          Boolean(stock.converted_lead_id) ||
-          stock.stock_status === "rejected" ||
-          lockActionsForSupportView ||
-          callTraceReadOnly
-        }
-        dropcontactStatus={stock.dropcontact_status ?? "idle"}
-        dropcontactRequestId={stock.dropcontact_request_id ?? null}
-        dropcontactRequestedAt={stock.dropcontact_requested_at ?? null}
-        dropcontactCompletedAt={stock.dropcontact_completed_at ?? null}
-        dropcontactLastError={stock.dropcontact_last_error ?? null}
-        email={stock.email?.trim() || stock.enriched_email?.trim() || null}
-        phone={stock.phone?.trim() || stock.normalized_phone?.trim() || null}
-        decisionMakerName={stock.decision_maker_name ?? null}
-        decisionMakerRole={stock.decision_maker_role ?? null}
-        linkedinUrl={stock.linkedin_url ?? null}
       />
 
       <LeadGenerationCallReadinessCard stock={stock} />
@@ -215,7 +185,6 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
         </CardHeader>
         <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
           <DetailRow label="E-mail" value={primaryEmail ?? "—"} />
-          {emailHint ? <p className="text-xs text-muted-foreground sm:col-span-2">{emailHint}</p> : null}
           <div className="sm:col-span-2">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Décideur</p>
             <MyLeadQueueDecisionMakerFields

@@ -6,6 +6,7 @@ export const APP_ROLE_CODES = [
   "closer",
   "sales_director",
   "technician",
+  "lead_generation_quantifier",
 ] as const;
 
 export type AppRoleCode = (typeof APP_ROLE_CODES)[number];
@@ -19,6 +20,7 @@ export const ROLE_LABEL_FR: Record<AppRoleCode, string> = {
   closer: "Closer",
   sales_director: "Directeur commercial",
   technician: "Technicien",
+  lead_generation_quantifier: "Quantificateur lead gen",
 };
 
 const SET = new Set<string>(APP_ROLE_CODES);
@@ -53,4 +55,8 @@ export function isSalesDirector(codes: readonly string[]): boolean {
 
 export function isTechnician(codes: readonly string[]): boolean {
   return codes.includes("technician");
+}
+
+export function isLeadGenerationQuantifier(codes: readonly string[]): boolean {
+  return codes.includes("lead_generation_quantifier");
 }

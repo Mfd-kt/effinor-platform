@@ -75,6 +75,17 @@ export function computeLeadGenerationCommercialScore(
     }
   }
 
+  // Enrichissement pipeline terminé (hors seule confiance — boost explicite « fiche enrichie »).
+  if (row.enrichment_status === "completed" || row.dropcontact_status === "completed") {
+    breakdown.enrichment_completed = 10;
+    raw += 10;
+  }
+
+  if (hasText(row.decision_maker_name)) {
+    breakdown.decision_maker_identified = 8;
+    raw += 8;
+  }
+
   // B. Confiance enrichissement
   if (row.enrichment_confidence === "high") {
     breakdown.enrichment_confidence = 25;
@@ -141,6 +152,7 @@ export function computeLeadGenerationCommercialScore(
       raw += 15;
       break;
     case "pending":
+    case "to_validate":
       breakdown.qualification = 6;
       raw += 6;
       break;

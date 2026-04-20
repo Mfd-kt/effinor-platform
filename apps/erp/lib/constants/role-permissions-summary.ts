@@ -15,4 +15,6 @@ export const ROLE_PERMISSIONS_SUMMARY_FR: Record<AppRoleCode, string> = {
   closer: "Périmètre commercial élargi (tous les leads / bénéficiaires selon les règles métier).",
   sales_director: "Périmètre commercial élargi, pilotage de la direction commerciale.",
   technician: "Interventions et dossiers techniques selon les écrans prévus pour ce profil.",
+  lead_generation_quantifier:
+    "Validation terrain des fiches lead generation (quantification) : liste dédiée, qualification ou hors cible, sans pilotage complet du module.",
 };

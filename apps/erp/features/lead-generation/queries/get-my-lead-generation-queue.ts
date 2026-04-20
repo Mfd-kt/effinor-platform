@@ -60,11 +60,13 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
         category,
         commercial_score,
         commercial_priority,
+        qualification_status,
         dispatch_queue_status,
         dispatch_queue_reason,
         stock_status,
         converted_lead_id,
         current_assignment_id,
+        duplicate_of_stock_id,
         enriched_email,
         normalized_phone,
         decision_maker_name,
@@ -111,11 +113,13 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
     category: string | null;
     commercial_score: number;
     commercial_priority: string;
+    qualification_status: string;
     dispatch_queue_status: string;
     dispatch_queue_reason: string | null;
     stock_status: string;
     converted_lead_id: string | null;
     current_assignment_id: string | null;
+    duplicate_of_stock_id: string | null;
     enriched_email: string | null;
     normalized_phone: string | null;
     decision_maker_name: string | null;
@@ -185,7 +189,14 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
     if (s.converted_lead_id) {
       return false;
     }
+    if (s.duplicate_of_stock_id) {
+      return false;
+    }
     if (s.stock_status === "converted" || s.stock_status === "rejected" || s.stock_status === "archived" || s.stock_status === "expired") {
+      return false;
+    }
+    // Commercial : uniquement leads déjà qualifiés (pipeline strict).
+    if (s.qualification_status !== "qualified") {
       return false;
     }
     return s.current_assignment_id === r.id;

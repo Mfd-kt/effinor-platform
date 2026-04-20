@@ -48,7 +48,7 @@ function betterFoundStatus(a: unknown, b: unknown): string {
   return sa === "found" || sb === "found" ? "found" : "missing";
 }
 
-const QUAL_ORDER = ["duplicate", "rejected", "pending", "qualified"] as const;
+const QUAL_ORDER = ["duplicate", "rejected", "pending", "to_validate", "qualified"] as const;
 
 function betterQualification(a: unknown, b: unknown): string {
   const sa = typeof a === "string" ? a : "pending";

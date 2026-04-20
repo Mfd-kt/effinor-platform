@@ -9,6 +9,7 @@ import { ImportBatchCeeTeamEditor } from "@/features/lead-generation/components/
 import { ImportBatchRetrySyncButton } from "@/features/lead-generation/components/import-batch-retry-sync-button";
 import { ImportBatchSyncButton } from "@/features/lead-generation/components/import-batch-sync-button";
 import { LeadGenerationEnrichmentToolbar } from "@/features/lead-generation/components/lead-generation-enrichment-toolbar";
+import { LeadGenerationStockTable } from "@/features/lead-generation/components/lead-generation-stock-table";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
 import { formatMyQueueCeeSheetOptionLabel } from "@/features/lead-generation/lib/my-queue-cee-sheet-option";
 import { buildLeadGenerationStockPageUrl, type LeadGenerationListSearchState } from "@/features/lead-generation/lib/build-lead-generation-list-url";
@@ -25,7 +26,10 @@ import { getLeadGenerationStockIdsByImportBatch } from "@/features/lead-generati
 import { getLeadGenerationStockSummary } from "@/features/lead-generation/queries/get-lead-generation-stock-summary";
 import { countDispatchableReadyNowPoolWithFilters } from "@/features/lead-generation/services/auto-dispatch-lead-generation-stock-round-robin";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
+import {
+  canAccessLeadGenerationHub,
+  canAccessLeadGenerationQuantification,
+} from "@/lib/auth/module-access";
 import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -74,9 +78,11 @@ function importDetailPath(id: string, page: number): string {
 
 export default async function LeadGenerationImportBatchDetailPage({ params, searchParams }: PageProps) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
+  if (access.kind !== "authenticated") {
     notFound();
   }
+  const hub = await canAccessLeadGenerationHub(access);
+  const quantifier = canAccessLeadGenerationQuantification(access);
 
   const { id } = await params;
   const sp = await searchParams;
@@ -86,6 +92,12 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
   if (!batch) {
     notFound();
   }
+
+  const quantifierOwnsBatch = quantifier && batch.created_by_user_id === access.userId;
+  if (!hub && !quantifierOwnsBatch) {
+    notFound();
+  }
+  const quantifierRestricted = !hub && quantifierOwnsBatch;
 
   let ceeImportScope: Awaited<ReturnType<typeof getLeadGenerationCeeImportScope>> | null = null;
   try {
@@ -160,8 +172,11 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
             >
               ← Liste des imports
             </Link>
-            <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-              Lead Generation
+            <Link
+              href={quantifierRestricted ? "/lead-generation/quantification" : "/lead-generation"}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              {quantifierRestricted ? "Quantification" : "Lead Generation"}
             </Link>
           </div>
         }
@@ -200,7 +215,7 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
               value={campaignName.length > 0 ? campaignName : "—"}
             />
           </dl>
-          {ceeImportScope ? (
+          {ceeImportScope && !quantifierRestricted ? (
             <ImportBatchCeeTeamEditor
               batchId={batch.id}
               initialCeeSheetId={batch.cee_sheet_id}
@@ -238,9 +253,11 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
                   }
                 />
               </dl>
-              <p className="text-xs text-destructive">
-                Impossible de charger le référentiel CEE : l’édition du rattachement est indisponible.
-              </p>
+              {!ceeImportScope && !quantifierRestricted ? (
+                <p className="text-xs text-destructive">
+                  Impossible de charger le référentiel CEE : l’édition du rattachement est indisponible.
+                </p>
+              ) : null}
             </div>
           )}
           <dl className="space-y-2">
@@ -297,28 +314,49 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
           <CardHeader>
             <CardTitle className="text-base">Stock lié à cet import</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Liste paginée ({IMPORT_DETAIL_PAGE_SIZE} fiches par page) — toutes les fiches du lot sont accessibles ici.
-              Outils d’enrichissement, scoring, file et distribution limités à ce lot. Alternative :{" "}
-              <Link
-                href={buildLeadGenerationStockPageUrl(linkBase)}
-                className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-auto p-0 align-baseline")}
-              >
-                vue Stock filtrée
-              </Link>
-              .
+              {quantifierRestricted ? (
+                <>
+                  Aperçu paginé des fiches du lot (lecture seule). Validation et qualification depuis la page{" "}
+                  <Link
+                    href="/lead-generation/quantification"
+                    className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-auto p-0 align-baseline")}
+                  >
+                    Quantification
+                  </Link>
+                  .
+                </>
+              ) : (
+                <>
+                  Liste paginée ({IMPORT_DETAIL_PAGE_SIZE} fiches par page) — toutes les fiches du lot sont accessibles
+                  ici. Outils d’enrichissement, scoring, file et distribution limités à ce lot. Alternative :{" "}
+                  <Link
+                    href={buildLeadGenerationStockPageUrl(linkBase)}
+                    className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-auto p-0 align-baseline")}
+                  >
+                    vue Stock filtrée
+                  </Link>
+                  .
+                </>
+              )}
             </p>
           </CardHeader>
           <CardContent>
-            <LeadGenerationEnrichmentToolbar
-              rows={stockRows}
-              summary={stockSummary}
-              page={page}
-              pageSize={IMPORT_DETAIL_PAGE_SIZE}
-              readyPoolCount={readyPoolCount}
-              linkBase={linkBase}
-              dispatchFilters={stockFilters}
-              importBatchScope={{ importBatchId: id, allStockIds }}
-            />
+            {quantifierRestricted ? (
+              <div className="overflow-x-auto">
+                <LeadGenerationStockTable rows={stockRows} />
+              </div>
+            ) : (
+              <LeadGenerationEnrichmentToolbar
+                rows={stockRows}
+                summary={stockSummary}
+                page={page}
+                pageSize={IMPORT_DETAIL_PAGE_SIZE}
+                readyPoolCount={readyPoolCount}
+                linkBase={linkBase}
+                dispatchFilters={stockFilters}
+                importBatchScope={{ importBatchId: id, allStockIds }}
+              />
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-3">
               {prevHref ? (
                 <Link href={prevHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>

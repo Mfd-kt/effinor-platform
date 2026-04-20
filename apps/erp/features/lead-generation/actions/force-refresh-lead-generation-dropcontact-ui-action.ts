@@ -3,11 +3,15 @@
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
   canAccessLeadGenerationHub,
+  canAccessLeadGenerationQuantification,
   canBypassLeadGenMyQueueAsImpersonationActor,
 } from "@/lib/auth/module-access";
+import { createClient } from "@/lib/supabase/server";
 
 import { logDropcontact } from "../dropcontact/dropcontact-log";
 import { revalidateLeadStockDropcontactPaths } from "../dropcontact/revalidate-lead-stock-dropcontact-paths";
+import { assertQuantifierMayActOnQuantificationStock } from "../lib/quantification-batch-ownership";
+import { getLeadGenerationStockById } from "../queries/get-lead-generation-stock-by-id";
 
 export type ForceRefreshDropcontactUiResult =
   | { ok: true; message: string }
@@ -31,9 +35,22 @@ export async function forceRefreshLeadGenerationDropcontactUiAction(
   }
 
   const hub = await canAccessLeadGenerationHub(access);
+  const quantifier = canAccessLeadGenerationQuantification(access);
   const impersonationSupport = canBypassLeadGenMyQueueAsImpersonationActor(access);
-  if (!hub && !impersonationSupport) {
-    return { ok: false, message: "Action réservée au pilotage ou au support (impersonation)." };
+  if (!hub && !quantifier && !impersonationSupport) {
+    return { ok: false, message: "Action réservée au pilotage, au quantificateur ou au support (impersonation)." };
+  }
+
+  if (quantifier && !hub && !impersonationSupport) {
+    const supabase = await createClient();
+    const detail = await getLeadGenerationStockById(id);
+    if (!detail) {
+      return { ok: false, message: "Fiche introuvable." };
+    }
+    const gate = await assertQuantifierMayActOnQuantificationStock(supabase, access, detail.stock, detail.import_batch);
+    if (!gate.ok) {
+      return { ok: false, message: gate.message };
+    }
   }
 
   revalidateLeadStockDropcontactPaths(id, "force_refresh_admin");

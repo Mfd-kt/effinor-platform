@@ -10,13 +10,16 @@ import { hasFullCeeWorkflowAccess } from "./cee-workflows-scope";
 import {
   canAccessAdminCeeSheets,
   canAccessCeeWorkflowsModule,
-  canAccessLeadGenerationMyQueue,
+  canAccessLeadGenerationQuantification,
+  canAccessLeadGenerationQuantifierImports,
   canAccessCloserWorkspace,
   canAccessCockpitRoute,
   canAccessConfirmateurWorkspace,
   canAccessLeadsDirectoryNav,
   canAccessLostLeadsInbox,
   canAccessTechnicalVisitsDirectoryNav,
+  shouldHideTerrainSuiviSidebar,
+  shouldShowLeadGenerationMyQueueNav,
 } from "./module-access";
 
 const CORE_HREFS = ["/", "/tasks", "/account", "/agent-operations", "/digests"] as const;
@@ -30,7 +33,9 @@ export async function buildAllowedNavHrefs(
     return [];
   }
   const rc = access.roleCodes;
-  const base = [...CORE_HREFS];
+  const base = shouldHideTerrainSuiviSidebar(access)
+    ? [...CORE_HREFS].filter((h) => h !== "/tasks")
+    : [...CORE_HREFS];
   const extra: string[] = [];
   const ceeTeamManager = await isCeeTeamManager(access.userId);
 
@@ -59,8 +64,14 @@ export async function buildAllowedNavHrefs(
     extra.push("/lead-generation/analytics");
     extra.push("/lead-generation/learning");
   }
-  if (canAccessLeadGenerationMyQueue(access)) {
+  if (shouldShowLeadGenerationMyQueueNav(access)) {
     extra.push("/lead-generation/my-queue");
+  }
+  if (canAccessLeadGenerationQuantification(access)) {
+    extra.push("/lead-generation/quantification");
+  }
+  if (canAccessLeadGenerationQuantifierImports(access)) {
+    extra.push("/lead-generation/imports");
   }
   if (canAccessLeadsDirectoryNav(access)) {
     extra.push("/leads");
@@ -78,11 +89,13 @@ export async function buildAllowedNavHrefs(
     extra.push("/cockpit");
   }
 
+  const uniq = (paths: string[]) => [...new Set(paths)];
+
   if (rc.includes("super_admin")) {
-    return [...base, ...extra, "/settings/users", "/settings/roles", "/settings/cee", "/settings/products"];
+    return uniq([...base, ...extra, "/settings/users", "/settings/roles", "/settings/cee", "/settings/products"]);
   }
   if (ceeTeamManager) {
-    return [...base, ...extra, "/settings/users"];
+    return uniq([...base, ...extra, "/settings/users"]);
   }
-  return [...base, ...extra];
+  return uniq([...base, ...extra]);
 }

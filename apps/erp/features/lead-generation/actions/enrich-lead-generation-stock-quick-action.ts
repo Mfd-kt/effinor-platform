@@ -1,9 +1,12 @@
 "use server";
 
+import { getAccessContext } from "@/lib/auth/access-context";
+
 import {
   enrichLeadGenerationStockQuick,
   type EnrichLeadGenerationStockBatchResult,
 } from "../enrichment/enrich-lead-generation-stock";
+import { canRunLeadGenerationStockEnrichment } from "../lib/lead-generation-enrichment-access";
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import { humanizeLeadGenerationActionError } from "../lib/humanize-lead-generation-action-error";
 import { getLeadGenerationSettings } from "../settings/get-lead-generation-settings";
@@ -12,6 +15,11 @@ import { enrichLeadGenerationStockQuickActionInputSchema } from "../schemas/lead
 export async function enrichLeadGenerationStockQuickAction(
   input: unknown,
 ): Promise<LeadGenerationActionResult<EnrichLeadGenerationStockBatchResult>> {
+  const access = await getAccessContext();
+  if (!(await canRunLeadGenerationStockEnrichment(access))) {
+    return { ok: false, error: "Enrichissement réservé au pilotage lead generation." };
+  }
+
   const parsed = enrichLeadGenerationStockQuickActionInputSchema.safeParse(input ?? {});
   if (!parsed.success) {
     const first = parsed.error.issues[0];

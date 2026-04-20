@@ -6,6 +6,7 @@ export type GetLeadGenerationImportBatchesFilters = {
   source?: string;
   status?: string;
   external_status?: string;
+  created_by_user_id?: string;
 };
 
 export type GetLeadGenerationImportBatchesParams = {
@@ -63,6 +64,9 @@ export async function getLeadGenerationImportBatches(
   }
   if (f?.external_status?.trim()) {
     q = q.eq("external_status", f.external_status.trim());
+  }
+  if (f?.created_by_user_id?.trim()) {
+    q = q.eq("created_by_user_id", f.created_by_user_id.trim());
   }
 
   const { data, error } = await q.range(offset, offset + limit - 1);

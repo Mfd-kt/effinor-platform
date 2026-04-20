@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub, canAccessLeadGenerationQuantification } from "@/lib/auth/module-access";
 
 import { syncGoogleMapsApifyImport } from "../apify/sync-google-maps-apify-import";
 import type { SyncGoogleMapsApifyImportResult } from "../apify/types";
@@ -101,7 +101,7 @@ export async function retryLeadGenerationImportSyncAction(
   input: unknown,
 ): Promise<LeadGenerationActionResult<RetryLeadGenerationImportSyncActionPayload>> {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
+  if (access.kind !== "authenticated") {
     return { ok: false, error: "Accès refusé." };
   }
 
@@ -115,6 +115,12 @@ export async function retryLeadGenerationImportSyncAction(
   const row = await getLeadGenerationImportBatchById(batchId);
   if (!row) {
     return { ok: false, error: "Lot introuvable." };
+  }
+
+  const hub = await canAccessLeadGenerationHub(access);
+  const quant = canAccessLeadGenerationQuantification(access);
+  if (!hub && !(quant && row.created_by_user_id === access.userId)) {
+    return { ok: false, error: "Accès refusé." };
   }
 
   const eligibility = assessLeadGenerationImportSyncRetryEligibility(row);

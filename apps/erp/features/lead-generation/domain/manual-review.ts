@@ -5,7 +5,9 @@ export type LeadGenerationManualReviewType =
   | "duplicate_review"
   | "dispatch_review"
   | "enrichment_review"
-  | "stock_review";
+  | "stock_review"
+  | "quantifier_review"
+  | "agent_return_review";
 
 /** Décisions supportées (CHECK SQL). */
 export type LeadGenerationManualReviewDecision =
@@ -18,7 +20,10 @@ export type LeadGenerationManualReviewDecision =
   | "reject_enrichment_suggestions"
   | "clear_enrichment_suggestions"
   | "reopen_stock"
-  | "close_stock";
+  | "close_stock"
+  | "quantifier_qualify"
+  | "quantifier_out_of_target"
+  | "commercial_return_to_quantification";
 
 export type LeadGenerationManualReviewRow = {
   id: string;
@@ -59,6 +64,10 @@ export const MANUAL_REVIEW_DECISIONS_BY_TYPE: Record<
     "clear_enrichment_suggestions",
   ],
   stock_review: ["reopen_stock", "close_stock"],
+  /** Hors cible quantificateur : action serveur dédiée (clôture d’attribution si besoin), pas via `reviewLeadGenerationStock`. */
+  quantifier_review: ["quantifier_qualify"],
+  /** Renvoi commercial → quantification : action serveur dédiée + insert audit. */
+  agent_return_review: ["commercial_return_to_quantification"],
 };
 
 export function isManualReviewDecisionAllowedForType(

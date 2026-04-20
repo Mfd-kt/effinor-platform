@@ -69,8 +69,8 @@ export async function autoDispatchLeadsAction(
       return {
         ok: false,
         error: stockFilters
-          ? "Aucun lead prêt à distribuer pour ces critères (intersection avec la file « prêt maintenant »)."
-          : "Aucun lead prêt à distribuer.",
+          ? "Aucun lead qualifié disponible pour ces critères (file commerciale « prêt maintenant »)."
+          : "Aucun lead qualifié disponible.",
       };
     }
     const data = await autoDispatchLeadGenerationStockRoundRobin({
@@ -115,8 +115,8 @@ export async function autoDispatchAllLeadsAction(
       return {
         ok: false,
         error: stockFilters
-          ? "Aucun lead prêt à distribuer pour ces critères (intersection avec la file « prêt maintenant »)."
-          : "Aucun lead prêt à distribuer.",
+          ? "Aucun lead qualifié disponible pour ces critères (file commerciale « prêt maintenant »)."
+          : "Aucun lead qualifié disponible.",
       };
     }
     const out = await autoDispatchLeadGenerationStockRoundRobinUntilDry({

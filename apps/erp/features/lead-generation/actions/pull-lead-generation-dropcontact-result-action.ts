@@ -1,15 +1,20 @@
 "use server";
 
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub, canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub, canAccessLeadGenerationQuantification } from "@/lib/auth/module-access";
 import { createClient } from "@/lib/supabase/server";
 
 import { finalizeDropcontactFromGetContacts } from "../dropcontact/finalize-dropcontact-from-get-contacts";
 import { fetchDropcontactEnrichmentResult } from "../dropcontact/client";
 import { logDropcontact } from "../dropcontact/dropcontact-log";
 import type { LeadGenerationStockRow } from "../domain/stock-row";
+import {
+  canApplyLeadGenerationDropcontactToStock,
+  canInitiateLeadGenerationDropcontact,
+} from "../lib/lead-generation-dropcontact-access";
+import { assertQuantifierMayActOnQuantificationStock } from "../lib/quantification-batch-ownership";
+import { getLeadGenerationStockById } from "../queries/get-lead-generation-stock-by-id";
 import { lgTable } from "../lib/lg-db";
-import { canUseDropcontactOnStock } from "./enrich-lead-generation-stock-dropcontact-action";
 
 export type PullLeadGenerationDropcontactResult =
   | { ok: true; message: string }
@@ -34,31 +39,43 @@ export async function pullLeadGenerationDropcontactResultAction(
   }
 
   const hub = await canAccessLeadGenerationHub(access);
-  const queue = canAccessLeadGenerationMyQueue(access);
-  if (!hub && !queue) {
+  const quantifier = canAccessLeadGenerationQuantification(access);
+  if (!(await canInitiateLeadGenerationDropcontact(access))) {
     logDropcontact("pull", "Abandon : accès refusé", { leadId: id });
-    return { ok: false, message: "Accès refusé." };
+    return { ok: false, message: "Dropcontact réservé au pilotage ou au quantificateur." };
   }
 
   const supabase = await createClient();
   const stockTable = lgTable(supabase, "lead_generation_stock");
 
-  const { data: row, error: loadErr } = await stockTable.select("*").eq("id", id).maybeSingle();
-  if (loadErr || !row) {
-    logDropcontact("pull", "Fiche introuvable", { leadId: id, loadError: loadErr?.message });
+  const detail = await getLeadGenerationStockById(id);
+  if (!detail) {
+    logDropcontact("pull", "Fiche introuvable", { leadId: id });
     return { ok: false, message: "Fiche introuvable." };
   }
 
-  const stock = row as LeadGenerationStockRow;
+  const stock = detail.stock;
+
+  if (quantifier && !hub) {
+    const gate = await assertQuantifierMayActOnQuantificationStock(supabase, access, stock, detail.import_batch);
+    if (!gate.ok) {
+      logDropcontact("pull", "Abandon : périmètre quantificateur", { leadId: id });
+      return { ok: false, message: gate.message };
+    }
+  }
 
   if (stock.converted_lead_id) {
     logDropcontact("pull", "Abandon : convertie", { leadId: id });
     return { ok: false, message: "Cette fiche est déjà convertie." };
   }
 
-  if (!(await canUseDropcontactOnStock(access.userId, stock, hub))) {
-    logDropcontact("pull", "Abandon : non attribuée", { leadId: id });
-    return { ok: false, message: "Cette fiche ne vous est pas attribuée." };
+  if (!canApplyLeadGenerationDropcontactToStock(stock, { hub, quantifier })) {
+    logDropcontact("pull", "Abandon : périmètre fiche", { leadId: id });
+    return {
+      ok: false,
+      message:
+        "Cette fiche n’est pas éligible au Dropcontact avec votre rôle (hors file à qualifier ou hors pilotage).",
+    };
   }
 
   if (stock.dropcontact_status !== "pending") {

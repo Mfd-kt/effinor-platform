@@ -15,7 +15,7 @@ export type LeadGenerationIngestBatchSummary = {
 export type LeadGenerationIngestLineResult = {
   index: number;
   stock_id: string | null;
-  outcome: "accepted" | "duplicate" | "rejected_no_phone";
+  outcome: "accepted" | "duplicate" | "rejected_no_phone" | "rejected_duplicate_out_of_target";
   duplicate_of_stock_id?: string;
 };
 

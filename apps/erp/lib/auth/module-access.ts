@@ -1,4 +1,5 @@
 import type { AccessContext } from "./access-context";
+import { isLeadGenerationQuantifier, isSalesAgent } from "./role-codes";
 import {
   isCeeTeamManager,
 } from "@/features/dashboard/queries/get-managed-teams-context";
@@ -92,11 +93,39 @@ export function canAccessTechnicalVisitsModule(access: AccessContext): boolean {
 }
 
 /**
+ * Agent commercial et quantificateur lead gen : pas de bloc sidebar « Terrain & suivi »
+ * (visites techniques + tâches), sauf s’ils ont aussi un rôle élargi (admin, direction, terrain, etc.).
+ */
+export function shouldHideTerrainSuiviSidebar(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  const rc = access.roleCodes;
+  if (!isSalesAgent(rc) && !isLeadGenerationQuantifier(rc)) {
+    return false;
+  }
+  if (
+    rc.includes("super_admin") ||
+    rc.includes("admin") ||
+    rc.includes("sales_director") ||
+    rc.includes("technician") ||
+    rc.includes("closer") ||
+    rc.includes("confirmer")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Liste / fiches `/technical-visits` : droits matière visites OU pilotage commercial,
  * ou manager d’équipe CEE (périmètre workflows des fiches gérées).
  */
 export async function canAccessTechnicalVisitsDirectoryNav(access: AccessContext): Promise<boolean> {
   if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (shouldHideTerrainSuiviSidebar(access)) {
     return false;
   }
   if (canAccessTechnicalVisitsModule(access)) {
@@ -231,6 +260,38 @@ export function canAccessLeadGenerationMyQueue(access: AccessContext): boolean {
     return true;
   }
   return false;
+}
+
+/**
+ * File « Quantification » : validation terrain des fiches (hors pilotage complet, hors closing).
+ */
+export function canAccessLeadGenerationQuantification(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  return access.roleCodes.includes("lead_generation_quantifier");
+}
+
+/**
+ * Lien sidebar « Ma file » : jamais si l’utilisateur a accès à la quantification (même avec `sales_agent` en plus).
+ * Sinon : `sales_agent`, ou support en impersonation. L’accès route reste {@link canAccessLeadGenerationMyQueue}.
+ */
+export function shouldShowLeadGenerationMyQueueNav(access: AccessContext): boolean {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  if (canAccessLeadGenerationQuantification(access)) {
+    return false;
+  }
+  if (canBypassLeadGenMyQueueAsImpersonationActor(access)) {
+    return true;
+  }
+  return access.roleCodes.includes("sales_agent");
+}
+
+/** Liste des imports : lots créés par le quantificateur (sans pilotage complet). */
+export function canAccessLeadGenerationQuantifierImports(access: AccessContext): boolean {
+  return canAccessLeadGenerationQuantification(access);
 }
 
 /** Centre de commande direction : super_admin et directeur commercial uniquement. */

@@ -135,20 +135,17 @@ export function MyLeadQueueCeeSheetPicker({
             </p>
           ) : isNoCeeSelected ? (
             <p className="text-[11px] text-muted-foreground">
-              Fiches du carnet « prêt maintenant » sans fiche CEE liée. Le plafond de {maxCap} prospections actives
-              s’applique à votre total (toutes fiches confondues).
+              Contacts disponibles sans fiche CEE liée. Plafond de {maxCap} fiches actives sur votre total.
             </p>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              Seules les prospections du carnet « prêt maintenant » liées à ce produit vous sont listées (selon vos
-              équipes).
+              Liste filtrée sur ce produit CEE (fiches disponibles et attribuées à vous).
             </p>
           )}
         </div>
       ) : (
         <p className="text-[11px] text-muted-foreground">
-          Aucune fiche CEE n’est associée à votre profil : vous pouvez récupérer des prospections sur le carnet prêt dont
-          vous héritez.
+          Aucune fiche CEE associée : vous pouvez récupérer des contacts disponibles pour votre équipe.
         </p>
       )}
     </div>
@@ -209,7 +206,7 @@ export function MyLeadQueueReadyPoolFetchButton({
             ? perCeeRetrieve
               ? "Stock maximum atteint pour cette fiche CEE. Traitez ou libérez des fiches avant d’en ajouter."
               : `Vous avez atteint la limite de ${maxCap} prospections actives au total. Traitez ou libérez des fiches avant d’en récupérer d’autres.`
-            : "Aucune fiche disponible pour l’instant (carnet « prêt maintenant » vide ou déjà attribué).",
+            : "Aucune fiche disponible pour l’instant (file vide ou déjà attribuée).",
         });
         router.refresh();
         return;
@@ -260,8 +257,8 @@ export function MyLeadQueueReadyPoolFetchButton({
                       : "Récupérer d’autres fiches pour ce produit"}
         </Button>
         <p className="text-[11px] text-muted-foreground sm:max-w-[320px]">
-          Source : carnet <span className="font-medium text-foreground/90">prêt maintenant</span> (téléphone renseigné,
-          non attribué). Les fiches déjà dans votre file restent visibles dans le tableau même si le plafond est atteint.
+          Ajoute des contacts validés et encore disponibles (téléphone renseigné, non attribué). Les fiches déjà dans le
+          tableau restent visibles même si le plafond est atteint.
         </p>
       </div>
       {message ? (

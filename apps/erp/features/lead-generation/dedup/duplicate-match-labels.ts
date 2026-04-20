@@ -10,6 +10,7 @@ const LABELS_FR: Record<LeadGenerationDuplicateMatchReason, string> = {
   similar_name_same_city_and_postal: "Raison sociale proche, même ville et même code postal",
   similar_name_and_same_city: "Raison sociale proche et même ville",
   similar_name_and_same_postal: "Raison sociale proche et même code postal",
+  auto_duplicate_of_out_of_target: "Doublon d’une fiche déjà hors cible (exclusion automatique)",
 };
 
 /** Libellés lisibles pour l’UI (codes issus de l’ingestion). */

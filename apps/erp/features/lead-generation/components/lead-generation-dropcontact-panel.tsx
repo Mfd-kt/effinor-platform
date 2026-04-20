@@ -32,6 +32,8 @@ type Props = {
   stockId: string;
   /** Pilotage lead gen : affiche le bouton de réinitialisation du cycle Dropcontact. */
   canResetDropcontact?: boolean;
+  /** Libellés adaptés à l’écran quantificateur. */
+  context?: "pilotage" | "quantification";
   eligible: boolean;
   disabled: boolean;
   dropcontactStatus: string;
@@ -50,6 +52,7 @@ type Props = {
 export function LeadGenerationDropcontactPanel({
   stockId,
   canResetDropcontact = false,
+  context = "pilotage",
   eligible,
   disabled,
   dropcontactStatus,
@@ -76,15 +79,25 @@ export function LeadGenerationDropcontactPanel({
   const canPullResult =
     dropcontactStatus === "pending" && hasDropcontactRequestId && !disabled && !pullPending && !pending;
   const showResetButton = canResetDropcontact && !disabled && dropcontactStatus !== "idle";
+  const isQuant = context === "quantification";
 
   return (
     <Card className="border-border/90 bg-card/60 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Enrichissement</CardTitle>
+        <CardTitle className="text-base">{isQuant ? "Dropcontact (optionnel)" : "Enrichissement"}</CardTitle>
         <CardDescription>
-          Après le clic, le serveur envoie un POST à Dropcontact puis interroge l’API en GET (comme un flow n8n) jusqu’à
-          obtention du résultat ou fin de la fenêtre de polling. Le bouton « Récupérer le résultat » relance un GET si
-          besoin.
+          {isQuant ? (
+            <>
+              Lance une recherche de contacts si l’e-mail ou le décideur manque avant de qualifier. Le serveur interroge
+              Dropcontact puis met à jour la fiche ; « Récupérer le résultat » relance la lecture si besoin.
+            </>
+          ) : (
+            <>
+              Après le clic, le serveur envoie un POST à Dropcontact puis interroge l’API en GET (comme un flow n8n)
+              jusqu’à obtention du résultat ou fin de la fenêtre de polling. Le bouton « Récupérer le résultat » relance
+              un GET si besoin.
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">
@@ -115,7 +128,9 @@ export function LeadGenerationDropcontactPanel({
             </p>
           ) : null}
           {dropcontactStatus === "completed" ? (
-            <p className="text-xs text-emerald-700 dark:text-emerald-400">Fiche enrichie avec succès.</p>
+            <p className="text-xs text-emerald-700 dark:text-emerald-400">
+              {isQuant ? "Données Dropcontact intégrées à la fiche." : "Fiche enrichie avec succès."}
+            </p>
           ) : null}
           {dropcontactLastError && dropcontactStatus === "failed" ? (
             <p className="text-xs text-muted-foreground">{dropcontactLastError}</p>
@@ -185,7 +200,7 @@ export function LeadGenerationDropcontactPanel({
               disabled={resetPending}
               onClick={() => {
                 const ok = window.confirm(
-                  "Réinitialiser le suivi Dropcontact sur cette fiche ? Vous pourrez relancer une demande d’enrichissement.",
+                  "Réinitialiser le suivi Dropcontact sur cette fiche ? Vous pourrez relancer une demande.",
                 );
                 if (!ok) return;
                 setFlash(null);
@@ -202,7 +217,7 @@ export function LeadGenerationDropcontactPanel({
                   Réinitialisation…
                 </>
               ) : (
-                "Réinitialiser le suivi (pilotage)"
+                isQuant ? "Réinitialiser Dropcontact" : "Réinitialiser le suivi (pilotage)"
               )}
             </Button>
           ) : null}
@@ -224,7 +239,7 @@ export function LeadGenerationDropcontactPanel({
         ) : null}
 
         <div className="border-t border-border pt-4 space-y-2">
-          <h3 className="text-sm font-medium">Contact enrichi</h3>
+          <h3 className="text-sm font-medium">{isQuant ? "Données Dropcontact" : "Contact enrichi"}</h3>
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <p className="text-xs text-muted-foreground">E-mail</p>

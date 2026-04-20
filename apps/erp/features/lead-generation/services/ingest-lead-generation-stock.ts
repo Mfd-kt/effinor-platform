@@ -4,7 +4,10 @@ import type { Json } from "../domain/json";
 import type { LeadGenerationIngestLineResult, LeadGenerationIngestResult } from "../domain/batch-summary";
 import type { LeadGenerationRawStockInput } from "../domain/raw-input";
 import { lgTable } from "../lib/lg-db";
+import { AUTO_OOT_DUPLICATE_REJECTION, isLeadGenerationStockDurableOutOfTarget } from "../lib/out-of-target";
 import { prepareLeadGenerationStockRow } from "../lib/prepare-lead-generation-stock-row";
+import { resolveCanonicalLeadGenerationStock } from "../lib/resolve-canonical-lead-generation-stock";
+import { evaluateLeadGenerationDispatchQueueBatch } from "../queue/evaluate-dispatch-queue";
 import { findAdvancedDuplicateLeadGenerationStock } from "./find-duplicate-lead-generation-stock";
 
 function buildRawPayload(raw: LeadGenerationRawStockInput, lineIndex: number): Json {
@@ -55,6 +58,8 @@ export async function ingestLeadGenerationStock(
   }
 
   const now = new Date().toISOString();
+  /** Toute entrée importée reste en validation quantificateur — jamais « qualified » à la création. */
+  const initialQual = "to_validate" as const;
 
   const { error: runErr } = await batches
     .update({
@@ -148,6 +153,41 @@ export async function ingestLeadGenerationStock(
       const dupHit = await findAdvancedDuplicateLeadGenerationStock(supabase, prepared);
 
       if (dupHit) {
+        const canon = await resolveCanonicalLeadGenerationStock(supabase, dupHit.duplicateOf);
+        const autoOot = isLeadGenerationStockDurableOutOfTarget(canon);
+        const matchReasons = [...dupHit.matchReasons];
+        if (autoOot) {
+          matchReasons.push("auto_duplicate_of_out_of_target");
+        }
+
+        if (autoOot) {
+          const { data: inserted, error: insErr } = await stock
+            .insert({
+              ...baseInsert,
+              qualification_status: "rejected",
+              stock_status: "rejected",
+              duplicate_of_stock_id: canon.id,
+              duplicate_match_score: dupHit.matchScore,
+              duplicate_match_reasons: matchReasons,
+              rejection_reason: AUTO_OOT_DUPLICATE_REJECTION,
+              dispatch_queue_status: "do_not_dispatch",
+            })
+            .select("id")
+            .single();
+
+          if (insErr) {
+            throw new Error(insErr.message);
+          }
+          rejected_count += 1;
+          accLines.push({
+            index: i,
+            stock_id: (inserted as { id: string }).id,
+            outcome: "rejected_duplicate_out_of_target",
+            duplicate_of_stock_id: canon.id,
+          });
+          continue;
+        }
+
         const { data: inserted, error: insErr } = await stock
           .insert({
             ...baseInsert,
@@ -177,8 +217,8 @@ export async function ingestLeadGenerationStock(
       const { data: inserted, error: insErr } = await stock
         .insert({
           ...baseInsert,
-          qualification_status: "qualified",
-          stock_status: "ready",
+          qualification_status: initialQual,
+          stock_status: "new",
           duplicate_of_stock_id: null,
           rejection_reason: null,
         })
@@ -194,6 +234,15 @@ export async function ingestLeadGenerationStock(
         stock_id: (inserted as { id: string }).id,
         outcome: "accepted",
       });
+    }
+
+    const acceptedStockIds = accLines
+      .filter((l): l is typeof l & { stock_id: string } => l.outcome === "accepted" && Boolean(l.stock_id))
+      .map((l) => l.stock_id);
+    const DISPATCH_EVAL_CHUNK = 100;
+    for (let i = 0; i < acceptedStockIds.length; i += DISPATCH_EVAL_CHUNK) {
+      const chunk = acceptedStockIds.slice(i, i + DISPATCH_EVAL_CHUNK);
+      await evaluateLeadGenerationDispatchQueueBatch(chunk);
     }
 
     const finishedAt = new Date().toISOString();

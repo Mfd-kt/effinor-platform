@@ -6,6 +6,7 @@ export type LeadGenerationPhoneEmailWebsiteStatus = "found" | "missing";
 
 export type LeadGenerationQualificationStatus =
   | "pending"
+  | "to_validate"
   | "qualified"
   | "rejected"
   | "duplicate";

@@ -154,6 +154,7 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
         stockId={stock.id}
         mapsUrl={streetViewModel.openMapsUrl}
         showMapsLink={streetViewModel.canShowSection}
+        variant="hub"
         disabled={
           Boolean(stock.converted_lead_id) ||
           stock.stock_status === "rejected" ||

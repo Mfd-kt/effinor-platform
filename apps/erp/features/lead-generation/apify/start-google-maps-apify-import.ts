@@ -69,6 +69,8 @@ export async function startGoogleMapsApifyImport(
   };
 
   const ceeCols = leadGenerationBatchCeeInsertColumns(readCeeContextFromApifyInput(input));
+  const stockInitialQualification = input.stockInitialQualification ?? "qualified";
+  const createdBy = input.createdByUserId?.trim() || null;
 
   const { data: inserted, error: insErr } = await batches
     .insert({
@@ -77,6 +79,8 @@ export async function startGoogleMapsApifyImport(
       status: "running",
       started_at: now,
       metadata_json: baseMetadata as unknown as Json,
+      stock_initial_qualification: stockInitialQualification,
+      ...(createdBy ? { created_by_user_id: createdBy } : {}),
       ...ceeCols,
     } as never)
     .select("id")

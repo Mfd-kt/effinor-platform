@@ -118,9 +118,9 @@ const UNIFIED_PIPELINE_LOADING_STEPS_LIST: string[] = [...UNIFIED_PIPELINE_LOADI
 function formatDispatchTeaserLines(leads: number, agents: number): string[] {
   if (leads === 0) {
     return [
-      "Aucun contact prêt à confier pour l’instant.",
+      "Aucun lead qualifié disponible pour la distribution.",
       `${agents} commercial${agents > 1 ? "aux" : ""} éligible${agents > 1 ? "s" : ""}`,
-      "Complétez les fiches (email, site), puis utilisez « Améliorer les leads » avant de distribuer.",
+      "Les fiches non qualifiées ne sont jamais envoyées aux commerciaux : validez-les côté quantification.",
     ];
   }
   const lines = [
@@ -614,7 +614,7 @@ export function LeadGenerationMainActions({
       setPanel("dispatch", {
         phase: "empty",
         emptyHint:
-          "Aucun contact prêt à distribuer, ou tous les commerciaux sont déjà à leur limite. Complétez les fiches puis utilisez « Améliorer les leads ».",
+          "Aucun lead qualifié disponible, ou tous les commerciaux sont à leur limite sur ce périmètre. Vérifiez la quantification et les plafonds.",
       });
       if (bump) bumpRun("dispatch", "Aucune attribution", vol);
     } else if (d.total_assigned === 0 && d.remaining_leads > 0) {
@@ -892,13 +892,14 @@ export function LeadGenerationMainActions({
       if (!res.ok) {
         const dmsg = humanizeActionError(res.error);
         if (
-          dmsg === "Aucun lead prêt à distribuer." ||
+          dmsg === "Aucun lead qualifié disponible." ||
+          dmsg.startsWith("Aucun lead qualifié disponible pour ces critères") ||
           dmsg === "Aucun agent disponible pour la distribution."
         ) {
           const hint =
             dmsg === "Aucun agent disponible pour la distribution."
               ? "Aucun commercial éligible : ajoutez ou activez des commerciaux avant de distribuer."
-              : "Aucun contact prêt à distribuer. Complétez les fiches et utilisez « Améliorer les leads ».";
+              : "Aucun lead qualifié disponible. Complétez et qualifiez les fiches avant la distribution commerciale.";
           setPanel("dispatch", { phase: "empty", emptyHint: hint });
         } else {
           setPanel("dispatch", { phase: "error", errorMessage: dmsg });
@@ -916,7 +917,7 @@ export function LeadGenerationMainActions({
   const recoReady =
     pipelineSnapshot.leadsReadyToAssign > 0
       ? "Vous pouvez lancer la distribution automatique."
-      : "Complétez les fiches avant de les confier aux commerciaux.";
+      : "Qualifiez et complétez les fiches : seuls les leads qualifiés sont confiés aux commerciaux.";
   const recoImprove =
     pipelineSnapshot.leadsNeedingContactImprovement > 0
       ? "Lancez « Améliorer les leads »."
@@ -1117,7 +1118,7 @@ export function LeadGenerationMainActions({
           disabled={pipelineOrCooldownLocked || !canDispatch}
           disableHint={
             !canDispatch
-              ? "Aucun lead prêt à distribuer. Améliorez d’abord les fiches."
+              ? "Aucun lead qualifié en file. Qualifiez les fiches ou améliorez-les avant distribution."
               : undefined
           }
           isActive={active === "dispatch"}
@@ -1243,8 +1244,8 @@ export function LeadGenerationMainActions({
           ) : null}
           {pipelineSnapshot.leadsReadyToAssign === 0 ? (
             <p className="rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
-              Aucun contact prêt à distribuer pour l’instant. Complétez les fiches puis utilisez « Améliorer les leads
-              ».
+              Aucun lead qualifié disponible pour l’instant. Seules les fiches qualifiées entrent en distribution
+              commerciale.
             </p>
           ) : null}
           <DialogFooter className="gap-2 sm:gap-0">

@@ -24,11 +24,16 @@ export {
   canAccessLeadsDirectoryNav,
   canAccessLeadsModule,
   canAccessLostLeadsInbox,
+  canAccessLeadGenerationQuantification,
+  canAccessLeadGenerationQuantifierImports,
+  canAccessLeadGenerationMyQueue,
+  shouldShowLeadGenerationMyQueueNav,
   canAccessProductsModule,
   canAccessQuotesModule,
   canAccessTechnicalStudiesModule,
   canAccessTechnicalVisitsDirectoryNav,
   canAccessTechnicalVisitsModule,
+  shouldHideTerrainSuiviSidebar,
 } from "./module-access";
 export { canAccessInstallationsPage } from "./installations-access";
 export {
@@ -59,6 +64,7 @@ export {
   isAppRoleCode,
   isCloser,
   isConfirmer,
+  isLeadGenerationQuantifier,
   isSalesAgent,
   isSalesDirector,
   isSuperAdmin,

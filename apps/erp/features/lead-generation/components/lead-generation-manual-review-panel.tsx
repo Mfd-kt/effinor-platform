@@ -29,6 +29,8 @@ const TYPE_LABELS: Record<LeadGenerationManualReviewType, string> = {
   dispatch_review: "File / dispatch",
   enrichment_review: "Enrichissement",
   stock_review: "Stock (réouverture / clôture)",
+  quantifier_review: "Quantificateur",
+  agent_return_review: "Renvoi commercial",
 };
 
 const DECISION_LABELS: Record<LeadGenerationManualReviewDecision, string> = {
@@ -42,6 +44,9 @@ const DECISION_LABELS: Record<LeadGenerationManualReviewDecision, string> = {
   clear_enrichment_suggestions: "Vider les suggestions",
   reopen_stock: "Réouvrir la fiche",
   close_stock: "Clôturer / archiver la fiche",
+  quantifier_qualify: "Qualifier (validée)",
+  quantifier_out_of_target: "Hors cible (quantificateur)",
+  commercial_return_to_quantification: "Retour quantification (commercial)",
 };
 
 type Props = {
@@ -132,11 +137,13 @@ export function LeadGenerationManualReviewPanel({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(TYPE_LABELS) as LeadGenerationManualReviewType[]).map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {TYPE_LABELS[t]}
-                    </SelectItem>
-                  ))}
+                  {(Object.keys(TYPE_LABELS) as LeadGenerationManualReviewType[])
+                    .filter((t) => t !== "quantifier_review")
+                    .map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

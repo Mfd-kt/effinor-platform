@@ -25,6 +25,8 @@ export type LeadGenerationImportBatchRow = {
   cee_sheet_id: string | null;
   cee_sheet_code: string | null;
   target_team_id: string | null;
+  created_by_user_id: string | null;
+  stock_initial_qualification: string | null;
   /** Jointure `cee_sheets` (affichage libellé, pas seulement l’UUID). */
   cee_sheet_resolved_code: string | null;
   cee_sheet_resolved_label: string | null;
@@ -115,6 +117,8 @@ export async function getLeadGenerationImportBatchById(
     cee_sheet_id: raw.cee_sheet_id,
     cee_sheet_code: raw.cee_sheet_code,
     target_team_id: raw.target_team_id,
+    created_by_user_id: raw.created_by_user_id ?? null,
+    stock_initial_qualification: raw.stock_initial_qualification ?? null,
     cee_sheet_resolved_code: sm?.code?.trim() || null,
     cee_sheet_resolved_label: sm?.label?.trim() || null,
     target_team_resolved_name: tm?.name?.trim() || null,

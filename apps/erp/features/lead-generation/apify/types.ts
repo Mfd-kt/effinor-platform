@@ -12,6 +12,10 @@ export type RunGoogleMapsApifyImportInput = {
   ceeSheetId?: string;
   ceeSheetCode?: string;
   targetTeamId?: string;
+  /** Traçabilité lot (quantificateur, etc.). */
+  createdByUserId?: string;
+  /** Fiches créées en `to_validate` (quantificateur) ou `qualified` (défaut historique). */
+  stockInitialQualification?: "qualified" | "to_validate";
 };
 
 /** @deprecated Import synchrone (étape 7) — conservé pour typage historique. */

@@ -1,15 +1,23 @@
 "use server";
 
+import { getAccessContext } from "@/lib/auth/access-context";
+
 import {
   enrichLeadGenerationStockBatch,
   type EnrichLeadGenerationStockBatchResult,
 } from "../enrichment/enrich-lead-generation-stock";
+import { canRunLeadGenerationStockEnrichment } from "../lib/lead-generation-enrichment-access";
 import type { LeadGenerationActionResult } from "../lib/action-result";
 import { enrichLeadGenerationStockBatchActionInputSchema } from "../schemas/lead-generation-actions.schema";
 
 export async function enrichLeadGenerationStockBatchAction(
   input: unknown,
 ): Promise<LeadGenerationActionResult<EnrichLeadGenerationStockBatchResult>> {
+  const access = await getAccessContext();
+  if (!(await canRunLeadGenerationStockEnrichment(access))) {
+    return { ok: false, error: "Enrichissement réservé au pilotage lead generation." };
+  }
+
   const parsed = enrichLeadGenerationStockBatchActionInputSchema.safeParse(input);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
