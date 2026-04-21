@@ -2,7 +2,9 @@
 
 import { markAgreementSent as markAgreementSentInService } from "@/features/cee-workflows/services/workflow-service";
 import { resolvePublicAppBaseUrl } from "@/lib/app-public-url";
+import { sendEmail } from "@/lib/email/email-orchestrator";
 import { getFromAddress, getMailTransport } from "@/lib/email/gmail-transport";
+import { getEmailSignature } from "@/lib/email/signature";
 import {
   EFFINOR_BRAND_GRADIENT_135,
   EFFINOR_BRAND_GREEN,
@@ -172,16 +174,35 @@ export async function sendStudyEmail(
         : buildVersionB(templateData);
     }
 
-    const transport = getMailTransport();
-    const sendResult = await transport.sendMail({
-      from: getFromAddress(),
-      to,
-      subject,
-      html,
-      attachments,
+    let gmailMessageId: string | null = null;
+    const orchestrated = await sendEmail({
+      type:
+        emailType === "premier_contact"
+          ? "LEAD_FIRST_CONTACT"
+          : emailType === "relance_signature"
+            ? "SIGNATURE_REMINDER"
+            : "STUDY_SENT",
+      recipient: to,
+      metadata: {
+        provider: "smtp",
+        sourceModule: "leads/study-pdf",
+      },
+      execute: async () => {
+        const transport = getMailTransport();
+        const sendResult = await transport.sendMail({
+          from: getFromAddress(),
+          to,
+          subject,
+          html,
+          attachments,
+        });
+        gmailMessageId = sendResult.messageId ?? null;
+        return { ok: true };
+      },
     });
-
-    const gmailMessageId = sendResult.messageId ?? null;
+    if (!orchestrated.ok) {
+      return { ok: false, error: orchestrated.error };
+    }
 
     if (leadId) {
       const newStatus = emailType === "premier_contact" ? "contacted" : "dossier_sent";
@@ -514,9 +535,7 @@ function closingBlock(name: string): string {
     <p style="font-size:14px;line-height:1.65;color:#374151;margin:0 0 16px">
       ${n ? `${n}, n` : "N"}ous restons &agrave; votre disposition pour &eacute;changer sur votre projet ou planifier les prochaines &eacute;tapes.
     </p>
-    <p style="font-size:13px;color:#94A3B8;margin:0 0 4px">Cordialement,</p>
-    <p style="font-size:15px;font-weight:700;color:#0F172A;margin:0">L'&eacute;quipe Effinor</p>
-    <p style="font-size:12px;color:#64748B;margin:4px 0 0">Performance &eacute;nerg&eacute;tique &middot; D&eacute;stratification d'air</p>
+    ${getEmailSignature({ style: "html", signerRole: "Performance énergétique · Déstratification d'air" })}
   </td>
 </tr>`;
 }

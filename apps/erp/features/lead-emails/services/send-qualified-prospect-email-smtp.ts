@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 
+import { sendEmail } from "@/lib/email/email-orchestrator";
 import { getFromAddress, getMailTransport } from "@/lib/email/gmail-transport";
 
 export type SendQualifiedProspectEmailInput = {
@@ -41,21 +42,36 @@ function getQualifiedFromHeader(): string {
 
 export async function sendQualifiedProspectEmailViaSmtp(input: SendQualifiedProspectEmailInput): Promise<SendQualifiedProspectEmailResult> {
   try {
-    const transport = getMailTransport() as nodemailer.Transporter;
-    const from = getQualifiedFromHeader();
-    const replyTo = getReplyTo();
+    let messageId = "(no-id)";
+    const send = await sendEmail({
+      type: "QUALIFIED_PROSPECT",
+      recipient: input.to,
+      metadata: {
+        provider: "smtp",
+        sourceModule: "lead-emails",
+      },
+      execute: async () => {
+        const transport = getMailTransport() as nodemailer.Transporter;
+        const from = getQualifiedFromHeader();
+        const replyTo = getReplyTo();
 
-    const info = await transport.sendMail({
-      from,
-      to: input.to,
-      replyTo,
-      subject: input.subject,
-      text: input.text,
-      html: input.html,
+        const info = await transport.sendMail({
+          from,
+          to: input.to,
+          replyTo,
+          subject: input.subject,
+          text: input.text,
+          html: input.html,
+        });
+        const infoMessageId = typeof info.messageId === "string" ? info.messageId : "";
+        messageId = infoMessageId || "(no-id)";
+        return { ok: true };
+      },
     });
-
-    const messageId = typeof info.messageId === "string" ? info.messageId : "";
-    return { ok: true, messageId: messageId || "(no-id)" };
+    if (!send.ok) {
+      return { ok: false, error: send.error };
+    }
+    return { ok: true, messageId };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: msg.slice(0, 2000) };

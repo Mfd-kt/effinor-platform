@@ -1,6 +1,10 @@
 import { headers } from "next/headers";
+import { createHash, randomUUID } from "node:crypto";
 
 import { resolvePublicAppBaseUrl } from "@/lib/app-public-url";
+import { sendEmail } from "@/lib/email/email-orchestrator";
+import { getEmailSignature } from "@/lib/email/signature";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getFromAddressForUserCreation,
   getMailTransportForUserCreation,
@@ -31,15 +35,15 @@ function escapeAttr(s: string): string {
 }
 
 /**
- * Envoie les identifiants de première connexion (e-mail + mot de passe en clair).
+ * Envoie un lien sécurisé de configuration de mot de passe initial.
  * À n’appeler que depuis un contexte serveur (Server Action / Route Handler).
  */
 export async function sendNewUserCredentialsEmail(params: {
   to: string;
-  password: string;
+  userId: string;
   displayName?: string | null;
 }): Promise<SendNewUserCredentialsResult> {
-  const { to, password, displayName } = params;
+  const { to, userId, displayName } = params;
 
   if (!to || !to.includes("@")) {
     return { ok: false, error: "Adresse e-mail invalide." };
@@ -48,33 +52,37 @@ export async function sendNewUserCredentialsEmail(params: {
   try {
     const h = await headers();
     const baseUrl = resolvePublicAppBaseUrl(h);
-    const loginUrl = `${baseUrl}/login`;
+    const rawToken = randomUUID();
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const setupPasswordUrl = `${baseUrl}/login/setup-password?token=${encodeURIComponent(rawToken)}`;
+
+    const admin = createAdminClient();
+    await admin.from("user_password_setup_tokens").insert({
+      user_id: userId,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+    });
 
     const greeting = displayName?.trim() ? `Bonjour ${displayName.trim()},` : "Bonjour,";
 
-    const subject = "Effinor ERP — vos identifiants de connexion";
+    const subject = "Effinor ERP — configurez votre mot de passe";
     const text = `${greeting}
 
-Votre compte Effinor ERP a été créé. Voici vos identifiants pour vous connecter :
+Votre compte Effinor ERP a été créé.
+Pour activer votre accès, définissez votre mot de passe via ce lien sécurisé (valable 24h) :
 
-E-mail : ${to}
-Mot de passe : ${password}
+${setupPasswordUrl}
 
-Page de connexion : ${loginUrl}
-
-Pour des raisons de sécurité, changez ce mot de passe après votre première connexion si l’application le permet.
-
-— L’équipe Effinor`;
+Si le lien a expiré, demandez une nouvelle invitation à un administrateur.
+${getEmailSignature({ style: "text" })}`;
 
     const html = `<p>${escapeHtml(greeting)}</p>
-<p>Votre compte Effinor ERP a été créé. Voici vos identifiants pour vous connecter :</p>
-<ul>
-<li><strong>E-mail :</strong> ${escapeHtml(to)}</li>
-<li><strong>Mot de passe :</strong> ${escapeHtml(password)}</li>
-</ul>
-<p><a href="${escapeAttr(loginUrl)}">Ouvrir la page de connexion</a></p>
-<p style="font-size:0.9em;color:#666;">Pour des raisons de sécurité, changez ce mot de passe après votre première connexion si l’application le permet.</p>
-<p>— L’équipe Effinor</p>`;
+<p>Votre compte Effinor ERP a été créé.</p>
+<p>Pour activer votre accès, définissez votre mot de passe via ce lien sécurisé (valable 24h) :</p>
+<p><a href="${escapeAttr(setupPasswordUrl)}">Configurer mon mot de passe</a></p>
+<p style="font-size:0.9em;color:#666;">Si le lien a expiré, demandez une nouvelle invitation à un administrateur.</p>
+${getEmailSignature({ style: "html" })}`;
 
     const fromHeader = getFromAddressForUserCreation();
 
@@ -121,14 +129,29 @@ Pour des raisons de sécurité, changez ce mot de passe après votre première c
       }
     }
 
-    const transport = getMailTransportForUserCreation();
-    await transport.sendMail({
-      from: fromHeader,
-      to,
-      subject,
-      text,
-      html,
+    const send = await sendEmail({
+      type: "INTERNAL_CREDENTIALS",
+      recipient: to,
+      metadata: {
+        provider: hasUserCreationSmtpConfigured() ? "smtp_user_creation" : "smtp",
+        sourceModule: "admin-users",
+      },
+      execute: async () => {
+        const transport = getMailTransportForUserCreation();
+        await transport.sendMail({
+          from: fromHeader,
+          to,
+          subject,
+          text,
+          html,
+        });
+        return { ok: true };
+      },
     });
+
+    if (!send.ok) {
+      return { ok: false, error: send.error };
+    }
 
     return { ok: true };
   } catch (e) {

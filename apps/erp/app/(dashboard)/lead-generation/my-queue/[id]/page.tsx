@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -75,7 +75,10 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
     canBypassLeadGenMyQueueAsImpersonationActor(access),
   );
   if (!detail) {
-    notFound();
+    const fallback = isSafeReturnTo(fromParam) ? fromParam! : "/lead-generation/my-queue";
+    const p = new URLSearchParams();
+    p.set("stale", "1");
+    redirect(`${fallback}${fallback.includes("?") ? "&" : "?"}${p.toString()}`);
   }
 
   const { stock, assignmentCallTrace, openedViaSupportBypass, currentAssignmentAgentId, lastTerminalAssignmentId } =

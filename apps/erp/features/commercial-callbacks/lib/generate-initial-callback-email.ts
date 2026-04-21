@@ -1,4 +1,5 @@
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
+import { getEmailSignature } from "@/lib/email/signature";
 
 function esc(s: string): string {
   return s
@@ -80,13 +81,11 @@ export function generateInitialCallbackEmail(
     "",
     "Je reste bien entendu disponible si besoin d’ici là.",
     "",
-    "Cordialement,",
-    `${agent}`,
-    "Conseiller en efficacité énergétique",
-    "",
-    "Effinor",
-    "contact@groupe-effinor.fr",
-    "www.groupe-effinor.fr",
+    getEmailSignature({
+      signerName: agent,
+      signerRole: "Conseiller en efficacité énergétique",
+      style: "text",
+    }),
   ].join("\n");
 
   const pixel =
@@ -157,10 +156,11 @@ export function generateInitialCallbackEmail(
     <tr><td style="height:25px;line-height:25px;font-size:0;">&nbsp;</td></tr>
     <tr>
       <td style="border-top:1px solid #e0e0e0;padding-top:20px;">
-        <div style="font-size:14px;color:#333;">Cordialement,</div>
-        <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
-        <div style="font-size:16px;font-weight:bold;color:#116BAD;">${esc(agent)}</div>
-        <div style="font-size:13px;color:#666;">Conseiller en efficacité énergétique</div>
+        ${getEmailSignature({
+          signerName: agent,
+          signerRole: "Conseiller en efficacité énergétique",
+          style: "html",
+        })}
         <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
         <div style="font-size:13px;color:#333;line-height:1.55;">
           Effinor<br />

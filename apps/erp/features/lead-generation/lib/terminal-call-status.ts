@@ -12,6 +12,8 @@ const CANCELLED_NORMALIZED = new Set([
   "refuser",
   "annule",
   "annuler",
+  "repondeur",
+  "pas de reponse",
   "mauvais numero",
   "numero invalide",
   "numero incorrect",

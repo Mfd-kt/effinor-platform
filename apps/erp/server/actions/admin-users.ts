@@ -197,7 +197,7 @@ export async function createUserWithRole(formData: FormData): Promise<CreateUser
 
   const emailResult = await sendNewUserCredentialsEmail({
     to: email,
-    password,
+    userId,
     displayName: fullName,
   });
 
@@ -205,13 +205,13 @@ export async function createUserWithRole(formData: FormData): Promise<CreateUser
   if (!emailResult.ok) {
     return {
       ok: true,
-      message: `${baseMsg} Attention : l’e-mail avec les identifiants n’a pas pu être envoyé (${emailResult.error}). Communiquez-lui ses accès par un autre canal sécurisé.`,
+      message: `${baseMsg} Attention : l’e-mail d’activation du compte n’a pas pu être envoyé (${emailResult.error}).`,
     };
   }
 
   return {
     ok: true,
-    message: `${baseMsg} Un e-mail avec l’e-mail et le mot de passe de connexion a été envoyé à ${email}.`,
+    message: `${baseMsg} Un e-mail sécurisé de configuration de mot de passe a été envoyé à ${email}.`,
   };
 }
 

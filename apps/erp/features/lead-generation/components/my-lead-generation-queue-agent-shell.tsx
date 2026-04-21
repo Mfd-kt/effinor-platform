@@ -1,12 +1,13 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
 import type { LeadGenerationMyQueueCeeSheetOption } from "../lib/my-queue-cee-sheet-option";
+import { trackLeadGenerationUiEventAction } from "../actions/track-lead-generation-ui-event-action";
 import {
   formatMyQueueCeeSheetOptionLabel,
   MY_QUEUE_NO_CEE_SHEET_SENTINEL,
@@ -56,8 +57,11 @@ export function MyLeadGenerationQueueAgentShell({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const trackedStaleRef = useRef(false);
+  const [, startTrackingTransition] = useTransition();
 
   const searchFilter = searchParams.get("qf");
+  const staleReturn = searchParams.get("stale") === "1";
   const initialFilter: MyQueueQuickFilter = FILTERS.some((f) => f.id === searchFilter)
     ? (searchFilter as MyQueueQuickFilter)
     : "all";
@@ -83,6 +87,30 @@ export function MyLeadGenerationQueueAgentShell({
       setFilter(qf as MyQueueQuickFilter);
     }
   }, [searchParams, filter]);
+
+  useLayoutEffect(() => {
+    if (!staleReturn) {
+      trackedStaleRef.current = false;
+      return;
+    }
+    if (!trackedStaleRef.current) {
+      trackedStaleRef.current = true;
+      startTrackingTransition(() => {
+        void trackLeadGenerationUiEventAction({
+          eventType: "my_queue_stale_return_shown",
+          context: {
+            path: pathname,
+            qf: searchParams.get("qf"),
+            cee: searchParams.get("cee"),
+          },
+        });
+      });
+    }
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("stale");
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [staleReturn, searchParams, pathname, router, startTrackingTransition]);
 
   useLayoutEffect(() => {
     if (ceeSheetOptions.length === 0) {
@@ -242,6 +270,12 @@ export function MyLeadGenerationQueueAgentShell({
           "ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
         )}
       >
+        {staleReturn ? (
+          <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] px-3 py-2.5 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/[0.12] dark:text-amber-100">
+            Cette fiche n’est plus disponible dans votre file (mise à jour en cours ou attribution terminée). La liste a
+            été rechargée.
+          </p>
+        ) : null}
         <p className="mb-3 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Votre file</span> — liste des contacts qui vous sont attribués.
           Le filtre produit ci-dessous limite l’affichage par fiche CEE. Seul le statut pipeline{" "}

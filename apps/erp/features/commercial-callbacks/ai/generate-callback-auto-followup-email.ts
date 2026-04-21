@@ -3,6 +3,7 @@ import { CALLBACK_FOLLOWUP_SYSTEM } from "@/features/commercial-callbacks/ai/cal
 import { getCallbackOpenAI, getCallbackOpenAIModel } from "@/features/commercial-callbacks/ai/callback-openai-client";
 import type { CallbackAutoFollowupSuggestedType } from "@/features/commercial-callbacks/lib/callback-auto-followup-rules";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
+import { getEmailSignature } from "@/lib/email/signature";
 
 const AUTO_SYSTEM = `${CALLBACK_FOLLOWUP_SYSTEM}
 
@@ -62,7 +63,7 @@ function fallbackEmail(
   const memo = ctx.contextSummary?.trim()
     ? `\n\nPour mémoire : ${ctx.contextSummary.trim().slice(0, 400)}`
     : "";
-  const body = `${polite}\n\n${core}${memo}\n\nCordialement,\nL’équipe Effinor`;
+  const body = `${polite}\n\n${core}${memo}\n\n${getEmailSignature({ style: "text" })}`;
 
   const textBody = body;
   const htmlBody = `<p>${escapeHtml(body).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`;

@@ -221,7 +221,13 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
   });
 
   const assignmentIds = active.map((r) => r.id);
-  const nextByAssignment = await loadNextActionHints(assignmentIds);
+  let nextByAssignment = new Map<string, NextActionHint>();
+  try {
+    nextByAssignment = await loadNextActionHints(assignmentIds);
+  } catch {
+    // Hardening: keep the queue usable even if follow-up hints fail.
+    nextByAssignment = new Map<string, NextActionHint>();
+  }
 
   const items: MyLeadGenerationQueueItem[] = active.map((r) => {
     const s = pickStock(r.stock)!;

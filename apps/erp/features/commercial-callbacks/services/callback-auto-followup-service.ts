@@ -10,6 +10,7 @@ import {
   type CallbackAutoFollowupContext,
 } from "@/features/commercial-callbacks/lib/callback-auto-followup-rules";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
+import { sendEmail } from "@/lib/email/email-orchestrator";
 import { getFromAddress, getMailTransport } from "@/lib/email/gmail-transport";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database.types";
@@ -206,15 +207,30 @@ export async function sendCallbackAutoFollowup(
   }
 
   try {
-    const transport = getMailTransport();
-    const sendResult = await transport.sendMail({
-      from: getFromAddress(),
-      to,
-      subject,
-      html,
-      text: textBody,
+    let messageId: string | null = null;
+    const send = await sendEmail({
+      type: "CALLBACK_FOLLOWUP",
+      recipient: to,
+      metadata: {
+        provider: "smtp",
+        sourceModule: "commercial-callbacks/automation",
+      },
+      execute: async () => {
+        const transport = getMailTransport();
+        const sendResult = await transport.sendMail({
+          from: getFromAddress(),
+          to,
+          subject,
+          html,
+          text: textBody,
+        });
+        messageId = sendResult.messageId ?? null;
+        return { ok: true };
+      },
     });
-    const messageId = sendResult.messageId ?? null;
+    if (!send.ok) {
+      throw new Error(send.error);
+    }
     const nextCount = (r.auto_followup_count ?? 0) + 1;
     const minH = getMinHoursBetweenSends(ctx);
     const nextEligible = new Date(now.getTime() + minH * 3_600_000);

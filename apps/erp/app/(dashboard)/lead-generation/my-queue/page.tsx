@@ -40,8 +40,15 @@ export default async function MyLeadGenerationQueuePage() {
 
   const hub = await canAccessLeadGenerationHub(access);
 
-  const supabase = await createClient();
-  const dispatchPolicy = await getLeadGenerationDispatchPolicy(supabase, access.userId);
+  let effectiveStockCap = 15;
+  try {
+    const supabase = await createClient();
+    const dispatchPolicy = await getLeadGenerationDispatchPolicy(supabase, access.userId);
+    effectiveStockCap = dispatchPolicy.effectiveStockCap;
+  } catch {
+    // Hardening: don't block queue rendering if dispatch policy query fails.
+    effectiveStockCap = 15;
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -74,7 +81,7 @@ export default async function MyLeadGenerationQueuePage() {
         items={items}
         ceeSheetOptions={ceeSheetOptions}
         viewerUserId={access.userId}
-        effectiveStockCap={dispatchPolicy.effectiveStockCap}
+        effectiveStockCap={effectiveStockCap}
       />
     </div>
   );

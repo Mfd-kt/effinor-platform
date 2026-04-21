@@ -6,6 +6,7 @@ import { canAccessCommercialCallbacks } from "@/features/commercial-callbacks/li
 import { generateInitialCallbackEmail } from "@/features/commercial-callbacks/lib/generate-initial-callback-email";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { resolvePublicAppBaseUrl } from "@/lib/app-public-url";
+import { sendEmail } from "@/lib/email/email-orchestrator";
 import { getFromAddress, getMailTransport } from "@/lib/email/gmail-transport";
 import { resolveCallbackInitialEmailSimulatorUrl } from "@/features/commercial-callbacks/lib/callback-initial-email-simulator-url";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -170,14 +171,28 @@ export async function sendInitialCallbackEmail(
     .eq("id", trackingId);
 
   try {
-    const transport = getMailTransport();
-    await transport.sendMail({
-      from: getFromAddress(),
-      to,
-      subject,
-      html,
-      text,
+    const send = await sendEmail({
+      type: "CALLBACK_INITIAL",
+      recipient: to,
+      metadata: {
+        provider: "smtp",
+        sourceModule: "commercial-callbacks",
+      },
+      execute: async () => {
+        const transport = getMailTransport();
+        await transport.sendMail({
+          from: getFromAddress(),
+          to,
+          subject,
+          html,
+          text,
+        });
+        return { ok: true };
+      },
     });
+    if (!send.ok) {
+      throw new Error(send.error);
+    }
   } catch (e) {
     console.error("[sendInitialCallbackEmail] send failed", callbackId, e);
     await admin

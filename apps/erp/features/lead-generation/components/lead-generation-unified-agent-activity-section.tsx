@@ -214,8 +214,8 @@ export function LeadGenerationUnifiedAgentActivitySection({
         <CardTitle className="text-base">Enregistrer le suivi</CardTitle>
         <p className="text-xs text-muted-foreground">
           Après l’appel, renseignez le statut, le compte rendu et la prochaine relance si besoin. Les statuts « Hors
-          cible », « Refus », « Annulé » ou « Mauvais numéro » (y compris en libellé libre proche) retirent la fiche de
-          votre file.
+          cible », « Refus », « Annulé », « Répondeur », « Pas de réponse » ou « Mauvais numéro » (y compris en libellé
+          libre proche) retirent la fiche de votre file.
         </p>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">
