@@ -161,13 +161,14 @@ export async function getAccessContext(): Promise<AccessContext> {
     } else {
       const { data: targetProfile } = await supabase
         .from("profiles")
-        .select("id, is_active, deleted_at")
+        .select("id, is_active, account_lifecycle_status, deleted_at")
         .eq("id", cookiePayload.targetId)
         .maybeSingle();
 
       if (
         !targetProfile ||
         !targetProfile.is_active ||
+        targetProfile.account_lifecycle_status !== "active" ||
         targetProfile.deleted_at != null
       ) {
         await clearImpersonationCookieBestEffort();

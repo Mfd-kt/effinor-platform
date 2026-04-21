@@ -6,13 +6,18 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { deleteUserAsAdmin, setUserPausedAsAdmin } from "@/server/actions/admin-users";
+import {
+  deleteUserAsAdmin,
+  disableUserPermanentlyAsAdmin,
+  setUserPausedAsAdmin,
+  type AdminAccountLifecycleStatus,
+} from "@/server/actions/admin-users";
 import { cn } from "@/lib/utils";
 
 type AdminUserRowActionsProps = {
   userId: string;
   email: string;
-  isActive: boolean;
+  status: AdminAccountLifecycleStatus;
   isSelf: boolean;
   /** Faux pour les managers d’équipe (pas de profil / pause / suppression). */
   showPrivilegedActions?: boolean;
@@ -21,12 +26,16 @@ type AdminUserRowActionsProps = {
 export function AdminUserRowActions({
   userId,
   email,
-  isActive,
+  status,
   isSelf,
   showPrivilegedActions = true,
 }: AdminUserRowActionsProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+
+  const isActive = status === "active";
+  const isPaused = status === "paused";
+  const isTerminal = status === "disabled" || status === "deleted";
 
   async function onPauseToggle() {
     const msg = isActive
@@ -45,10 +54,28 @@ export function AdminUserRowActions({
     }
   }
 
+  async function onDisablePermanently() {
+    if (
+      !window.confirm(
+        `Désactiver définitivement ${email} ?\n\nCette action est irréversible. Le portefeuille lead generation vivant sera libéré et redispatché.`,
+      )
+    ) {
+      return;
+    }
+    setPending(true);
+    const r = await disableUserPermanentlyAsAdmin(userId);
+    setPending(false);
+    if (r.ok) {
+      router.refresh();
+    } else {
+      window.alert(r.error);
+    }
+  }
+
   async function onDelete() {
     if (
       !window.confirm(
-        `Supprimer définitivement le compte ${email} ? Cette action est irréversible.`,
+        `Supprimer opérationnellement ${email} ?\n\nLe compte sera retiré des vues opérationnelles, non réactivable, et son portefeuille vivant sera libéré.`,
       )
     ) {
       return;
@@ -77,15 +104,28 @@ export function AdminUserRowActions({
       </Link>
       {isSelf ? null : (
         <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={pending}
-            onClick={() => void onPauseToggle()}
-          >
-            {isActive ? "Mettre en pause" : "Réactiver"}
-          </Button>
+          {isTerminal ? null : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => void onPauseToggle()}
+            >
+              {isPaused ? "Réactiver" : "Mettre en pause"}
+            </Button>
+          )}
+          {isTerminal ? null : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={() => void onDisablePermanently()}
+            >
+              Désactiver définitivement
+            </Button>
+          )}
           <Button
             type="button"
             variant="destructive"
@@ -102,17 +142,31 @@ export function AdminUserRowActions({
 }
 
 /** Badge de statut dans le tableau. */
-export function AdminUserStatusBadge({ isActive }: { isActive: boolean }) {
+export function AdminUserStatusBadge({ status }: { status: AdminAccountLifecycleStatus }) {
+  const styles =
+    status === "active"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+      : status === "paused"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100"
+        : status === "disabled"
+          ? "border-orange-500/30 bg-orange-500/10 text-orange-900 dark:text-orange-100"
+          : "border-destructive/30 bg-destructive/10 text-destructive";
+  const label =
+    status === "active"
+      ? "Actif"
+      : status === "paused"
+        ? "En pause"
+        : status === "disabled"
+          ? "Désactivé"
+          : "Supprimé";
   return (
     <span
       className={cn(
         "inline-flex rounded-md border px-2 py-0.5 text-xs font-medium",
-        isActive
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
-          : "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100",
+        styles,
       )}
     >
-      {isActive ? "Actif" : "En pause"}
+      {label}
     </span>
   );
 }

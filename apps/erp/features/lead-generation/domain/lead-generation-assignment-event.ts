@@ -9,6 +9,7 @@ export const LEAD_GENERATION_ASSIGNMENT_EVENT_KINDS = [
   "moved_to_follow_up",
   "moved_to_converted",
   "outcome_changed",
+  "released_inactive_agent",
   "sla_breached",
   "dispatch_blocked",
   "dispatch_resumed",

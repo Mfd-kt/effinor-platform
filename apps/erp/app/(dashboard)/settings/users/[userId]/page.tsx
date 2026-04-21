@@ -35,9 +35,13 @@ export default async function SettingsUserProfilePage({ params }: PageProps) {
       <PageHeader
         title={`Profil — ${profile.email}`}
         description={
-          profile.is_active
+          profile.account_lifecycle_status === "active"
             ? "Rôles métier, coordonnées et e-mail de connexion."
-            : "Compte en pause : la connexion est bloquée ; vous pouvez toutefois mettre à jour les rôles et les informations du profil."
+            : profile.account_lifecycle_status === "paused"
+              ? "Compte en pause : connexion bloquée, portefeuille conservé."
+              : profile.account_lifecycle_status === "disabled"
+                ? "Compte désactivé définitivement : non réactivable, historique conservé."
+                : "Compte supprimé opérationnellement : non réactivable, masqué des vues opérationnelles."
         }
       />
       <AdminUserProfileForm profile={profile} currentUserId={access.userId} roleCatalog={roleCatalog} />

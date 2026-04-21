@@ -158,7 +158,7 @@ export function AdminUsersPanel({
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{u.full_name ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <AdminUserStatusBadge isActive={u.is_active} />
+                      <AdminUserStatusBadge status={u.account_lifecycle_status} />
                     </td>
                     <td className="px-4 py-3">
                       {u.role_codes.length === 0
@@ -169,7 +169,7 @@ export function AdminUsersPanel({
                       <AdminUserRowActions
                         userId={u.id}
                         email={u.email}
-                        isActive={u.is_active}
+                        status={u.account_lifecycle_status}
                         isSelf={u.id === currentUserId}
                         showPrivilegedActions={!teamManagerOnly}
                       />

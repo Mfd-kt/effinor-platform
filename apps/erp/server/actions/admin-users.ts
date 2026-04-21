@@ -16,6 +16,10 @@ import { isSuperAdmin } from "@/lib/auth/role-codes";
 import { getManagedTeamsContext, isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
 import { sendNewUserCredentialsEmail } from "@/lib/email/send-new-user-credentials-email";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  releaseLeadGenerationAssignmentsForInactiveAgent,
+  type ReleaseLeadGenerationAssignmentsForInactiveAgentSummary,
+} from "@/features/lead-generation/services/release-lead-generation-assignments-for-inactive-agent";
 
 function roleCodeFromRolesJoin(roles: unknown): string | null {
   if (!roles) {
@@ -47,6 +51,8 @@ type UsersSettingsActor =
   | { kind: "none" }
   | { kind: "super_admin" }
   | { kind: "team_manager"; teamIds: string[]; memberUserIds: Set<string> };
+
+export type AdminAccountLifecycleStatus = "active" | "paused" | "disabled" | "deleted";
 
 async function resolveUsersSettingsActor(
   access: Extract<AccessContext, { kind: "authenticated" }>,
@@ -214,6 +220,7 @@ export type AdminUserRow = {
   email: string;
   full_name: string | null;
   is_active: boolean;
+  account_lifecycle_status: AdminAccountLifecycleStatus;
   role_codes: string[];
 };
 
@@ -225,6 +232,7 @@ export type AdminUserProfileForEdit = {
   job_title: string | null;
   avatar_url: string | null;
   is_active: boolean;
+  account_lifecycle_status: AdminAccountLifecycleStatus;
   /** Rôles applicatifs (`public.user_roles`). */
   role_codes: string[];
 };
@@ -247,7 +255,7 @@ export async function getAdminUserProfileById(userId: string): Promise<AdminUser
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("id, email, full_name, phone, job_title, avatar_url, is_active")
+    .select("id, email, full_name, phone, job_title, avatar_url, is_active, account_lifecycle_status")
     .eq("id", userId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -588,7 +596,7 @@ export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
 
   let profilesQuery = admin
     .from("profiles")
-    .select("id, email, full_name, is_active")
+    .select("id, email, full_name, is_active, account_lifecycle_status")
     .is("deleted_at", null);
   if (actor.kind === "team_manager") {
     profilesQuery = profilesQuery.in("id", [...actor.memberUserIds]);
@@ -621,6 +629,7 @@ export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
     email: p.email,
     full_name: p.full_name,
     is_active: p.is_active,
+    account_lifecycle_status: (p.account_lifecycle_status ?? "active") as AdminAccountLifecycleStatus,
     role_codes: [...new Set(byUser.get(p.id) ?? [])].sort(),
   }));
 }
@@ -633,91 +642,21 @@ type DisableAgentImpactSummary = {
   unassignedOpenLeads: number;
 };
 
-/**
- * Désactivation d'agent: aucune suppression.
- * - recycle les assignations lead-generation actives en attente
- * - remet les fiches stock associées dans le circuit (`ready`, sans assignation courante)
- * - désassigne les leads CRM ouverts (`assigned_to = null`)
- */
-async function handleAgentDisabledImpact(
-  admin: ReturnType<typeof createAdminClient>,
-  targetUserId: string,
-): Promise<DisableAgentImpactSummary> {
-  const activeStatuses = ["assigned", "opened", "in_progress"];
-  const nowIso = new Date().toISOString();
-  const summary: DisableAgentImpactSummary = {
-    recycledAssignments: 0,
-    resetStockRows: 0,
-    unassignedOpenLeads: 0,
+type LifecycleRow = {
+  id: string;
+  is_active: boolean;
+  account_lifecycle_status: AdminAccountLifecycleStatus | null;
+  deleted_at: string | null;
+};
+
+function mapReleaseSummary(
+  release: ReleaseLeadGenerationAssignmentsForInactiveAgentSummary,
+): DisableAgentImpactSummary {
+  return {
+    recycledAssignments: release.recycledAssignments,
+    resetStockRows: release.resetStockRows,
+    unassignedOpenLeads: release.unassignedOpenLeads,
   };
-
-  const { data: activeRows, error: listErr } = await admin
-    .from("lead_generation_assignments")
-    .select("id, stock_id")
-    .eq("agent_id", targetUserId)
-    .in("assignment_status", activeStatuses)
-    .eq("outcome", "pending");
-
-  if (listErr) {
-    throw new Error(`Réallocation lead-generation impossible (lecture assignations): ${listErr.message}`);
-  }
-
-  const assignments = (activeRows ?? []) as { id: string; stock_id: string }[];
-  const assignmentIds = assignments.map((r) => r.id);
-  const stockIds = [...new Set(assignments.map((r) => r.stock_id).filter(Boolean))];
-
-  if (assignmentIds.length > 0) {
-    const { data: recycledRows, error: recycleErr } = await admin
-      .from("lead_generation_assignments")
-      .update({
-        recycle_status: "recycled",
-        assignment_status: "recycled",
-        last_recycled_at: nowIso,
-        recycle_reason: "agent_disabled",
-        last_activity_at: nowIso,
-      })
-      .in("id", assignmentIds)
-      .select("id");
-
-    if (recycleErr) {
-      throw new Error(`Réallocation lead-generation impossible (recyclage assignations): ${recycleErr.message}`);
-    }
-    summary.recycledAssignments = (recycledRows ?? []).length;
-  }
-
-  if (stockIds.length > 0) {
-    const { data: stockRows, error: stockErr } = await admin
-      .from("lead_generation_stock")
-      .update({
-        current_assignment_id: null,
-        stock_status: "ready",
-        dispatch_queue_status: "review",
-        dispatch_queue_reason: "agent_disabled_recycle",
-        dispatch_queue_evaluated_at: null,
-      })
-      .in("id", stockIds)
-      .in("stock_status", ["assigned", "in_progress", "ready"])
-      .select("id");
-
-    if (stockErr) {
-      throw new Error(`Réallocation lead-generation impossible (mise à jour stock): ${stockErr.message}`);
-    }
-    summary.resetStockRows = (stockRows ?? []).length;
-  }
-
-  const { data: leadRows, error: leadErr } = await admin
-    .from("leads")
-    .update({ assigned_to: null })
-    .eq("assigned_to", targetUserId)
-    .not("lead_status", "in", "(lost,converted)")
-    .select("id");
-
-  if (leadErr) {
-    throw new Error(`Désassignation des leads CRM impossible: ${leadErr.message}`);
-  }
-  summary.unassignedOpenLeads = (leadRows ?? []).length;
-
-  return summary;
 }
 
 async function guardSuperAdminNotSelf(targetUserId: string): Promise<AdminUserMutationResult | null> {
@@ -731,14 +670,121 @@ async function guardSuperAdminNotSelf(targetUserId: string): Promise<AdminUserMu
   return null;
 }
 
+async function loadTargetLifecycle(
+  admin: ReturnType<typeof createAdminClient>,
+  targetUserId: string,
+): Promise<LifecycleRow | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, is_active, account_lifecycle_status, deleted_at")
+    .eq("id", targetUserId)
+    .maybeSingle();
+  if (error || !data) {
+    return null;
+  }
+  return data as LifecycleRow;
+}
+
+async function revalidateUsersAndLeadGenerationViews(): Promise<void> {
+  revalidatePath("/settings/users");
+  revalidatePath("/lead-generation");
+  revalidatePath("/lead-generation/my-queue");
+  revalidatePath("/lead-generation/management");
+  revalidatePath("/agent");
+  revalidatePath("/cockpit");
+}
+
+async function recordUserLifecycleEvent(
+  admin: ReturnType<typeof createAdminClient>,
+  input: {
+    userId: string;
+    actorUserId: string | null;
+    eventType: "account_paused" | "account_reactivated" | "account_disabled" | "account_deleted" | "assignments_released";
+    metadata?: Record<string, unknown>;
+  },
+): Promise<void> {
+  await admin.from("user_lifecycle_events").insert({
+    user_id: input.userId,
+    actor_user_id: input.actorUserId,
+    event_type: input.eventType,
+    metadata_json: input.metadata ?? {},
+  });
+}
+
 /**
- * Supprime le compte Auth + profil (cascade). Réservé au super administrateur.
- *
- * Les tables `lead_internal_notes` et `lead_documents` référencent l’auteur avec
- * `ON DELETE RESTRICT` : on réattribue ces lignes au super-admin qui supprime le compte,
- * sinon la suppression du profil échoue (message générique type « Database error deleting user »).
+ * Suppression opérationnelle forte (soft delete métier).
+ * - plus de connexion
+ * - plus de réactivation
+ * - libération du portefeuille non terminal
+ * - conservation de l'historique analytique
  */
 export async function deleteUserAsAdmin(targetUserId: string): Promise<AdminUserMutationResult> {
+  const denied = await guardSuperAdminNotSelf(targetUserId);
+  if (denied) {
+    return denied;
+  }
+  const access = await getAccessContext();
+  const actorUserId = access.kind === "authenticated" ? access.userId : null;
+
+  const admin = createAdminClient();
+  const lifecycle = await loadTargetLifecycle(admin, targetUserId);
+  if (!lifecycle) {
+    return { ok: false, error: "Utilisateur introuvable." };
+  }
+  if (lifecycle.account_lifecycle_status === "deleted") {
+    return { ok: true, message: "Compte déjà supprimé opérationnellement." };
+  }
+
+  const { error: authErr } = await admin.auth.admin.updateUserById(targetUserId, {
+    ban_duration: BAN_PAUSED,
+  });
+  if (authErr) {
+    return { ok: false, error: authErr.message };
+  }
+
+  let disableSummary: DisableAgentImpactSummary | null = null;
+  try {
+    const releaseSummary = await releaseLeadGenerationAssignmentsForInactiveAgent(targetUserId, {
+      admin,
+      reason: "deleted",
+      actorUserId,
+    });
+    disableSummary = mapReleaseSummary(releaseSummary);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur de libération de portefeuille.";
+    return { ok: false, error: message };
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error: profErr } = await admin
+    .from("profiles")
+    .update({
+      is_active: false,
+      account_lifecycle_status: "deleted",
+      deleted_at: nowIso,
+    })
+    .eq("id", targetUserId);
+  if (profErr) {
+    return { ok: false, error: profErr.message };
+  }
+
+  await revalidateUsersAndLeadGenerationViews();
+  await recordUserLifecycleEvent(admin, {
+    userId: targetUserId,
+    actorUserId,
+    eventType: "account_deleted",
+    metadata: { reason: "operational_soft_delete" },
+  });
+  return {
+    ok: true,
+    message: `Compte supprimé opérationnellement. Réallocation: ${disableSummary?.recycledAssignments ?? 0} assignation(s) recyclée(s), ${disableSummary?.resetStockRows ?? 0} fiche(s) remises en pool, ${disableSummary?.unassignedOpenLeads ?? 0} lead(s) CRM désassigné(s).`,
+  };
+}
+
+/**
+ * Supprime physiquement le compte Auth (hard delete) — réservé aux cas techniques (tests/doublons).
+ */
+export async function hardDeleteUserAsAdmin(targetUserId: string): Promise<AdminUserMutationResult> {
   const denied = await guardSuperAdminNotSelf(targetUserId);
   if (denied) {
     return denied;
@@ -756,48 +802,35 @@ export async function deleteUserAsAdmin(targetUserId: string): Promise<AdminUser
     .from("lead_internal_notes")
     .update({ created_by: actorId })
     .eq("created_by", targetUserId);
-
   if (notesErr) {
-    return {
-      ok: false,
-      error:
-        "Impossible de préparer la suppression (notes internes). " +
-        (notesErr.message || "Erreur base de données."),
-    };
+    return { ok: false, error: `Impossible de préparer le hard delete (notes): ${notesErr.message}` };
   }
 
   const { error: docsErr } = await admin
     .from("lead_documents")
     .update({ created_by: actorId })
     .eq("created_by", targetUserId);
-
   if (docsErr) {
-    return {
-      ok: false,
-      error:
-        "Impossible de préparer la suppression (documents d’étude). " +
-        (docsErr.message || "Erreur base de données."),
-    };
+    return { ok: false, error: `Impossible de préparer le hard delete (documents): ${docsErr.message}` };
   }
 
   const { error } = await admin.auth.admin.deleteUser(targetUserId);
-
   if (error) {
     return {
       ok: false,
       error:
         error.message === "Database error deleting user"
-          ? "La suppression a échoué (contraintes base de données ou compte introuvable)."
+          ? "Hard delete impossible (contraintes base). Préférez la suppression opérationnelle."
           : error.message,
     };
   }
-
-  revalidatePath("/settings/users");
-  return { ok: true, message: "Utilisateur supprimé." };
+  await revalidateUsersAndLeadGenerationViews();
+  return { ok: true, message: "Hard delete effectué." };
 }
 
 /**
- * Met en pause (bannissement Auth + `profiles.is_active`) ou réactive l’utilisateur.
+ * Pause temporaire (réactivable) : bloque la connexion et l'injection dispatch,
+ * sans libérer le portefeuille existant.
  */
 export async function setUserPausedAsAdmin(
   targetUserId: string,
@@ -807,41 +840,120 @@ export async function setUserPausedAsAdmin(
   if (denied) {
     return denied;
   }
-
   const admin = createAdminClient();
+  const access = await getAccessContext();
+  const actorUserId = access.kind === "authenticated" ? access.userId : null;
+  const lifecycle = await loadTargetLifecycle(admin, targetUserId);
+  if (!lifecycle) {
+    return { ok: false, error: "Utilisateur introuvable." };
+  }
 
-  const { error: authErr } = await admin.auth.admin.updateUserById(targetUserId, {
-    ban_duration: paused ? BAN_PAUSED : "none",
+  const current = (lifecycle.account_lifecycle_status ?? "active") as AdminAccountLifecycleStatus;
+  if (paused) {
+    if (current === "disabled" || current === "deleted") {
+      return { ok: false, error: "Compte non réactivable: utilisez une nouvelle création de compte." };
+    }
+    if (current === "paused") {
+      return { ok: true, message: "Compte déjà en pause." };
+    }
+    const { error: authErr } = await admin.auth.admin.updateUserById(targetUserId, { ban_duration: BAN_PAUSED });
+    if (authErr) return { ok: false, error: authErr.message };
+    const { error: profErr } = await admin
+      .from("profiles")
+      .update({ is_active: false, account_lifecycle_status: "paused" })
+      .eq("id", targetUserId);
+    if (profErr) return { ok: false, error: profErr.message };
+    await recordUserLifecycleEvent(admin, {
+      userId: targetUserId,
+      actorUserId,
+      eventType: "account_paused",
+      metadata: { reason: "manual_pause" },
+    });
+    await revalidateUsersAndLeadGenerationViews();
+    return { ok: true, message: "Utilisateur mis en pause (gel temporaire, portefeuille conservé)." };
+  }
+
+  if (current === "disabled" || current === "deleted") {
+    return { ok: false, error: "Compte non réactivable (désactivé définitivement ou supprimé)." };
+  }
+  if (current === "active") {
+    return { ok: true, message: "Compte déjà actif." };
+  }
+  const { error: authErr } = await admin.auth.admin.updateUserById(targetUserId, { ban_duration: "none" });
+  if (authErr) return { ok: false, error: authErr.message };
+  const { error: profErr } = await admin
+    .from("profiles")
+    .update({ is_active: true, account_lifecycle_status: "active" })
+    .eq("id", targetUserId);
+  if (profErr) return { ok: false, error: profErr.message };
+  await recordUserLifecycleEvent(admin, {
+    userId: targetUserId,
+    actorUserId,
+    eventType: "account_reactivated",
+    metadata: { reason: "manual_reactivation" },
   });
+  await revalidateUsersAndLeadGenerationViews();
+  return { ok: true, message: "Utilisateur réactivé." };
+}
 
+/**
+ * Désactivation définitive (irréversible): compte bloqué, plus de dispatch, portefeuille vivant libéré.
+ */
+export async function disableUserPermanentlyAsAdmin(targetUserId: string): Promise<AdminUserMutationResult> {
+  const denied = await guardSuperAdminNotSelf(targetUserId);
+  if (denied) {
+    return denied;
+  }
+  const admin = createAdminClient();
+  const access = await getAccessContext();
+  const actorUserId = access.kind === "authenticated" ? access.userId : null;
+  const lifecycle = await loadTargetLifecycle(admin, targetUserId);
+  if (!lifecycle) {
+    return { ok: false, error: "Utilisateur introuvable." };
+  }
+  const current = (lifecycle.account_lifecycle_status ?? "active") as AdminAccountLifecycleStatus;
+  if (current === "disabled") {
+    return { ok: true, message: "Compte déjà désactivé définitivement." };
+  }
+  if (current === "deleted") {
+    return { ok: false, error: "Compte supprimé opérationnellement: action impossible." };
+  }
+
+  const { error: authErr } = await admin.auth.admin.updateUserById(targetUserId, { ban_duration: BAN_PAUSED });
   if (authErr) {
     return { ok: false, error: authErr.message };
   }
 
+  let disableSummary: DisableAgentImpactSummary | null = null;
+  try {
+    const releaseSummary = await releaseLeadGenerationAssignmentsForInactiveAgent(targetUserId, {
+      admin,
+      reason: "disabled",
+      actorUserId,
+    });
+    disableSummary = mapReleaseSummary(releaseSummary);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur de libération de portefeuille.";
+    return { ok: false, error: message };
+  }
+
   const { error: profErr } = await admin
     .from("profiles")
-    .update({ is_active: !paused })
+    .update({ is_active: false, account_lifecycle_status: "disabled" })
     .eq("id", targetUserId);
-
   if (profErr) {
     return { ok: false, error: profErr.message };
   }
 
-  let disableSummary: DisableAgentImpactSummary | null = null;
-  if (paused) {
-    try {
-      disableSummary = await handleAgentDisabledImpact(admin, targetUserId);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Erreur de remise en circuit.";
-      return { ok: false, error: message };
-    }
-  }
-
-  revalidatePath("/settings/users");
+  await recordUserLifecycleEvent(admin, {
+    userId: targetUserId,
+    actorUserId,
+    eventType: "account_disabled",
+    metadata: { reason: "manual_disable" },
+  });
+  await revalidateUsersAndLeadGenerationViews();
   return {
     ok: true,
-    message: paused
-      ? `Utilisateur mis en pause (connexion bloquée). Réaffectation: ${disableSummary?.recycledAssignments ?? 0} assignation(s) lead-generation recyclée(s), ${disableSummary?.resetStockRows ?? 0} fiche(s) remises en ready, ${disableSummary?.unassignedOpenLeads ?? 0} lead(s) CRM ouvert(s) désassigné(s).`
-      : "Utilisateur réactivé.",
+    message: `Utilisateur désactivé définitivement. Réallocation: ${disableSummary?.recycledAssignments ?? 0} assignation(s) recyclée(s), ${disableSummary?.resetStockRows ?? 0} fiche(s) remises en pool, ${disableSummary?.unassignedOpenLeads ?? 0} lead(s) CRM désassigné(s).`,
   };
 }

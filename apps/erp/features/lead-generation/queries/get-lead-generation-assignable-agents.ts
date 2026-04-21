@@ -43,9 +43,10 @@ export async function getLeadGenerationAssignableAgents(): Promise<LeadGeneratio
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email")
+    .select("id, full_name, email, account_lifecycle_status")
     .in("id", userIds)
     .eq("is_active", true)
+    .eq("account_lifecycle_status", "active")
     .is("deleted_at", null)
     .order("full_name", { ascending: true, nullsFirst: false });
 
