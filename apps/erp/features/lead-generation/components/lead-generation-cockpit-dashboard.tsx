@@ -79,8 +79,17 @@ function KpiCard({ title, value, hint, href, tone = "default" }: KpiProps) {
 }
 
 export function LeadGenerationCockpitDashboard({ data }: { data: LeadGenerationCockpitData }) {
-  const { summary, portfolioAging, velocity, operationalHealth, alerts, dispatchHealth, recentEvents, agentRows } =
-    data;
+  const {
+    summary,
+    portfolioAging,
+    velocity,
+    operationalHealth,
+    alerts,
+    dispatchHealth,
+    recentEvents,
+    agentRows,
+    agentCapacitySummary,
+  } = data;
   const periodLabel =
     data.filters.period === "24h" ? "24 h" : data.filters.period === "7d" ? "7 jours" : "30 jours";
 
@@ -238,7 +247,21 @@ export function LeadGenerationCockpitDashboard({ data }: { data: LeadGenerationC
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Équipe commerciale</h2>
-        <p className="text-xs text-muted-foreground">Tri local — métriques live + période pour les flux.</p>
+        <p className="text-xs text-muted-foreground">
+          Tri local — métriques live + période pour les flux. Volume opérationnel = stock neuf + suivi (hors converties /
+          rejet / archivé), plafond indicateur 120.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <MiniStat
+            label="Agents saturés (≥ 120)"
+            value={String(agentCapacitySummary.agentsSaturatedCount)}
+          />
+          <MiniStat
+            label="Volume moyen (équipe)"
+            value={agentCapacitySummary.avgOperationalVolume != null ? String(agentCapacitySummary.avgOperationalVolume) : "—"}
+          />
+          <MiniStat label="Agents listés" value={String(agentRows.length)} />
+        </div>
         <LeadGenerationCockpitAgentTableClient rows={agentRows} />
       </section>
 

@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 
 import type { PremiumAutoDispatchLeadsResult } from "../domain/main-actions-result";
+import {
+  applyCommercialCapacityToDispatchNeed,
+  computeCommercialCapacityForAgents,
+} from "../lib/agent-commercial-capacity";
 import { computeAgentActiveStock } from "../lib/compute-agent-active-stock";
 import { lgTable } from "../lib/lg-db";
 import type { LeadGenerationAssignableAgent } from "../queries/get-lead-generation-assignable-agents";
@@ -64,13 +68,19 @@ export async function autoDispatchPremiumLeadGenerationStockRoundRobin(input: {
 
   const cap = Math.min(Math.max(1, maxActiveStockPerAgent), 100);
 
-  type AgentState = { agent: LeadGenerationAssignableAgent; need: number };
+  type AgentState = { agent: LeadGenerationAssignableAgent; need: number; volumeTotal: number };
   const states: AgentState[] = [];
+  const capacityMap = await computeCommercialCapacityForAgents(
+    supabase,
+    agents.map((a) => a.id),
+  );
   for (const agent of agents) {
     const { count: active } = await computeAgentActiveStock(supabase, agent.id);
-    const need = Math.max(0, cap - active);
+    const baseNeed = Math.max(0, cap - active);
+    const vol = capacityMap.get(agent.id)?.total ?? 0;
+    const need = applyCommercialCapacityToDispatchNeed(baseNeed, vol);
     if (need > 0) {
-      states.push({ agent, need });
+      states.push({ agent, need, volumeTotal: vol });
     }
   }
 
@@ -122,6 +132,9 @@ export async function autoDispatchPremiumLeadGenerationStockRoundRobin(input: {
     }
 
     chosen.need -= 1;
+    chosen.volumeTotal += 1;
+    const capRemaining = applyCommercialCapacityToDispatchNeed(9_999, chosen.volumeTotal);
+    chosen.need = Math.min(chosen.need, capRemaining);
     totalAssigned += 1;
     const aid = chosen.agent.id;
     assignedById.set(aid, (assignedById.get(aid) ?? 0) + 1);

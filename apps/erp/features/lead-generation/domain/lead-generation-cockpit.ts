@@ -59,12 +59,20 @@ export type LeadGenerationCockpitAgentBadge =
   | "sature"
   | "a_coacher";
 
+/** Niveau de capacité opérationnelle (stock neuf + suivi, exclusions métier). */
+export type LeadGenerationOperationalCapacityLevel = "normal" | "warning" | "blocked";
+
 export type LeadGenerationCockpitAgentRow = {
   agentId: string;
   displayName: string;
   email: string | null;
   freshStock: number;
   pipelineBacklog: number;
+  /** Volume opérationnel aligné dispatch / plafond 120 (stock neuf + suivi, hors converties / rejet / archivé). */
+  operationalVolumeTotal: number;
+  operationalStockNeuf: number;
+  operationalSuivi: number;
+  operationalCapacityLevel: LeadGenerationOperationalCapacityLevel;
   slaWarning: number;
   slaBreached: number;
   callsLogged: number;
@@ -76,6 +84,13 @@ export type LeadGenerationCockpitAgentRow = {
   suspendInjection: boolean;
   suspensionReason: string | null;
   badge: LeadGenerationCockpitAgentBadge;
+};
+
+export type LeadGenerationCockpitAgentCapacitySummary = {
+  /** Agents avec volume opérationnel ≥ 120. */
+  agentsSaturatedCount: number;
+  /** Moyenne du volume opérationnel sur les agents affichés. */
+  avgOperationalVolume: number | null;
 };
 
 export type LeadGenerationCockpitDispatchHealth = {

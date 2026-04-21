@@ -3,6 +3,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +23,35 @@ import {
   itemMatchesQuickFilter,
   sortQueueItems,
 } from "../lib/my-queue-follow-up";
+import type {
+  AgentCommercialCapacityLevel,
+  AgentCommercialCapacityViewModel,
+} from "../lib/agent-commercial-capacity";
+import { COMMERCIAL_CAPACITY_BLOCK_THRESHOLD } from "../lib/agent-commercial-capacity";
 import type { MyLeadGenerationQueueItem } from "../queries/get-my-lead-generation-queue";
 import {
   MyLeadQueueCeeSheetPicker,
   MyLeadQueueReadyPoolFetchButton,
 } from "./my-lead-generation-queue-reload-button";
 import { MyLeadGenerationQueueTable } from "./my-lead-generation-queue-table";
+
+const CAPACITY_STATE_BADGE_LABEL: Record<AgentCommercialCapacityLevel, string> = {
+  normal: "Capacité normale",
+  warning: "Volume élevé",
+  blocked: "Capacité atteinte",
+};
+
+const DATA_UNAVAILABLE_HINT = "Données temporairement indisponibles";
+
+function capacityStateBadgeClass(level: AgentCommercialCapacityLevel): string {
+  if (level === "blocked") {
+    return "border-rose-500/40 bg-rose-500/[0.12] text-rose-950 dark:border-rose-500/35 dark:bg-rose-500/[0.15] dark:text-rose-50";
+  }
+  if (level === "warning") {
+    return "border-amber-500/40 bg-amber-500/[0.12] text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/[0.12] dark:text-amber-50";
+  }
+  return "border-emerald-500/35 bg-emerald-500/[0.1] text-emerald-950 dark:border-emerald-500/30 dark:bg-emerald-500/[0.12] dark:text-emerald-50";
+}
 
 const FILTERS: { id: MyQueueQuickFilter; label: string }[] = [
   { id: "all", label: "Toutes" },
@@ -46,6 +70,8 @@ type Props = {
   viewerUserId: string;
   /** Plafond effectif aligné sur {@link getLeadGenerationDispatchPolicy} (dispatch réel). */
   effectiveStockCap: number;
+  /** Capacité agent — uniquement {@link computeAgentCommercialCapacity} (pas de valeurs factices si échec). */
+  commercialCapacity: AgentCommercialCapacityViewModel;
 };
 
 export function MyLeadGenerationQueueAgentShell({
@@ -53,6 +79,7 @@ export function MyLeadGenerationQueueAgentShell({
   ceeSheetOptions,
   viewerUserId,
   effectiveStockCap,
+  commercialCapacity,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -226,8 +253,12 @@ export function MyLeadGenerationQueueAgentShell({
   const kpiItems = itemsInCeeScope;
   const kpis = useMemo(() => computeQueueKpis(kpiItems), [kpiItems]);
 
+  const capOk = commercialCapacity.ok;
+  const cap = capOk ? commercialCapacity.snapshot : null;
+
   const maxCap = effectiveStockCap;
-  const placesLeft = Math.max(0, maxCap - Math.max(0, stockForPlafond));
+  const placesRestantesCap120 =
+    cap != null ? Math.max(0, COMMERCIAL_CAPACITY_BLOCK_THRESHOLD - cap.total) : null;
 
   const filteredTableRows = useMemo(() => {
     const filtered = itemsInCeeScope.filter((i) => itemMatchesQuickFilter(i, filter));
@@ -353,7 +384,7 @@ export function MyLeadGenerationQueueAgentShell({
       {needsCeePick && !hasValidSelection ? null : (
         <section
           className={cn(
-            "space-y-5 rounded-xl border border-border/80 bg-card/50 p-4 shadow-sm sm:p-6",
+            "space-y-6 rounded-xl border border-border/80 bg-card/50 p-4 shadow-sm sm:p-6",
             "ring-1 ring-black/[0.04] dark:ring-white/[0.06]",
           )}
         >
@@ -368,51 +399,106 @@ export function MyLeadGenerationQueueAgentShell({
             </div>
           ) : null}
 
-          <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2.5 dark:bg-emerald-500/[0.08]">
-              <p className="text-[11px] font-medium text-muted-foreground">Stock neuf (Nouveau)</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
-                {Math.max(0, stockForPlafond)} / {maxCap}
-              </p>
-              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                {(() => {
-                  const n = Math.max(0, kpis.totalInQueue - kpis.freshStock);
-                  if (n === 0) return "Aucune fiche en suivi hors stock neuf.";
-                  return `${n} fiche${n > 1 ? "s" : ""} en suivi (Contacté / À rappeler).`;
-                })()}
-              </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold tracking-tight text-foreground">Capacité & priorités</h3>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs font-medium",
+                cap != null ? capacityStateBadgeClass(cap.level) : "border-border/80 bg-muted/30 text-muted-foreground",
+              )}
+            >
+              {cap != null ? CAPACITY_STATE_BADGE_LABEL[cap.level] : "Indisponible"}
+            </Badge>
+          </div>
+          {!capOk ? (
+            <p className="text-[11px] text-muted-foreground">{DATA_UNAVAILABLE_HINT}</p>
+          ) : null}
+
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Capacité agent</p>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="rounded-lg border border-border/70 bg-background/50 px-3 py-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Nouveaux</p>
+                <p className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+                  {cap != null ? cap.stockNeuf : "—"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-background/50 px-3 py-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">En suivi</p>
+                <p className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+                  {cap != null ? cap.suivi : "—"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-background/50 px-3 py-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Total actif</p>
+                <p className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+                  {cap != null ? (
+                    <>
+                      {cap.total} / {COMMERCIAL_CAPACITY_BLOCK_THRESHOLD}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-background/50 px-3 py-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Places restantes</p>
+                <p className="mt-0.5 text-xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  {placesRestantesCap120 ?? "—"}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 dark:bg-emerald-500/[0.08]">
-              <p className="text-[11px] font-medium text-muted-foreground">Places restantes</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                {placesLeft}
-              </p>
-            </div>
-            <div className="rounded-lg border border-red-500/25 bg-red-500/[0.05] px-3 py-2.5 dark:bg-red-500/[0.07]">
-              <p className="text-[11px] font-medium text-muted-foreground">Rappels en retard</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">{kpis.overdue}</p>
-            </div>
-            <div className="rounded-lg border border-orange-500/25 bg-orange-500/[0.05] px-3 py-2.5 dark:bg-orange-500/[0.08]">
-              <p className="text-[11px] font-medium text-muted-foreground">À appeler aujourd’hui</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-orange-800 dark:text-orange-200">
-                {kpis.dueToday}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border/80 bg-background/60 px-3 py-2.5 sm:col-span-2 lg:col-span-1">
-              <p className="text-[11px] font-medium text-muted-foreground">Priorité haute</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">{kpis.highPriority}</p>
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">Objectif de nouveaux simultanés (dispatch)&nbsp;:</span> {maxCap}
+              . Les quatre chiffres ci-dessus couvrent l’ensemble de vos assignations actives (hors converties, hors cible et
+              archivées), alignés sur le plafond {COMMERCIAL_CAPACITY_BLOCK_THRESHOLD}.
+            </p>
+          </div>
+
+          <div className="space-y-2 border-t border-border/60 pt-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Priorités du jour</p>
+            <p className="text-[10px] text-muted-foreground">
+              Uniquement les fiches du périmètre capacité, vue filtrée par le carnet affiché ci-dessus.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-red-500/25 bg-red-500/[0.05] px-3 py-2.5 dark:bg-red-500/[0.07]">
+                <p className="text-[11px] font-medium text-muted-foreground">Rappels en retard</p>
+                <p className="mt-0.5 text-xl font-semibold tabular-nums text-red-600 dark:text-red-400">
+                  {cap != null ? kpis.overdue : "—"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-orange-500/25 bg-orange-500/[0.05] px-3 py-2.5 dark:bg-orange-500/[0.08]">
+                <p className="text-[11px] font-medium text-muted-foreground">À appeler aujourd’hui</p>
+                <p className="mt-0.5 text-xl font-semibold tabular-nums text-orange-800 dark:text-orange-200">
+                  {cap != null ? kpis.dueToday : "—"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/80 bg-background/60 px-3 py-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Priorité haute</p>
+                <p className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+                  {cap != null ? kpis.highPriority : "—"}
+                </p>
+              </div>
             </div>
           </div>
 
-          <MyLeadQueueReadyPoolFetchButton
-            stockForPlafond={fetchStock}
-            ceeSheetOptions={ceeSheetOptions}
-            selectedCeeSheetId={selectedCeeSheetId}
-            onSelectedCeeSheetIdChange={setSelectedCeeSheetId}
-            viewerUserId={viewerUserId}
-            ceeSelectionMandatory={needsCeePick}
-            effectiveStockCap={effectiveStockCap}
-          />
+          <div className="border-t border-border/60 pt-5">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Récupérer des fiches
+            </p>
+            <MyLeadQueueReadyPoolFetchButton
+              stockForPlafond={fetchStock}
+              ceeSheetOptions={ceeSheetOptions}
+              selectedCeeSheetId={selectedCeeSheetId}
+              onSelectedCeeSheetIdChange={setSelectedCeeSheetId}
+              viewerUserId={viewerUserId}
+              ceeSelectionMandatory={needsCeePick}
+              effectiveStockCap={effectiveStockCap}
+              commercialCapacityBlocked={cap != null && cap.level === "blocked"}
+              commercialCapacityLevel={cap != null ? cap.level : "normal"}
+            />
+          </div>
         </section>
       )}
     </div>

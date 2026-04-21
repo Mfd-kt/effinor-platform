@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { CommercialPipelineStatus } from "../domain/commercial-pipeline-status";
 import type { CommercialSlaStatus } from "../domain/commercial-pipeline-sla";
 import type { LeadGenerationCommercialPriority, LeadGenerationDispatchQueueStatus } from "../domain/statuses";
+import { rowCountsTowardCommercialCapacityVolume } from "../lib/agent-commercial-capacity";
 import { formatMyQueueCeeSheetOptionLabel } from "../lib/my-queue-cee-sheet-option";
 import { lgTable } from "../lib/lg-db";
 import { sortQueueItems } from "../lib/my-queue-follow-up";
@@ -94,8 +95,7 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
     )
     .eq("agent_id", agentId)
     .in("assignment_status", ["assigned", "opened", "in_progress"])
-    .eq("outcome", "pending")
-    .is("created_lead_id", null);
+    .eq("outcome", "pending");
 
   if (error) {
     throw new Error(`Ma file lead generation : ${error.message}`);
@@ -193,32 +193,13 @@ export async function getMyLeadGenerationQueue(agentId: string): Promise<MyLeadG
 
   const raw = (rows ?? []) as Row[];
 
-  const active = raw.filter((r) => {
-    const s = pickStock(r.stock);
-    if (!s) {
-      return false;
-    }
-    if (s.converted_lead_id) {
-      return false;
-    }
-    if (s.duplicate_of_stock_id) {
-      return false;
-    }
-    if (s.stock_status === "converted" || s.stock_status === "rejected" || s.stock_status === "archived" || s.stock_status === "expired") {
-      return false;
-    }
-    // Commercial : uniquement leads déjà qualifiés (pipeline strict).
-    if (s.qualification_status !== "qualified") {
-      return false;
-    }
-    if (s.current_assignment_id !== r.id) {
-      return false;
-    }
-    if ((r.commercial_pipeline_status ?? "new") === "converted") {
-      return false;
-    }
-    return true;
-  });
+  /** Même périmètre que {@link computeAgentCommercialCapacity} (volume agent). */
+  const active = raw.filter((r) =>
+    rowCountsTowardCommercialCapacityVolume({
+      commercial_pipeline_status: r.commercial_pipeline_status,
+      stock: pickStock(r.stock),
+    }),
+  );
 
   const assignmentIds = active.map((r) => r.id);
   let nextByAssignment = new Map<string, NextActionHint>();

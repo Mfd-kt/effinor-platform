@@ -1,4 +1,6 @@
 import type {
+  LeadGenerationCockpitAgentCapacitySummary,
+  LeadGenerationCockpitAgentRow,
   LeadGenerationCockpitAlert,
   LeadGenerationCockpitFilters,
   LeadGenerationCockpitOperationalHealth,
@@ -20,7 +22,8 @@ export type LeadGenerationCockpitData = {
   summary: Awaited<ReturnType<typeof getLeadGenerationCockpitSummary>>;
   portfolioAging: Awaited<ReturnType<typeof getLeadGenerationCockpitPortfolioAging>>;
   velocity: Awaited<ReturnType<typeof getLeadGenerationCockpitVelocityMetrics>>;
-  agentRows: Awaited<ReturnType<typeof getLeadGenerationCockpitAgentTable>>;
+  agentRows: LeadGenerationCockpitAgentRow[];
+  agentCapacitySummary: LeadGenerationCockpitAgentCapacitySummary;
   dispatchHealth: Awaited<ReturnType<typeof getLeadGenerationCockpitDispatchHealth>>;
   recentEvents: LeadGenerationCockpitRecentEventRow[];
   operationalHealth: LeadGenerationCockpitOperationalHealth;
@@ -31,7 +34,7 @@ export type LeadGenerationCockpitData = {
  * Orchestration cockpit : requêtes parallèles (RPC Postgres), aucun chargement massif de jalons côté app.
  */
 export async function loadLeadGenerationCockpit(filters: LeadGenerationCockpitFilters): Promise<LeadGenerationCockpitData> {
-  const [summary, portfolioAging, velocity, agentRows, dispatchHealth, recentEvents] = await Promise.all([
+  const [summary, portfolioAging, velocity, agentTable, dispatchHealth, recentEvents] = await Promise.all([
     getLeadGenerationCockpitSummary(filters),
     getLeadGenerationCockpitPortfolioAging(filters),
     getLeadGenerationCockpitVelocityMetrics(filters),
@@ -39,6 +42,9 @@ export async function loadLeadGenerationCockpit(filters: LeadGenerationCockpitFi
     getLeadGenerationCockpitDispatchHealth(),
     getLeadGenerationCockpitRecentEvents(filters),
   ]);
+
+  const agentRows = agentTable.rows;
+  const agentCapacitySummary = agentTable.capacitySummary;
 
   const operationalHealth = computeLeadGenerationCockpitOperationalHealth({
     summary,
@@ -54,6 +60,7 @@ export async function loadLeadGenerationCockpit(filters: LeadGenerationCockpitFi
     portfolioAging,
     velocity,
     agentRows,
+    agentCapacitySummary,
     dispatchHealth,
     recentEvents,
     operationalHealth,

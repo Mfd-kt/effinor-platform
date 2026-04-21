@@ -1,3 +1,8 @@
+/**
+ * Évaluation de la file `dispatch_queue_*` sur le **stock** (prêt / enrichir / etc.).
+ * Le plafond capacité agent (120) est appliqué au moment des attributions (`dispatch_lead_generation_stock_claim*`,
+ * services TS `dispatch-lead-generation-stock`, round-robin auto-dispatch).
+ */
 import { createClient } from "@/lib/supabase/server";
 
 import type { LeadGenerationStockRow } from "../domain/stock-row";

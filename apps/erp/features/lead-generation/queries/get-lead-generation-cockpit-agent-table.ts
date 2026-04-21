@@ -2,9 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 
 import type {
   LeadGenerationCockpitAgentBadge,
+  LeadGenerationCockpitAgentCapacitySummary,
   LeadGenerationCockpitAgentRow,
   LeadGenerationCockpitFilters,
+  LeadGenerationOperationalCapacityLevel,
 } from "../domain/lead-generation-cockpit";
+import type { AgentCommercialCapacitySnapshot } from "../lib/agent-commercial-capacity";
+import { computeCommercialCapacityForAgents } from "../lib/agent-commercial-capacity";
 import { getLeadGenerationCockpitRpcWindows } from "../lib/lead-generation-cockpit-rpc-windows";
 import { rpcLeadGenerationCockpitAgentRows } from "../lib/lead-generation-cockpit-rpc-client";
 
@@ -46,12 +50,31 @@ function computeCockpitAgentBadge(input: {
   return "solide";
 }
 
+function summarizeOperationalCapacity(rows: LeadGenerationCockpitAgentRow[]): LeadGenerationCockpitAgentCapacitySummary {
+  if (rows.length === 0) {
+    return { agentsSaturatedCount: 0, avgOperationalVolume: null };
+  }
+  let saturated = 0;
+  let sum = 0;
+  for (const r of rows) {
+    sum += r.operationalVolumeTotal;
+    if (r.operationalCapacityLevel === "blocked") {
+      saturated += 1;
+    }
+  }
+  return {
+    agentsSaturatedCount: saturated,
+    avgOperationalVolume: Math.round((sum / rows.length) * 10) / 10,
+  };
+}
+
 /**
  * Tableau agents via RPC (`lead_generation_cockpit_agent_rows`) — badge calculé en TS (règles inchangées).
+ * Volumes opérationnels (plafond 120) enrichis via jointure stock (exclusions métier).
  */
 export async function getLeadGenerationCockpitAgentTable(
   filters: LeadGenerationCockpitFilters,
-): Promise<LeadGenerationCockpitAgentRow[]> {
+): Promise<{ rows: LeadGenerationCockpitAgentRow[]; capacitySummary: LeadGenerationCockpitAgentCapacitySummary }> {
   const supabase = await createClient();
   const w = getLeadGenerationCockpitRpcWindows(filters.period, new Date());
 
@@ -61,9 +84,24 @@ export async function getLeadGenerationCockpitAgentTable(
     p_window_end: w.windowEnd,
   });
 
+  let capacityMap = new Map<string, AgentCommercialCapacitySnapshot>();
+  try {
+    capacityMap = await computeCommercialCapacityForAgents(
+      supabase,
+      rows.map((r) => r.agent_id),
+    );
+  } catch {
+    capacityMap = new Map();
+  }
+
   const out: LeadGenerationCockpitAgentRow[] = rows.map((r) => {
     const freshStock = r.stock_neuf;
     const pipelineBacklog = r.suivi_total;
+    const cap = capacityMap.get(r.agent_id);
+    const operationalStockNeuf = cap?.stockNeuf ?? freshStock;
+    const operationalSuivi = cap?.suivi ?? pipelineBacklog;
+    const operationalVolumeTotal = cap?.total ?? freshStock + pipelineBacklog;
+    const operationalCapacityLevel: LeadGenerationOperationalCapacityLevel = cap?.level ?? "normal";
     const slaWarning = r.sla_warning;
     const slaBreached = r.sla_breached;
     const avgHoursToFirstContact = secondsToHours(r.avg_assignment_to_first_contact_seconds);
@@ -83,6 +121,10 @@ export async function getLeadGenerationCockpitAgentTable(
       email: r.agent_email,
       freshStock,
       pipelineBacklog,
+      operationalVolumeTotal,
+      operationalStockNeuf,
+      operationalSuivi,
+      operationalCapacityLevel,
       slaWarning,
       slaBreached,
       callsLogged: r.appels_total,
@@ -97,7 +139,8 @@ export async function getLeadGenerationCockpitAgentTable(
     };
   });
 
-  return out.sort(
+  const sorted = out.sort(
     (x, y) => y.leadsConvertedInPeriod - x.leadsConvertedInPeriod || x.displayName.localeCompare(y.displayName, "fr"),
   );
+  return { rows: sorted, capacitySummary: summarizeOperationalCapacity(sorted) };
 }

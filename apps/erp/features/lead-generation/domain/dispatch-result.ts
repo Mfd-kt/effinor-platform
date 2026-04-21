@@ -16,6 +16,10 @@ export type DispatchLeadGenerationStockResult = {
   assignedStockIds: string[];
   /** Injection suspendue (suivi saturé, SLA, etc.). */
   dispatchBlockedReason?: string | null;
+  /** Demande brute (ex. taille de lot) avant application du plafond 120. */
+  rawDispatchRequestCount?: number;
+  /** La limite utile a été réduite par le plafond capacité commerciale (120). */
+  cappedByCommercialCapacity?: boolean;
 };
 
 /** Résultat de `dispatchLeadGenerationStockForAgents` (un résultat par agent, ordre préservé). */

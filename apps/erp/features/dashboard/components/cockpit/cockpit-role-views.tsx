@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 
 import { CeeNetworkOverview } from "@/features/cee-workflows/components/admin/cee-network-overview";
-import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
 import { getCloserDashboardData } from "@/features/cee-workflows/queries/get-closer-dashboard-data";
 import { getConfirmateurDashboardData } from "@/features/cee-workflows/queries/get-confirmateur-dashboard-data";
 import { DashboardAnalyticsCharts } from "@/features/dashboard/components/dashboard-analytics-charts";
@@ -23,7 +22,9 @@ import {
   CockpitSection,
   CockpitSheetPerformanceTable,
 } from "./cockpit-primitives";
+import { CommercialAgentPremiumDashboard } from "./commercial-agent-premium-dashboard";
 import { CockpitScopeToolbar } from "./cockpit-toolbar";
+import { getCommercialAgentCockpitData } from "@/features/dashboard/queries/get-commercial-agent-cockpit-data";
 
 function ToolbarFallback() {
   return (
@@ -181,7 +182,7 @@ export function CockpitDirectorView({
 
 export async function CockpitAgentView({
   access,
-  metrics,
+  metrics: _metrics,
   bundle,
 }: {
   access: AccessContext;
@@ -189,50 +190,23 @@ export async function CockpitAgentView({
   bundle: CockpitBundle;
 }) {
   if (access.kind !== "authenticated") return null;
-  const agent = await getAgentDashboardData(access, bundle.periodRange);
-  const snap = bundle.snapshot;
+  const perf = await getCommercialAgentCockpitData(access, bundle.periodRange, bundle.filters);
   return (
     <CockpitRealtimeBoundary fallbackPollMs={120_000}>
-      <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-12 px-4 py-10 lg:px-8">
         <CockpitPageHeader
-          eyebrow="Agent commercial"
-          title="Actions & priorisation"
-          subtitle="Files et funnel alignés sur la période sélectionnée dans la barre d’outils."
+          eyebrow="Mon cockpit"
+          title="Vos résultats"
+          subtitle="Votre performance commerciale sur la période — signé, perdu, pipeline et actions."
         />
         <Suspense fallback={<ToolbarFallback />}>
-          <CockpitScopeToolbar filters={bundle.filters} options={bundle.filterOptions} />
+          <CockpitScopeToolbar
+            filters={bundle.filters}
+            options={bundle.filterOptions}
+            variant="agent_personal"
+          />
         </Suspense>
-        <CockpitSection title="Mes fiches">
-          <div className="flex flex-wrap gap-2">
-            {agent.sheets.map((s) => (
-              <span
-                key={s.id}
-                className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium"
-              >
-                {s.label}
-              </span>
-            ))}
-          </div>
-        </CockpitSection>
-        <CockpitSection title="Entonnoir (workflows créés sur la période)">
-          <CockpitFunnelStrip funnel={snap.funnel} />
-        </CockpitSection>
-        <CockpitSection title="Priorités">
-          <CockpitPriorityGrid snap={snap} />
-        </CockpitSection>
-        <CockpitSection title="Brouillons & activité (période)">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-sm font-semibold">Brouillons</p>
-              <p className="mt-2 text-2xl font-semibold tabular-nums">{agent.activity.drafts.length}</p>
-            </div>
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-sm font-semibold">Simulations validées (mises à jour dans la période)</p>
-              <p className="mt-2 text-2xl font-semibold tabular-nums">{agent.activity.validatedToday.length}</p>
-            </div>
-          </div>
-        </CockpitSection>
-        <DashboardPeriodOverview metrics={metrics} />
+        {perf ? <CommercialAgentPremiumDashboard data={perf} /> : null}
       </div>
     </CockpitRealtimeBoundary>
   );

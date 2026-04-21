@@ -5,6 +5,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { MyLeadGenerationQueueAgentShell } from "@/features/lead-generation/components/my-lead-generation-queue-agent-shell";
 import { MyQueueEmptyQueueToast } from "@/features/lead-generation/components/my-queue-empty-queue-toast";
+import {
+  type AgentCommercialCapacityViewModel,
+  computeAgentCommercialCapacity,
+} from "@/features/lead-generation/lib/agent-commercial-capacity";
 import { getLeadGenerationDispatchPolicy } from "@/features/lead-generation/lib/agent-dispatch-policy";
 import { getLeadGenerationMyQueueCeeSheetOptions } from "@/features/lead-generation/queries/get-lead-generation-my-queue-cee-sheet-options";
 import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
@@ -48,13 +52,18 @@ export default async function MyLeadGenerationQueuePage({ searchParams }: PagePr
   const hub = await canAccessLeadGenerationHub(access);
 
   let effectiveStockCap = 15;
+  let commercialCapacity: AgentCommercialCapacityViewModel = { ok: false };
+  const supabase = await createClient();
   try {
-    const supabase = await createClient();
     const dispatchPolicy = await getLeadGenerationDispatchPolicy(supabase, access.userId);
     effectiveStockCap = dispatchPolicy.effectiveStockCap;
   } catch {
-    // Hardening: don't block queue rendering if dispatch policy query fails.
     effectiveStockCap = 15;
+  }
+  try {
+    commercialCapacity = { ok: true, snapshot: await computeAgentCommercialCapacity(supabase, access.userId) };
+  } catch {
+    commercialCapacity = { ok: false };
   }
 
   return (
@@ -90,6 +99,7 @@ export default async function MyLeadGenerationQueuePage({ searchParams }: PagePr
         ceeSheetOptions={ceeSheetOptions}
         viewerUserId={access.userId}
         effectiveStockCap={effectiveStockCap}
+        commercialCapacity={commercialCapacity}
       />
     </div>
   );

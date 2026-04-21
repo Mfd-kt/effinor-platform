@@ -17,6 +17,11 @@ import { cn } from "@/lib/utils";
 
 import { dispatchLeadGenerationMyQueueChunkAction } from "../actions/dispatch-lead-generation-my-queue-chunk-action";
 import {
+  AGENT_COMMERCIAL_CAPACITY_BLOCKED_MESSAGE,
+  COMMERCIAL_CAPACITY_BLOCK_THRESHOLD,
+  type AgentCommercialCapacityLevel,
+} from "../lib/agent-commercial-capacity";
+import {
   formatMyQueueCeeSheetOptionLabel,
   MY_QUEUE_NO_CEE_SHEET_LABEL,
   MY_QUEUE_NO_CEE_SHEET_SENTINEL,
@@ -40,6 +45,10 @@ type SharedProps = {
 type FetchProps = SharedProps & {
   /** Stock neuf (pipeline Nouveau) pour le plafond (par fiche, ou total si « sans fiche CEE »). */
   stockForPlafond: number;
+  /** Volume opérationnel global ≥ 120 — récupération interdite (aligné serveur). */
+  commercialCapacityBlocked?: boolean;
+  /** Niveau capacité global (100 / 120) — messages et aide. */
+  commercialCapacityLevel?: AgentCommercialCapacityLevel;
   className?: string;
 };
 
@@ -136,7 +145,8 @@ export function MyLeadQueueCeeSheetPicker({
             </p>
           ) : isNoCeeSelected ? (
             <p className="text-[11px] text-muted-foreground">
-              Contacts disponibles sans fiche CEE liée. Plafond de {maxCap} fiches actives sur votre total.
+              Contacts disponibles sans fiche CEE liée. Objectif de nouveaux simultanés (dispatch)&nbsp;: {maxCap} (distinct du
+              plafond capacité {COMMERCIAL_CAPACITY_BLOCK_THRESHOLD}).
             </p>
           ) : (
             <p className="text-[11px] text-muted-foreground">
@@ -155,6 +165,8 @@ export function MyLeadQueueCeeSheetPicker({
 
 export function MyLeadQueueReadyPoolFetchButton({
   stockForPlafond,
+  commercialCapacityBlocked = false,
+  commercialCapacityLevel = "normal",
   className,
   ceeSheetOptions,
   selectedCeeSheetId,
@@ -170,6 +182,10 @@ export function MyLeadQueueReadyPoolFetchButton({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  const capacityHelpBlocked =
+    "Capacité maximale atteinte. Traitez vos leads en cours avant d’en recevoir de nouveaux.";
+  const capacityHelpWarning = "Volume élevé. Priorité au traitement des leads en cours.";
+
   const { trimmedCee, isNoCeeSelected, selectedCeeOption, selectionOk, perCeeRetrieve } = deriveSelection({
     ceeSheetOptions,
     selectedCeeSheetId,
@@ -183,7 +199,7 @@ export function MyLeadQueueReadyPoolFetchButton({
   const atCap = selectionOk && stockForPlafond >= maxCap;
 
   function onClick() {
-    if (chunkSize <= 0 || !selectionOk || atCap) {
+    if (chunkSize <= 0 || !selectionOk || atCap || commercialCapacityBlocked) {
       return;
     }
     setMessage(null);
@@ -200,12 +216,16 @@ export function MyLeadQueueReadyPoolFetchButton({
         setMessage({ type: "err", text: res.error });
         return;
       }
-      const { assignedCount, remainingNeed, requestedCount, dispatchBlockedReason } = res.data;
+      const { assignedCount, remainingNeed, requestedCount, dispatchBlockedReason, cappedByCommercialCapacity } =
+        res.data;
       if (assignedCount === 0) {
         if (dispatchBlockedReason?.trim()) {
           setMessage({
             type: "err",
-            text: dispatchBlockedReason,
+            text:
+              dispatchBlockedReason.trim() === AGENT_COMMERCIAL_CAPACITY_BLOCKED_MESSAGE
+                ? capacityHelpBlocked
+                : dispatchBlockedReason,
           });
           router.refresh();
           return;
@@ -222,40 +242,57 @@ export function MyLeadQueueReadyPoolFetchButton({
         router.refresh();
         return;
       }
-      const extra =
+      const poolShort =
         remainingNeed > 0
           ? ` — ${remainingNeed} place${remainingNeed > 1 ? "s" : ""} non pourvue${remainingNeed > 1 ? "s" : ""} (stock insuffisant).`
           : "";
-      setMessage({
-        type: "ok",
-        text: `${assignedCount} fiche${assignedCount > 1 ? "s" : ""} ajoutée${assignedCount > 1 ? "s" : ""} (lot demandé : ${requestedCount}).${extra}`,
-      });
+      if (cappedByCommercialCapacity) {
+        setMessage({
+          type: "ok",
+          text: `${assignedCount} fiche${assignedCount > 1 ? "s" : ""} ajoutée${assignedCount > 1 ? "s" : ""} (capacité restante atteinte).${poolShort}`,
+        });
+      } else {
+        setMessage({
+          type: "ok",
+          text: `${assignedCount} fiche${assignedCount > 1 ? "s" : ""} ajoutée${assignedCount > 1 ? "s" : ""} (lot demandé : ${requestedCount}).${poolShort}`,
+        });
+      }
       router.refresh();
     });
   }
 
   return (
     <div className={className}>
+      {commercialCapacityLevel === "warning" && !commercialCapacityBlocked ? (
+        <p className="mb-2 text-[11px] leading-snug text-amber-900 dark:text-amber-100">{capacityHelpWarning}</p>
+      ) : null}
+      {commercialCapacityBlocked ? (
+        <p className="mb-2 text-[11px] leading-snug text-rose-900 dark:text-rose-100">{capacityHelpBlocked}</p>
+      ) : null}
       <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-3">
         <Button
           type="button"
           variant="secondary"
           size="sm"
-          disabled={pending || !selectionOk || atCap || chunkSize <= 0}
+          disabled={pending || !selectionOk || atCap || chunkSize <= 0 || commercialCapacityBlocked}
           onClick={onClick}
           className="gap-2 shrink-0"
           title={
-            atCap
-              ? perCeeRetrieve
-                ? "Plafond atteint : traitez les fiches ci-dessus ou libérez-en avant d’en récupérer."
-                : `Limite de ${maxCap} prospections au total`
-              : undefined
+            commercialCapacityBlocked
+              ? capacityHelpBlocked
+              : atCap
+                ? perCeeRetrieve
+                  ? "Plafond atteint : traitez les fiches ci-dessus ou libérez-en avant d’en récupérer."
+                  : `Limite de ${maxCap} prospections au total`
+                : undefined
           }
         >
           <RefreshCw className={cn("size-4", pending && "animate-spin")} aria-hidden />
           {pending
             ? "Récupération…"
-            : atCap
+            : commercialCapacityBlocked
+              ? "Capacité maximale"
+              : atCap
               ? "Plafond atteint — voir la liste"
               : !selectionOk
                 ? "Choisir un périmètre d’abord"

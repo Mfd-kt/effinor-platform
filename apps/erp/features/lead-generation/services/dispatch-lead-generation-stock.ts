@@ -6,6 +6,11 @@ import type {
   DispatchLeadGenerationStockForAgentsResult,
   DispatchLeadGenerationStockResult,
 } from "../domain/dispatch-result";
+import {
+  AGENT_COMMERCIAL_CAPACITY_BLOCKED_MESSAGE,
+  COMMERCIAL_CAPACITY_BLOCK_THRESHOLD,
+  computeAgentCommercialCapacity,
+} from "../lib/agent-commercial-capacity";
 import { buildDispatchLeadGenerationStockClaimRpcParams } from "../lib/build-dispatch-lead-generation-rpc-params";
 import { getLeadGenerationDispatchPolicy } from "../lib/agent-dispatch-policy";
 import { computeAgentActiveStock, computeAgentActiveStockForCeeSheet } from "../lib/compute-agent-active-stock";
@@ -52,6 +57,10 @@ function resultFromClaim(
   rows: RpcClaimRow[],
   newStock: number,
   dispatchBlockedReason?: string | null,
+  extras?: Pick<
+    DispatchLeadGenerationStockResult,
+    "rawDispatchRequestCount" | "cappedByCommercialCapacity"
+  >,
 ): DispatchLeadGenerationStockResult {
   const assignedStockIds = rows.map((r) => r.stock_id);
   const assignedCount = assignedStockIds.length;
@@ -65,6 +74,8 @@ function resultFromClaim(
     newStock,
     assignedStockIds,
     dispatchBlockedReason: dispatchBlockedReason ?? null,
+    rawDispatchRequestCount: extras?.rawDispatchRequestCount,
+    cappedByCommercialCapacity: extras?.cappedByCommercialCapacity,
   };
 }
 
@@ -76,6 +87,11 @@ export async function dispatchLeadGenerationStockForAgent(
   agentId: string,
 ): Promise<DispatchLeadGenerationStockResult> {
   const supabase = await createClient();
+
+  const capVol = await computeAgentCommercialCapacity(supabase, agentId);
+  if (capVol.total >= COMMERCIAL_CAPACITY_BLOCK_THRESHOLD) {
+    throw new Error(AGENT_COMMERCIAL_CAPACITY_BLOCKED_MESSAGE);
+  }
 
   const policy = await getLeadGenerationDispatchPolicy(supabase, agentId);
   if (policy.suspendInjection) {
@@ -112,7 +128,9 @@ export async function dispatchLeadGenerationStockForAgent(
     };
   }
 
-  const toAssign = targetStock - previousStock;
+  const remainingCommercial = Math.max(0, COMMERCIAL_CAPACITY_BLOCK_THRESHOLD - capVol.total);
+  const rawToAssign = targetStock - previousStock;
+  const toAssign = Math.max(0, Math.min(rawToAssign, remainingCommercial));
   if (toAssign <= 0) {
     return {
       agentId,
@@ -134,7 +152,11 @@ export async function dispatchLeadGenerationStockForAgent(
   await maybeRecordLeadGenerationDispatchResumed(supabase, agentId, rows.length);
   const { count: newStock } = await computeAgentActiveStock(supabase, agentId);
 
-  return resultFromClaim(agentId, previousStock, toAssign, rows, newStock ?? previousStock);
+  const cappedByCommercialCapacity = rawToAssign > toAssign;
+  return resultFromClaim(agentId, previousStock, toAssign, rows, newStock ?? previousStock, undefined, {
+    ...(cappedByCommercialCapacity ? { cappedByCommercialCapacity: true } : {}),
+    rawDispatchRequestCount: rawToAssign,
+  });
 }
 
 /**
@@ -148,6 +170,11 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
 ): Promise<DispatchLeadGenerationStockResult> {
   const supabase = await createClient();
   const sheet = ceeSheetId?.trim();
+
+  const capVol = await computeAgentCommercialCapacity(supabase, agentId);
+  if (capVol.total >= COMMERCIAL_CAPACITY_BLOCK_THRESHOLD) {
+    throw new Error(AGENT_COMMERCIAL_CAPACITY_BLOCKED_MESSAGE);
+  }
 
   const policy = await getLeadGenerationDispatchPolicy(supabase, agentId);
   if (policy.suspendInjection) {
@@ -179,11 +206,16 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
 
   /** Pour le plafond : par fiche CEE si le contexte est ciblé, sinon global (comportement historique). */
   const previousStock = sheet ? previousStockCee : previousStockGlobal;
-  const desired = Math.min(cap, Math.max(0, Math.floor(chunkSize)));
+  const rawChunk = Math.max(0, Math.floor(chunkSize));
+  const desired = Math.min(cap, rawChunk);
   const headroom = Math.max(0, cap - previousStock);
-  const lim = Math.min(desired, headroom);
+  const policyCap = Math.min(desired, headroom);
+  const remainingCommercial = Math.max(0, COMMERCIAL_CAPACITY_BLOCK_THRESHOLD - capVol.total);
+  const lim = Math.min(policyCap, remainingCommercial);
+  const cappedByCommercialCapacity = policyCap > lim && policyCap > 0;
 
   if (lim <= 0) {
+    const atCommercialCeiling = policyCap > 0 && remainingCommercial === 0;
     return {
       agentId,
       previousStock,
@@ -193,6 +225,9 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
       selectedQueueStatus: SELECTED_QUEUE,
       newStock: previousStock,
       assignedStockIds: [],
+      dispatchBlockedReason: atCommercialCeiling ? AGENT_COMMERCIAL_CAPACITY_BLOCKED_MESSAGE : undefined,
+      rawDispatchRequestCount: rawChunk,
+      ...(atCommercialCeiling ? { cappedByCommercialCapacity: true } : {}),
     };
   }
 
@@ -207,7 +242,10 @@ export async function dispatchLeadGenerationMyQueueChunkForAgent(
     ? await computeAgentActiveStockForCeeSheet(supabase, agentId, sheet)
     : await computeAgentActiveStock(supabase, agentId);
 
-  return resultFromClaim(agentId, previousStock, lim, rows, newStockAfter ?? previousStock);
+  return resultFromClaim(agentId, previousStock, lim, rows, newStockAfter ?? previousStock, undefined, {
+    rawDispatchRequestCount: rawChunk,
+    ...(cappedByCommercialCapacity ? { cappedByCommercialCapacity: true } : {}),
+  });
 }
 
 /**

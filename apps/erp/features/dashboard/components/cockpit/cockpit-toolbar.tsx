@@ -18,9 +18,12 @@ import type { CockpitScopeFilters } from "@/features/dashboard/domain/cockpit";
 type Props = {
   filters: CockpitScopeFilters;
   options: CockpitFilterOptions;
+  /** Agent commercial : uniquement période + fiche CEE — pas équipe / canal (vue strictement personnelle). */
+  variant?: "default" | "agent_personal";
 };
 
-export function CockpitScopeToolbar({ filters, options }: Props) {
+export function CockpitScopeToolbar({ filters, options, variant = "default" }: Props) {
+  const agentPersonal = variant === "agent_personal";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -89,7 +92,7 @@ export function CockpitScopeToolbar({ filters, options }: Props) {
           </Select>
         </div>
       ) : null}
-      {options.teams.length > 0 ? (
+      {!agentPersonal && options.teams.length > 0 ? (
         <div className="space-y-1.5">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Équipe</Label>
           <Select
@@ -111,7 +114,7 @@ export function CockpitScopeToolbar({ filters, options }: Props) {
           </Select>
         </div>
       ) : null}
-      {options.channels.length > 0 ? (
+      {!agentPersonal && options.channels.length > 0 ? (
         <div className="space-y-1.5">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
             Canal (lead)
