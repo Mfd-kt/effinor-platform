@@ -6,12 +6,12 @@ import { createClient } from "@/lib/supabase/server";
  * - **Lead converti** : fiche stock avec `converted_lead_id` non nul ; le lead `leads.id` correspondant est pris en
  *   compte si `created_at >= periodStart` et `deleted_at` nul (période = date de création de la fiche commerciale).
  * - **RDV obtenu** : `leads.callback_at` renseigné (rendez-vous / rappel planifié côté CRM).
- * - **Accord commercial** : `leads.lead_status` ∈ `accord_received` | `converted` **ou** opération liée au lead avec
- *   `sales_status` ∈ `quote_signed` | `won` (via `operations.lead_id`).
+ * - **Accord commercial** : `leads.lead_status` ∈ `accord_received` | `converted` (sans table `operations`, les accords
+ *   portés uniquement par une vente opération ne sont plus observables ici).
  * - **Visite technique** : au moins une ligne `technical_visits` pour le lead, `deleted_at` nul, statut ni `cancelled`
  *   ni `refused`.
- * - **Installation** : au moins une ligne `installations` pour une opération liée au lead (`installations.status`
- *   ≠ `cancelled`). Opérations : première opération trouvée pour `operations.lead_id` (ordre défini par la requête).
+ * - **Installation** : non calculé dans cette requête — les tables `operations` et le lien `installations.operation_id`
+ *   ont été retirés du schéma ; le compteur reste à 0 jusqu’à un modèle de liaison lead → installation exploitable.
  */
 
 export type BusinessOutcomeCounts = {
@@ -41,7 +41,6 @@ export type BusinessOutcomesBundle = {
 };
 
 const ACCORD_LEAD_STATUSES = new Set(["accord_received", "converted"]);
-const ACCORD_SALES_STATUSES = new Set(["quote_signed", "won"]);
 const VT_EXCLUDED = new Set(["cancelled", "refused"]);
 
 function round1(n: number): number {
@@ -186,72 +185,8 @@ export async function getLeadGenerationManagementBusinessOutcomes(input: {
     }
   }
 
-  const operationByLead = new Map<string, { id: string; sales_status: string }>();
-  for (let i = 0; i < filteredLeadIds.length; i += CHUNK) {
-    const chunk = filteredLeadIds.slice(i, i + CHUNK);
-    const { data, error } = await supabase
-      .from("operations")
-      .select("id, lead_id, sales_status")
-      .in("lead_id", chunk)
-      .is("deleted_at", null);
-    if (error) {
-      throw new Error(`Operations par lead (management business) : ${error.message}`);
-    }
-    for (const r of data ?? []) {
-      const row = r as { id: string; lead_id: string; sales_status: string };
-      if (!row.lead_id) {
-        continue;
-      }
-      if (!operationByLead.has(row.lead_id)) {
-        operationByLead.set(row.lead_id, { id: row.id, sales_status: row.sales_status });
-      }
-    }
-  }
-
-  function operationForLead(lead: LeadRow): { id: string; sales_status: string } | null {
-    return operationByLead.get(lead.id) ?? null;
-  }
-
   function leadHasAccord(lead: LeadRow): boolean {
-    if (ACCORD_LEAD_STATUSES.has(lead.lead_status)) {
-      return true;
-    }
-    const op = operationForLead(lead);
-    return op != null && ACCORD_SALES_STATUSES.has(op.sales_status);
-  }
-
-  const operationIdsForInstall = new Set<string>();
-  for (const l of leadsInPeriod) {
-    const op = operationForLead(l);
-    if (op) {
-      operationIdsForInstall.add(op.id);
-    }
-  }
-
-  const opsWithInstallation = new Set<string>();
-  if (operationIdsForInstall.size > 0) {
-    const opList = [...operationIdsForInstall];
-    for (let i = 0; i < opList.length; i += CHUNK) {
-      const chunk = opList.slice(i, i + CHUNK);
-      const { data, error } = await supabase
-        .from("installations")
-        .select("operation_id, status")
-        .in("operation_id", chunk);
-      if (error) {
-        throw new Error(`Installations (management business) : ${error.message}`);
-      }
-      for (const r of data ?? []) {
-        const row = r as { operation_id: string; status: string };
-        if (row.status !== "cancelled") {
-          opsWithInstallation.add(row.operation_id);
-        }
-      }
-    }
-  }
-
-  function leadHasInstallation(lead: LeadRow): boolean {
-    const op = operationForLead(lead);
-    return op != null && opsWithInstallation.has(op.id);
+    return ACCORD_LEAD_STATUSES.has(lead.lead_status);
   }
 
   function metricsForLead(leadId: string): BusinessOutcomeCounts {
@@ -259,13 +194,13 @@ export async function getLeadGenerationManagementBusinessOutcomes(input: {
     if (!lead) {
       return emptyCounts();
     }
-    const op = operationForLead(lead);
     return {
       convertedLeads: 1,
       withRdv: lead.callback_at ? 1 : 0,
       withAccord: leadHasAccord(lead) ? 1 : 0,
       withVt: vtLeadIds.has(leadId) ? 1 : 0,
-      withInstallation: leadHasInstallation(lead) ? 1 : 0,
+      // Toujours 0 : pas de jointure fiable lead → installation sans table `operations`.
+      withInstallation: 0,
     };
   }
 

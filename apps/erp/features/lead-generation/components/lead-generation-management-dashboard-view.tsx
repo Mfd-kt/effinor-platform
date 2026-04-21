@@ -120,10 +120,8 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
             <li>
               <span className="text-foreground/80">Accord</span> : statut lead{" "}
               <span className="font-mono text-[10px]">accord_received</span> ou{" "}
-              <span className="font-mono text-[10px]">converted</span>, ou opération liée avec{" "}
-              <span className="font-mono text-[10px]">sales_status</span> ∈{" "}
-              <span className="font-mono text-[10px]">quote_signed</span>,{" "}
-              <span className="font-mono text-[10px]">won</span>.
+              <span className="font-mono text-[10px]">converted</span> (les ventes portées uniquement par une opération ne
+              sont pas comptées ici sans table opérations).
             </li>
             <li>
               <span className="text-foreground/80">VT</span> : au moins une{" "}
@@ -131,10 +129,8 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
               <span className="font-mono text-[10px]">cancelled</span> / <span className="font-mono text-[10px]">refused</span>.
             </li>
             <li>
-              <span className="text-foreground/80">Installation</span> : au moins une{" "}
-              <span className="font-mono text-[10px]">installations</span> sur l&apos;opération du lead (convertie ou
-              première par <span className="font-mono text-[10px]">lead_id</span>), statut ≠{" "}
-              <span className="font-mono text-[10px]">cancelled</span>.
+              <span className="text-foreground/80">Installation</span> : non calculé dans ce tableau (schéma sans lien
+              opération / installation exploitable pour l&apos;agrégat pilotage).
             </li>
           </ul>
           <p className="mt-2 text-[10px] text-muted-foreground/90">
@@ -149,9 +145,9 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
             hint="Leads créés dans la période, issus du stock du périmètre"
           />
           <KpiCard label="RDV" value={overview.business.withRdv} hint="callback_at renseigné" />
-          <KpiCard label="Accords" value={overview.business.withAccord} hint="Statut lead ou vente opération" />
+          <KpiCard label="Accords" value={overview.business.withAccord} hint="Statut lead accord_received / converted" />
           <KpiCard label="Visites techniques" value={overview.business.withVt} hint="VT non annulée / refusée" />
-          <KpiCard label="Installations" value={overview.business.withInstallation} hint="Installation non annulée" />
+          <KpiCard label="Installations" value={overview.business.withInstallation} hint="Non mesuré (sans lien opération)" />
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
