@@ -60,6 +60,34 @@ export async function canAccessLeadForCeeTeamManager(
 }
 
 /**
+ * Accès ponctuel au lead via assignation workflow active (agent / confirmateur / closer).
+ * Utile pour ouvrir la fiche depuis les postes CEE quand la matrice leads est plus restrictive.
+ */
+export async function canAccessLeadForAssignedWorkflowRole(
+  supabase: Supabase,
+  access: AccessContext,
+  leadId: string,
+): Promise<boolean> {
+  if (access.kind !== "authenticated") {
+    return false;
+  }
+  const { data, error } = await supabase
+    .from("lead_sheet_workflows")
+    .select("id")
+    .eq("lead_id", leadId)
+    .eq("is_archived", false)
+    .or(
+      `assigned_agent_user_id.eq.${access.userId},assigned_confirmateur_user_id.eq.${access.userId},assigned_closer_user_id.eq.${access.userId}`,
+    )
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    return false;
+  }
+  return Boolean(data?.id);
+}
+
+/**
  * Peut exécuter un changement de fiche CEE sur ce lead : rôle éligible + périmètre lead
  * (créateur/confirmateur ou fiche CEE du dossier couverte par l’équipe du manager).
  */

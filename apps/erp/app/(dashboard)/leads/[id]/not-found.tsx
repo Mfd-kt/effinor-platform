@@ -17,7 +17,7 @@ export default async function LeadNotFound() {
     <div>
       <PageHeader
         title="Lead introuvable"
-        description="Ce lead n’existe pas ou a été retiré."
+        description="Ce lead n’existe pas, a été retiré, ou n’est pas accessible avec ce compte."
       />
       <Link href={backHref} className={cn(buttonVariants())}>
         {backLabel}

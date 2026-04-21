@@ -2,7 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { AccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadRow } from "@/lib/auth/lead-scope";
-import { canAccessLeadForCeeTeamManager } from "@/lib/auth/switch-cee-sheet-eligibility";
+import {
+  canAccessLeadForAssignedWorkflowRole,
+  canAccessLeadForCeeTeamManager,
+} from "@/lib/auth/switch-cee-sheet-eligibility";
 
 import type { LeadDetailRow } from "@/features/leads/types";
 
@@ -50,7 +53,12 @@ export async function getLeadById(id: string, access?: AccessContext): Promise<L
   const raw = data as unknown as LeadDetailRow & { cee_sheet?: LeadDetailRow["cee_sheet"] | null };
   const row: LeadDetailRow = { ...raw, cee_sheet: raw.cee_sheet ?? null };
   if (access?.kind === "authenticated" && !canAccessLeadRow(row, access)) {
-    if (!(await canAccessLeadForCeeTeamManager(supabase, access, row.id))) {
+    const canAccessByWorkflowAssignment = await canAccessLeadForAssignedWorkflowRole(
+      supabase,
+      access,
+      row.id,
+    );
+    if (!canAccessByWorkflowAssignment && !(await canAccessLeadForCeeTeamManager(supabase, access, row.id))) {
       return null;
     }
   }
