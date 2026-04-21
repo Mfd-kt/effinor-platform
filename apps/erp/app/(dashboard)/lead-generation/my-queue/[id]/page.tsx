@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ConvertMyLeadAssignmentCeeBundle } from "@/features/lead-generation/components/convert-my-lead-assignment-button";
 import { ConvertMyLeadAssignmentButton } from "@/features/lead-generation/components/convert-my-lead-assignment-button";
+import { MyQueueConvertedAutoRedirect } from "@/features/lead-generation/components/my-queue-converted-auto-redirect";
 import type { LeadGenerationGptResearchPayload } from "@/features/lead-generation/domain/lead-generation-gpt-research";
 import { LeadGenerationUnifiedAgentActivitySection } from "@/features/lead-generation/components/lead-generation-unified-agent-activity-section";
 import { LeadGenerationCommercialPriorityBadge } from "@/features/lead-generation/components/lead-generation-commercial-priority-badge";
@@ -24,6 +25,7 @@ import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get
 import { isLeadGenerationGptResearchSuccessful } from "@/features/lead-generation/lib/lead-generation-gpt-research-terminal-status";
 import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { getLeadGenerationMyQueueStockPageDetail } from "@/features/lead-generation/queries/get-lead-generation-stock-for-agent";
+import { getFirstMyQueueStockId, getNextMyQueueStockIdAfter } from "@/features/lead-generation/lib/my-queue-next-stock";
 import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
 import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
 import { getAccessContext } from "@/lib/auth/access-context";
@@ -87,10 +89,40 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
   const queueOwnerId =
     openedViaSupportBypass && currentAssignmentAgentId ? currentAssignmentAgentId : access.userId;
   const queueItems = await getMyLeadGenerationQueue(queueOwnerId);
-  const queueIndex = queueItems.findIndex((item) => item.stockId === id);
-  const nextStockId =
-    queueIndex >= 0 && queueIndex < queueItems.length - 1 ? queueItems[queueIndex + 1]!.stockId : null;
   const backHref = isSafeReturnTo(fromParam) ? fromParam! : "/lead-generation/my-queue";
+
+  if (stock.converted_lead_id) {
+    const nextAfterConverted = getFirstMyQueueStockId(queueItems);
+    return (
+      <div className="mx-auto w-full max-w-3xl space-y-8">
+        {openedViaSupportBypass ? (
+          <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-50">
+            <p className="font-medium">Vue support (impersonation)</p>
+            <p className="mt-1 text-xs text-amber-900/90 dark:text-amber-100/90">
+              Vous consultez cette fiche avec le compte du commercial. Si l’attribution courante n’est pas la sienne,
+              les actions sensibles (conversion, journal, suivi d’appel) sont en lecture seule.
+            </p>
+          </div>
+        ) : null}
+        <PageHeader
+          title={stock.company_name}
+          description="Fiche lead generation convertie"
+          actions={
+            <Link href={backHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              ← Ma file
+            </Link>
+          }
+        />
+        <MyQueueConvertedAutoRedirect
+          nextStockId={nextAfterConverted}
+          fromHref={backHref}
+          convertedLeadId={stock.converted_lead_id}
+        />
+      </div>
+    );
+  }
+
+  const nextStockId = getNextMyQueueStockIdAfter(queueItems, id);
   const nextHref = nextStockId
     ? (() => {
         const p = new URLSearchParams();
@@ -104,8 +136,7 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
   const assignmentBelongsToImpersonatedUser =
     !assignmentId || !currentAssignmentAgentId || currentAssignmentAgentId === access.userId;
   const lockActionsForSupportView = Boolean(openedViaSupportBypass && !assignmentBelongsToImpersonatedUser);
-  const callTraceReadOnly =
-    Boolean(stock.converted_lead_id) || lockActionsForSupportView || !stock.current_assignment_id;
+  const callTraceReadOnly = lockActionsForSupportView || !stock.current_assignment_id;
 
   const activities = assignmentIdForHistory
     ? await getLeadGenerationAssignmentActivities(assignmentIdForHistory, { limit: 120 })
@@ -183,10 +214,7 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
         showMapsLink={streetViewModel.canShowSection}
         variant="agent"
         disabled={
-          Boolean(stock.converted_lead_id) ||
-          stock.stock_status === "rejected" ||
-          lockActionsForSupportView ||
-          callTraceReadOnly
+          stock.stock_status === "rejected" || lockActionsForSupportView || callTraceReadOnly
         }
         disableOutOfTarget={lockActionsForSupportView || callTraceReadOnly || !assignmentId}
       />
@@ -238,7 +266,7 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
               stockId={stock.id}
               initialName={stock.decision_maker_name}
               initialRole={stock.decision_maker_role}
-              readOnly={lockActionsForSupportView || Boolean(stock.converted_lead_id)}
+              readOnly={lockActionsForSupportView}
             />
           </div>
         </CardContent>
@@ -256,28 +284,18 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
         />
       ) : null}
 
-      {stock.converted_lead_id ? (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-base">Déjà convertie</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>Cette prospection a déjà été transformée en fiche prospect.</p>
-            <Link
-              href={`/leads/${stock.converted_lead_id}`}
-              className={cn(buttonVariants({ variant: "default", size: "sm" }), "w-fit")}
-            >
-              Ouvrir la fiche prospect
-            </Link>
-          </CardContent>
-        </Card>
+      {assignmentId && !lockActionsForSupportView ? (
+        <ConvertMyLeadAssignmentButton
+          stock={stock}
+          ceeBundle={ceeBundle}
+          myQueuePostConversion={{
+            nextStockId,
+            listHrefForFromParam: backHref,
+          }}
+        />
       ) : null}
 
-      {!stock.converted_lead_id && assignmentId && !lockActionsForSupportView ? (
-        <ConvertMyLeadAssignmentButton stock={stock} ceeBundle={ceeBundle} />
-      ) : null}
-
-      {!stock.converted_lead_id && !assignmentId ? (
+      {!assignmentId ? (
         <p className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           Aucune attribution active sur cette fiche.
         </p>

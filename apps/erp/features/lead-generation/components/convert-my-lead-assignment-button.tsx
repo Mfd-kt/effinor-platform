@@ -11,6 +11,7 @@ import { LeadGenerationCeeSimulatorModal } from "@/features/lead-generation/comp
 import type { AgentActivityBuckets, AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
 import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export type ConvertMyLeadAssignmentCeeBundle = {
   sheets: AgentAvailableSheet[];
@@ -22,12 +23,21 @@ type Props = {
   stock: LeadGenerationStockRow;
   /** Données poste agent / CEE ; sans fiches actives, l’agent est orienté vers le poste agent. */
   ceeBundle: ConvertMyLeadAssignmentCeeBundle | null;
+  /**
+   * Navigation post-conversion (page « Ma file » détail) : même ordre que `getMyLeadGenerationQueue`.
+   * Si absent : simple `router.refresh()` après succès.
+   */
+  myQueuePostConversion?: {
+    nextStockId: string | null;
+    /** Base pour le paramètre `from` sur la fiche suivante */
+    listHrefForFromParam: string;
+  };
 };
 
 /**
  * Conversion depuis « Ma file » : uniquement via le simulateur CEE (modale).
  */
-export function ConvertMyLeadAssignmentButton({ stock, ceeBundle }: Props) {
+export function ConvertMyLeadAssignmentButton({ stock, ceeBundle, myQueuePostConversion }: Props) {
   const router = useRouter();
   const stockId = stock.id;
   const hasCeeSimulator = Boolean(ceeBundle && ceeBundle.sheets.length > 0);
@@ -58,7 +68,20 @@ export function ConvertMyLeadAssignmentButton({ stock, ceeBundle }: Props) {
             sheets={ceeBundle.sheets}
             activity={ceeBundle.activity}
             destratProducts={ceeBundle.destratProducts}
-            onConversionComplete={() => router.refresh()}
+            onConversionComplete={() => {
+              if (myQueuePostConversion) {
+                toast.success("Bravo : fiche convertie en prospect CRM. Passage à la suivante…");
+                if (myQueuePostConversion.nextStockId) {
+                  const p = new URLSearchParams();
+                  p.set("from", myQueuePostConversion.listHrefForFromParam);
+                  router.push(`/lead-generation/my-queue/${myQueuePostConversion.nextStockId}?${p.toString()}`);
+                } else {
+                  router.push("/lead-generation/my-queue?queueEmpty=1");
+                }
+                return;
+              }
+              router.refresh();
+            }}
           />
         </>
       ) : (

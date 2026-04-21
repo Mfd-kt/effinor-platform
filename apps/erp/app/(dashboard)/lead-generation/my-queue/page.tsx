@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { MyLeadGenerationQueueAgentShell } from "@/features/lead-generation/components/my-lead-generation-queue-agent-shell";
+import { MyQueueEmptyQueueToast } from "@/features/lead-generation/components/my-queue-empty-queue-toast";
 import { getLeadGenerationDispatchPolicy } from "@/features/lead-generation/lib/agent-dispatch-policy";
 import { getLeadGenerationMyQueueCeeSheetOptions } from "@/features/lead-generation/queries/get-lead-generation-my-queue-cee-sheet-options";
 import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
@@ -18,8 +19,14 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function MyLeadGenerationQueuePage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function MyLeadGenerationQueuePage({ searchParams }: PageProps) {
   const access = await getAccessContext();
+  const sp = await searchParams;
+  const showQueueEmptyToast = typeof sp.queueEmpty === "string" && sp.queueEmpty === "1";
   if (access.kind !== "authenticated" || !canAccessLeadGenerationMyQueue(access)) {
     notFound();
   }
@@ -52,6 +59,7 @@ export default async function MyLeadGenerationQueuePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
+      {showQueueEmptyToast ? <MyQueueEmptyQueueToast /> : null}
       <PageHeader
         title="Mes fiches à traiter"
         description="Contacts déjà validés pour le terrain : appels, relances et notes — priorité aux rappels."

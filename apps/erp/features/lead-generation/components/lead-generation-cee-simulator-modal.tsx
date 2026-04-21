@@ -243,8 +243,11 @@ export function LeadGenerationCeeSimulatorModal({
         setLeadGenStockId(null);
         skipDraftHydrate.current = false;
         handleDialogOpenChange(false);
-        router.refresh();
-        onConversionComplete?.();
+        if (onConversionComplete) {
+          onConversionComplete();
+        } else {
+          router.refresh();
+        }
         return;
       }
 
