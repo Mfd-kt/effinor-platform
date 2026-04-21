@@ -126,6 +126,9 @@ export async function getLeadGenerationStockDetailForAgent(
   if (!detail) {
     return null;
   }
+  if (detail.stock.converted_lead_id) {
+    return null;
+  }
 
   return {
     ...detail,
@@ -161,6 +164,9 @@ export async function getLeadGenerationMyQueueStockPageDetail(
   const supabase = await createClient();
   const detail = await getLeadGenerationStockById(stockId);
   if (!detail) {
+    return null;
+  }
+  if (detail.stock.converted_lead_id) {
     return null;
   }
 

@@ -12,6 +12,7 @@ import { resolveNextQuantificationStockId } from "../lib/resolve-next-quantifica
 import { evaluateLeadGenerationDispatchQueue } from "../queue/evaluate-dispatch-queue";
 import { getLeadGenerationStockById } from "../queries/get-lead-generation-stock-by-id";
 import { orchestrateQualifiedProspectEmailAfterQuantifierQualify } from "@/features/lead-emails/services/orchestrate-qualified-prospect-email";
+import { isLeadGenerationStockOperational, leadGenerationConvertedStockMessage } from "../lib/lead-generation-operational-scope";
 
 import { reviewLeadGenerationStock } from "../services/review-lead-generation-stock";
 
@@ -47,6 +48,9 @@ export async function quantifierQualifyLeadGenerationStockAction(
   const detail = await getLeadGenerationStockById(id);
   if (!detail) {
     return { ok: false, message: "Fiche introuvable." };
+  }
+  if (!isLeadGenerationStockOperational(detail.stock)) {
+    return { ok: false, message: leadGenerationConvertedStockMessage() };
   }
   const supabase = await createClient();
   const gate = await assertQuantifierMayActOnQuantificationStock(

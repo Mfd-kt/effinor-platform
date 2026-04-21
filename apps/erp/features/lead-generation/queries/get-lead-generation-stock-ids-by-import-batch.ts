@@ -16,6 +16,7 @@ export async function getLeadGenerationStockIdsByImportBatch(importBatchId: stri
     const { data, error } = await stock
       .select("id")
       .eq("import_batch_id", importBatchId)
+      .is("converted_lead_id", null)
       .range(offset, offset + PAGE - 1);
 
     if (error) {

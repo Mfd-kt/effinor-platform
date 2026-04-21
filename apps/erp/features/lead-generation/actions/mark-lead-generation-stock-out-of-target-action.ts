@@ -17,6 +17,7 @@ import { resolveNextQuantificationStockId } from "../lib/resolve-next-quantifica
 import { normalizeLeadGenOutOfTargetReasonCode } from "../lib/out-of-target";
 import { compactLeadGenerationStockAuditSnapshot } from "../services/review-lead-generation-stock";
 import { insertLeadGenerationManualReviewRow } from "../services/insert-lead-generation-manual-review";
+import { isLeadGenerationStockOperational, leadGenerationConvertedStockMessage } from "../lib/lead-generation-operational-scope";
 
 export type MarkLeadGenerationStockOutOfTargetResult =
   | { ok: true; message: string; nextStockId: string | null }
@@ -77,6 +78,9 @@ export async function markLeadGenerationStockOutOfTargetAction(
       return { ok: false, message: gate.message };
     }
   }
+  if (beforeForAudit && !isLeadGenerationStockOperational(beforeForAudit)) {
+    return { ok: false, message: leadGenerationConvertedStockMessage() };
+  }
 
   const { data: stockRow, error: stockErr } = await stockTable
     .select("id, converted_lead_id, current_assignment_id, stock_status")
@@ -94,8 +98,8 @@ export async function markLeadGenerationStockOutOfTargetAction(
     stock_status: string;
   };
 
-  if (stock.converted_lead_id) {
-    return { ok: false, message: "Cette fiche est déjà convertie." };
+  if (!isLeadGenerationStockOperational(stock as LeadGenerationStockRow)) {
+    return { ok: false, message: leadGenerationConvertedStockMessage() };
   }
 
   if (stock.stock_status === "rejected") {

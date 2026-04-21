@@ -13,6 +13,7 @@ import { normalizePhone, stripPhoneDisplayNoise } from "../lib/normalize-phone";
 import { lgTable } from "../lib/lg-db";
 import { getLeadGenerationStockById } from "../queries/get-lead-generation-stock-by-id";
 import { updateQuantifierLeadGenerationContactFieldsInputSchema } from "../schemas/lead-generation-actions.schema";
+import { isLeadGenerationStockOperational, leadGenerationConvertedStockMessage } from "../lib/lead-generation-operational-scope";
 
 export type UpdateQuantifierLeadGenerationContactFieldsResult = {
   updated: true;
@@ -38,6 +39,9 @@ export async function updateQuantifierLeadGenerationContactFieldsAction(
   const detail = await getLeadGenerationStockById(parsed.data.stockId);
   if (!detail) {
     return { ok: false, error: "Fiche introuvable." };
+  }
+  if (!isLeadGenerationStockOperational(detail.stock)) {
+    return { ok: false, error: leadGenerationConvertedStockMessage() };
   }
 
   const gate = await assertQuantifierMayActOnQuantificationStock(

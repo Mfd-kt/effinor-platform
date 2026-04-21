@@ -18,6 +18,7 @@ export async function getLeadGenerationStockIdsNeedingContactImprovementForBatch
   const { data, error } = await stock
     .select("id")
     .eq("import_batch_id", importBatchId)
+    .is("converted_lead_id", null)
     .eq("stock_status", "ready")
     .is("duplicate_of_stock_id", null)
     .neq("qualification_status", "rejected")
@@ -45,6 +46,7 @@ export async function countLeadGenerationStockNeedingContactImprovementForBatch(
   const { count, error } = await stock
     .select("*", { count: "exact", head: true })
     .eq("import_batch_id", importBatchId)
+    .is("converted_lead_id", null)
     .eq("stock_status", "ready")
     .is("duplicate_of_stock_id", null)
     .neq("qualification_status", "rejected")

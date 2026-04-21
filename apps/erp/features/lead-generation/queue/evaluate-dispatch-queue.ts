@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { LeadGenerationStockRow } from "../domain/stock-row";
 import { lgTable } from "../lib/lg-db";
+import { isLeadGenerationStockOperational } from "../lib/lead-generation-operational-scope";
 import { getLeadGenerationSettings } from "../settings/get-lead-generation-settings";
 
 import {
@@ -43,6 +44,9 @@ export async function evaluateLeadGenerationDispatchQueue(input: {
   }
 
   const stock = row as LeadGenerationStockRow;
+  if (!isLeadGenerationStockOperational(stock)) {
+    throw new Error("Cette fiche est déjà convertie en prospect CRM.");
+  }
   const { settings } = await getLeadGenerationSettings();
   const decision = computeLeadGenerationDispatchQueue(stock, settings.dispatchQueueRules);
 
@@ -112,6 +116,7 @@ export async function evaluateReadyLeadGenerationDispatchQueueQuick(input: { lim
 
   const { data, error } = await stockTable
     .select("id")
+    .is("converted_lead_id", null)
     .eq("stock_status", "ready")
     .order("dispatch_queue_evaluated_at", { ascending: true, nullsFirst: true })
     .order("commercial_scored_at", { ascending: false, nullsFirst: true })

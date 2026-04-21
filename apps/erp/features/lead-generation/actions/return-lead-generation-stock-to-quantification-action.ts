@@ -12,6 +12,7 @@ import { lgTable } from "../lib/lg-db";
 import { evaluateLeadGenerationDispatchQueue } from "../queue/evaluate-dispatch-queue";
 import { compactLeadGenerationStockAuditSnapshot } from "../services/review-lead-generation-stock";
 import { insertLeadGenerationManualReviewRow } from "../services/insert-lead-generation-manual-review";
+import { isLeadGenerationStockOperational, leadGenerationConvertedStockMessage } from "../lib/lead-generation-operational-scope";
 
 type RpcReturnRow = { result_code: string };
 
@@ -73,6 +74,9 @@ export async function returnLeadGenerationStockToQuantificationAction(
   }
 
   const before = stockRow as LeadGenerationStockRow;
+  if (!isLeadGenerationStockOperational(before)) {
+    return { ok: false, message: leadGenerationConvertedStockMessage() };
+  }
   const aid = before.current_assignment_id?.trim() ?? null;
   if (!aid) {
     return { ok: false, message: "Aucune attribution active sur cette fiche." };

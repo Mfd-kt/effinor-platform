@@ -30,6 +30,7 @@ import { formatDuplicateMatchReasonsForDisplay } from "@/features/lead-generatio
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
 import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { lgTable } from "@/features/lead-generation/lib/lg-db";
+import { leadGenerationConvertedStockMessage } from "@/features/lead-generation/lib/lead-generation-operational-scope";
 import { LeadGenerationCommercialActivitySection } from "@/features/lead-generation/components/lead-generation-commercial-activity-section";
 import { LeadGenerationRecyclingSection } from "@/features/lead-generation/components/lead-generation-recycling-section";
 import { getLeadGenerationAssignableAgents } from "@/features/lead-generation/queries/get-lead-generation-assignable-agents";
@@ -91,6 +92,52 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
   }
 
   const { stock, import_batch } = detail;
+  if (stock.converted_lead_id) {
+    return (
+      <div className="mx-auto w-full max-w-4xl space-y-8">
+        <PageHeader
+          title={stock.company_name}
+          description="Fiche lead generation convertie"
+          actions={
+            <div className="flex flex-wrap items-end justify-end gap-2">
+              <Link href={`/leads/${stock.converted_lead_id}`} className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
+                Ouvrir la fiche prospect
+              </Link>
+              <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                ← Fiches disponibles
+              </Link>
+            </div>
+          }
+        />
+
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-base">Fiche déjà convertie</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>{leadGenerationConvertedStockMessage()}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Informations de suivi</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+            <DetailRow label="Société" value={stock.company_name} />
+            <DetailRow label="Source" value={formatLeadGenerationSourceLabel(stock.source)} />
+            <DetailRow label="Code postal / Ville" value={[stock.postal_code, stock.city].filter(Boolean).join(" ") || "—"} />
+            <DetailRow label="Téléphone" value={stock.phone ?? "—"} />
+            <DetailRow label="Créée le" value={formatDateTimeFr(stock.created_at)} />
+            <DetailRow label="Importée le" value={stock.imported_at ? formatDateTimeFr(stock.imported_at) : "—"} />
+            {import_batch ? (
+              <DetailRow label="Import lié" value={import_batch.source_label ?? import_batch.source ?? "—"} />
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   const duplicateRef =
     stock.qualification_status === "duplicate" && stock.duplicate_of_stock_id
       ? (await getLeadGenerationStockById(stock.duplicate_of_stock_id))?.stock ?? null

@@ -1,4 +1,5 @@
 import type { GetLeadGenerationStockFilters } from "./get-lead-generation-stock";
+import { applyOperationalLeadGenerationScope } from "../lib/lead-generation-operational-scope";
 
 export function escapeIlike(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
@@ -10,6 +11,7 @@ export function escapeIlike(s: string): string {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyLeadGenerationStockFilters(q: any, f: GetLeadGenerationStockFilters | undefined): any {
+  q = applyOperationalLeadGenerationScope(q);
   if (!f) return q;
   if (f.stock_status) {
     q = q.eq("stock_status", f.stock_status);

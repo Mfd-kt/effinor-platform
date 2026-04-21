@@ -27,6 +27,7 @@ import { lgTable } from "../lib/lg-db";
 import { assertQuantifierMayActOnQuantificationStock } from "../lib/quantification-batch-ownership";
 import { fetchPappersLeadGenerationEnrichment } from "../pappers/client";
 import { getLeadGenerationStockById } from "../queries/get-lead-generation-stock-by-id";
+import { isLeadGenerationStockOperational, leadGenerationConvertedStockMessage } from "../lib/lead-generation-operational-scope";
 
 export type RunLeadGenerationGptResearchResult =
   | { ok: true; message: string }
@@ -82,6 +83,9 @@ export async function runLeadGenerationGptResearchAction(stockId: string): Promi
   }
 
   const { stock, import_batch } = detail;
+  if (!isLeadGenerationStockOperational(stock)) {
+    return { ok: false, message: leadGenerationConvertedStockMessage() };
+  }
   const hub = await canAccessLeadGenerationHub(access);
   const quantifier = canAccessLeadGenerationQuantification(access);
   if (quantifier && !hub) {
