@@ -7,11 +7,11 @@ import { createClient } from "@/lib/supabase/server";
  *   compte si `created_at >= periodStart` et `deleted_at` nul (période = date de création de la fiche commerciale).
  * - **RDV obtenu** : `leads.callback_at` renseigné (rendez-vous / rappel planifié côté CRM).
  * - **Accord commercial** : `leads.lead_status` ∈ `accord_received` | `converted` **ou** opération liée au lead avec
- *   `sales_status` ∈ `quote_signed` | `won` (via `leads.converted_operation_id` ou `operations.lead_id`).
+ *   `sales_status` ∈ `quote_signed` | `won` (via `operations.lead_id`).
  * - **Visite technique** : au moins une ligne `technical_visits` pour le lead, `deleted_at` nul, statut ni `cancelled`
  *   ni `refused`.
  * - **Installation** : au moins une ligne `installations` pour une opération liée au lead (`installations.status`
- *   ≠ `cancelled`). Opérations : `leads.converted_operation_id` si présent, sinon première opération `operations.lead_id`.
+ *   ≠ `cancelled`). Opérations : première opération trouvée pour `operations.lead_id` (ordre défini par la requête).
  */
 
 export type BusinessOutcomeCounts = {
@@ -89,7 +89,6 @@ type LeadRow = {
   id: string;
   callback_at: string | null;
   lead_status: string;
-  converted_operation_id: string | null;
   created_at: string;
 };
 
@@ -149,7 +148,7 @@ export async function getLeadGenerationManagementBusinessOutcomes(input: {
     const chunk = candidateLeadIds.slice(i, i + CHUNK);
     const { data, error } = await supabase
       .from("leads")
-      .select("id, callback_at, lead_status, converted_operation_id, created_at")
+      .select("id, callback_at, lead_status, created_at")
       .in("id", chunk)
       .is("deleted_at", null)
       .gte("created_at", input.periodStartIso);
@@ -209,39 +208,7 @@ export async function getLeadGenerationManagementBusinessOutcomes(input: {
     }
   }
 
-  const extraOpIds: string[] = [];
-  for (const l of leadsInPeriod) {
-    if (l.converted_operation_id && !operationByLead.has(l.id)) {
-      extraOpIds.push(l.converted_operation_id);
-    }
-  }
-  const extraOpMap = new Map<string, { id: string; sales_status: string; lead_id: string | null }>();
-  if (extraOpIds.length > 0) {
-    const uniq = [...new Set(extraOpIds)];
-    for (let i = 0; i < uniq.length; i += CHUNK) {
-      const chunk = uniq.slice(i, i + CHUNK);
-      const { data, error } = await supabase
-        .from("operations")
-        .select("id, lead_id, sales_status")
-        .in("id", chunk)
-        .is("deleted_at", null);
-      if (error) {
-        throw new Error(`Operations converties (management business) : ${error.message}`);
-      }
-      for (const r of data ?? []) {
-        const row = r as { id: string; lead_id: string | null; sales_status: string };
-        extraOpMap.set(row.id, row);
-      }
-    }
-  }
-
   function operationForLead(lead: LeadRow): { id: string; sales_status: string } | null {
-    if (lead.converted_operation_id) {
-      const fromConv = extraOpMap.get(lead.converted_operation_id);
-      if (fromConv) {
-        return { id: fromConv.id, sales_status: fromConv.sales_status };
-      }
-    }
     return operationByLead.get(lead.id) ?? null;
   }
 
