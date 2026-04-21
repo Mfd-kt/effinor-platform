@@ -5,8 +5,20 @@
 
 export type TerminalCallOutcome = "out_of_target" | "cancelled";
 
-/** Refus, annulation (RDV / prospect), etc. → outcome `cancelled`. */
-const CANCELLED_NORMALIZED = new Set(["refus", "refuse", "refuser", "annule", "annuler"]);
+/** Refus, annulation, numéro invalide, etc. → outcome `cancelled`. */
+const CANCELLED_NORMALIZED = new Set([
+  "refus",
+  "refuse",
+  "refuser",
+  "annule",
+  "annuler",
+  "mauvais numero",
+  "numero invalide",
+  "numero incorrect",
+  "faux numero",
+  "numero non attribue",
+  "numero indisponible",
+]);
 
 /** Hors cible → outcome `out_of_target`. */
 const OUT_OF_TARGET_NORMALIZED = new Set(["hors cible", "hors-cible"]);

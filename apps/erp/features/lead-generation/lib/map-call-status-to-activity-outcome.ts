@@ -42,6 +42,12 @@ export function mapResolvedCallStatusToActivityOutcome(resolved: string | null):
   if (n.includes("numero") && n.includes("invalide")) {
     return "called_wrong_number";
   }
+  if (n.includes("mauvais") && n.includes("numero")) {
+    return "called_wrong_number";
+  }
+  if (n.includes("numero") && n.includes("incorrect")) {
+    return "called_wrong_number";
+  }
   if (n.includes("repondeur")) {
     return "called_no_answer";
   }

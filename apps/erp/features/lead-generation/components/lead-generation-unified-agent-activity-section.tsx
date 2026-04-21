@@ -32,14 +32,18 @@ import {
 } from "@/features/lead-generation/lib/agent-call-status-presets";
 import { mapResolvedCallStatusToActivityOutcome } from "@/features/lead-generation/lib/map-call-status-to-activity-outcome";
 import type { LeadGenerationAssignmentActivityListItem } from "@/features/lead-generation/queries/get-lead-generation-assignment-activities";
+import { resolveNextMyQueueStockIdAction } from "@/features/lead-generation/actions/resolve-next-my-queue-stock-id-action";
 import { formatDateTimeFr } from "@/lib/format";
 import { isoToDatetimeLocal } from "@/lib/utils/datetime";
 import { cn } from "@/lib/utils";
 
 type Props = {
   assignmentId: string;
+  stockId: string;
   /** Fiche suivante dans la file (même ordre que « Suivant »). Si absent après clôture, retour à la liste. */
   nextStockId?: string | null;
+  /** URL de retour liste (filtres + ancre) conservée. */
+  returnToHref?: string | null;
   readOnly: boolean;
   initial: {
     last_call_status: string | null;
@@ -61,13 +65,23 @@ function buildActivityLabel(resolvedStatus: string | null, note: string): string
   return "Appel enregistré";
 }
 
-function hrefAfterRemovedFromQueue(nextStockId: string | null | undefined): string {
-  return nextStockId ? `/lead-generation/my-queue/${nextStockId}` : "/lead-generation/my-queue";
+function hrefAfterRemovedFromQueue(nextStockId: string | null | undefined, returnToHref?: string | null): string {
+  if (nextStockId) {
+    const p = new URLSearchParams();
+    if (returnToHref?.trim()) {
+      p.set("from", returnToHref.trim());
+    }
+    p.set("focus", nextStockId);
+    return `/lead-generation/my-queue/${nextStockId}?${p.toString()}`;
+  }
+  return returnToHref?.trim() || "/lead-generation/my-queue";
 }
 
 export function LeadGenerationUnifiedAgentActivitySection({
   assignmentId,
+  stockId,
   nextStockId = null,
+  returnToHref = null,
   readOnly,
   initial,
   initialActivities,
@@ -142,6 +156,8 @@ export function LeadGenerationUnifiedAgentActivitySection({
           return;
         }
         if (traceRes.removedFromQueue) {
+          const resolvedNext = await resolveNextMyQueueStockIdAction({ currentStockId: stockId });
+          const freshNextStockId = resolvedNext.ok ? resolvedNext.nextStockId : nextStockId;
           const logRes = await logLeadGenerationAssignmentActivityAction({
             assignmentId,
             activityType: "call",
@@ -158,16 +174,16 @@ export function LeadGenerationUnifiedAgentActivitySection({
                 logRes.error ??
                 "La fiche a été retirée de la file, mais le journal n’a pas pu être complété.",
             });
-            router.push(hrefAfterRemovedFromQueue(nextStockId));
+            router.push(hrefAfterRemovedFromQueue(freshNextStockId, returnToHref));
             return;
           }
           setMessage({
             type: "ok",
-            text: nextStockId
+            text: freshNextStockId
               ? "Fiche retirée de votre file — passage à la suivante…"
               : "Fiche retirée de votre file — retour à la liste…",
           });
-          router.push(hrefAfterRemovedFromQueue(nextStockId));
+          router.push(hrefAfterRemovedFromQueue(freshNextStockId, returnToHref));
           return;
         }
       }
@@ -198,7 +214,8 @@ export function LeadGenerationUnifiedAgentActivitySection({
         <CardTitle className="text-base">Enregistrer le suivi</CardTitle>
         <p className="text-xs text-muted-foreground">
           Après l’appel, renseignez le statut, le compte rendu et la prochaine relance si besoin. Les statuts « Hors
-          cible », « Refus » ou « Annulé » (y compris en libellé libre identique) retirent la fiche de votre file.
+          cible », « Refus », « Annulé » ou « Mauvais numéro » (y compris en libellé libre proche) retirent la fiche de
+          votre file.
         </p>
       </CardHeader>
       <CardContent className="space-y-6 text-sm">

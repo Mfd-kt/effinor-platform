@@ -40,7 +40,16 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+function firstString(v: string | string[] | undefined): string | null {
+  return typeof v === "string" ? v : null;
+}
+
+function isSafeReturnTo(href: string | null): boolean {
+  return Boolean(href?.startsWith("/lead-generation/my-queue"));
+}
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -51,13 +60,15 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default async function MyLeadGenerationStockPage({ params }: PageProps) {
+export default async function MyLeadGenerationStockPage({ params, searchParams }: PageProps) {
   const access = await getAccessContext();
   if (access.kind !== "authenticated" || !canAccessLeadGenerationMyQueue(access)) {
     notFound();
   }
 
   const { id } = await params;
+  const sp = await searchParams;
+  const fromParam = firstString(sp.from);
   const detail = await getLeadGenerationMyQueueStockPageDetail(
     id,
     access.userId,
@@ -76,6 +87,15 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
   const queueIndex = queueItems.findIndex((item) => item.stockId === id);
   const nextStockId =
     queueIndex >= 0 && queueIndex < queueItems.length - 1 ? queueItems[queueIndex + 1]!.stockId : null;
+  const backHref = isSafeReturnTo(fromParam) ? fromParam! : "/lead-generation/my-queue";
+  const nextHref = nextStockId
+    ? (() => {
+        const p = new URLSearchParams();
+        p.set("from", backHref);
+        p.set("focus", nextStockId);
+        return `/lead-generation/my-queue/${nextStockId}?${p.toString()}`;
+      })()
+    : null;
   const assignmentId = stock.current_assignment_id;
   const assignmentIdForHistory = assignmentId ?? lastTerminalAssignmentId ?? null;
   const assignmentBelongsToImpersonatedUser =
@@ -142,14 +162,11 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
         }
         actions={
           <>
-            <Link href="/lead-generation/my-queue" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+            <Link href={backHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
               ← Ma file
             </Link>
-            {nextStockId ? (
-              <Link
-                href={`/lead-generation/my-queue/${nextStockId}`}
-                className={cn(buttonVariants({ variant: "default", size: "sm" }))}
-              >
+            {nextHref ? (
+              <Link href={nextHref} className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
                 Suivant →
               </Link>
             ) : null}
@@ -227,7 +244,9 @@ export default async function MyLeadGenerationStockPage({ params }: PageProps) {
       {assignmentIdForHistory ? (
         <LeadGenerationUnifiedAgentActivitySection
           assignmentId={assignmentIdForHistory}
+          stockId={stock.id}
           nextStockId={nextStockId}
+          returnToHref={backHref}
           readOnly={lockActionsForSupportView || callTraceReadOnly}
           initial={assignmentCallTrace}
           initialActivities={activities}

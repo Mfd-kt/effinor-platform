@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,16 @@ export function MyLeadGenerationQueueAgentShell({
   viewerUserId,
   effectiveStockCap,
 }: Props) {
-  const [filter, setFilter] = useState<MyQueueQuickFilter>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const searchFilter = searchParams.get("qf");
+  const initialFilter: MyQueueQuickFilter = FILTERS.some((f) => f.id === searchFilter)
+    ? (searchFilter as MyQueueQuickFilter)
+    : "all";
+
+  const [filter, setFilter] = useState<MyQueueQuickFilter>(initialFilter);
   const [selectedCeeSheetId, setSelectedCeeSheetId] = useState("");
 
   const needsCeePick = ceeSheetOptions.length > 0;
@@ -60,6 +70,19 @@ export function MyLeadGenerationQueueAgentShell({
     () => [...ceeSheetOptions.map((o) => o.id)].sort().join("\0"),
     [ceeSheetOptions],
   );
+
+  useLayoutEffect(() => {
+    const qf = searchParams.get("qf");
+    if (!qf) {
+      if (filter !== "all") {
+        setFilter("all");
+      }
+      return;
+    }
+    if (FILTERS.some((f) => f.id === qf) && qf !== filter) {
+      setFilter(qf as MyQueueQuickFilter);
+    }
+  }, [searchParams, filter]);
 
   useLayoutEffect(() => {
     if (ceeSheetOptions.length === 0) {
@@ -83,6 +106,19 @@ export function MyLeadGenerationQueueAgentShell({
   }, [viewerUserId, optionIdsKey, ceeSheetOptions]);
 
   useLayoutEffect(() => {
+    const ceeFromUrl = searchParams.get("cee")?.trim() || "";
+    if (!ceeFromUrl) {
+      return;
+    }
+    if (
+      ceeFromUrl === MY_QUEUE_NO_CEE_SHEET_SENTINEL ||
+      ceeSheetOptions.some((o) => o.id === ceeFromUrl)
+    ) {
+      setSelectedCeeSheetId(ceeFromUrl);
+    }
+  }, [searchParams, optionIdsKey, ceeSheetOptions]);
+
+  useLayoutEffect(() => {
     if (!viewerUserId.trim() || !selectedCeeSheetId.trim()) {
       return;
     }
@@ -94,6 +130,26 @@ export function MyLeadGenerationQueueAgentShell({
       writeMyQueueSelectedCeeSheetId(viewerUserId, selectedCeeSheetId);
     }
   }, [viewerUserId, selectedCeeSheetId, optionIdsKey, ceeSheetOptions]);
+
+  useLayoutEffect(() => {
+    const current = new URLSearchParams(searchParams.toString());
+    if (filter === "all") {
+      current.delete("qf");
+    } else {
+      current.set("qf", filter);
+    }
+    if (!selectedCeeSheetId.trim()) {
+      current.delete("cee");
+    } else {
+      current.set("cee", selectedCeeSheetId.trim());
+    }
+    const next = current.toString();
+    const href = next ? `${pathname}?${next}` : pathname;
+    const currentHref = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+    if (href !== currentHref) {
+      router.replace(href, { scroll: false });
+    }
+  }, [filter, selectedCeeSheetId, pathname, router, searchParams]);
 
   const isNoCeeSelected = selectedCeeSheetId.trim() === MY_QUEUE_NO_CEE_SHEET_SENTINEL;
 
@@ -119,6 +175,22 @@ export function MyLeadGenerationQueueAgentShell({
     return items.filter((i) => i.ceeSheetId === selectedOption.id);
   }, [items, needsCeePick, isNoCeeSelected, selectedOption]);
 
+  useLayoutEffect(() => {
+    const focusStockId = searchParams.get("focus")?.trim();
+    if (!focusStockId) {
+      return;
+    }
+    const id = `queue-row-${focusStockId}`;
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      const p = new URLSearchParams(searchParams.toString());
+      p.delete("focus");
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [searchParams, pathname, router, itemsInCeeScope.length]);
+
   const freshInScope = computeQueueKpis(itemsInCeeScope).freshStock;
 
   const stockForPlafond = isNoCeeSelected ? globalFreshStock : freshInScope;
@@ -133,6 +205,22 @@ export function MyLeadGenerationQueueAgentShell({
     const filtered = itemsInCeeScope.filter((i) => itemMatchesQuickFilter(i, filter));
     return sortQueueItems(filtered);
   }, [itemsInCeeScope, filter]);
+
+  const returnToHref = useMemo(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (filter === "all") {
+      p.delete("qf");
+    } else {
+      p.set("qf", filter);
+    }
+    if (!selectedCeeSheetId.trim()) {
+      p.delete("cee");
+    } else {
+      p.set("cee", selectedCeeSheetId.trim());
+    }
+    const qs = p.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }, [searchParams, filter, selectedCeeSheetId, pathname]);
 
   const showCeeColumn = !needsCeePick;
 
@@ -219,7 +307,11 @@ export function MyLeadGenerationQueueAgentShell({
                 : "Aucune ligne ne correspond à ce filtre."}
             </p>
           ) : (
-            <MyLeadGenerationQueueTable items={filteredTableRows} showCeeColumn={showCeeColumn} />
+            <MyLeadGenerationQueueTable
+              items={filteredTableRows}
+              showCeeColumn={showCeeColumn}
+              returnToHref={returnToHref}
+            />
           )}
         </section>
       )}

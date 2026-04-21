@@ -17,6 +17,8 @@ type Props = {
   items: MyLeadGenerationQueueItem[];
   /** Affiche la colonne « Fiche CEE » (utile si plusieurs fiches mélangées). */
   showCeeColumn?: boolean;
+  /** URL de retour vers la liste (filtres + ancre), transmise au détail. */
+  returnToHref?: string;
 };
 
 function relanceTextClass(bucket: RelanceBucket): string {
@@ -33,7 +35,17 @@ function relanceTextClass(bucket: RelanceBucket): string {
   }
 }
 
-export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Props) {
+function buildDetailHref(stockId: string, returnToHref: string | undefined): string {
+  if (!returnToHref?.trim()) {
+    return `/lead-generation/my-queue/${stockId}`;
+  }
+  const p = new URLSearchParams();
+  p.set("from", returnToHref);
+  p.set("focus", stockId);
+  return `/lead-generation/my-queue/${stockId}?${p.toString()}`;
+}
+
+export function MyLeadGenerationQueueTable({ items, showCeeColumn = false, returnToHref }: Props) {
   return (
     <div className="space-y-2">
       <div className="rounded-xl border border-border/80 bg-card/40 shadow-sm">
@@ -84,6 +96,7 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Pro
               return (
                 <TableRow
                   key={r.assignmentId}
+                  id={`queue-row-${r.stockId}`}
                   className={cn(
                     "group/row border-border transition-colors",
                     overdueRow &&
@@ -113,7 +126,7 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Pro
                     )}
                   >
                     <Link
-                      href={`/lead-generation/my-queue/${r.stockId}`}
+                      href={buildDetailHref(r.stockId, returnToHref)}
                       className="group/link inline-flex max-w-full items-start gap-1 text-sm font-semibold leading-snug text-foreground decoration-primary/55 underline-offset-4 hover:text-primary hover:underline"
                     >
                       <span className="min-w-0 break-words">{r.companyName}</span>
@@ -169,7 +182,7 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Pro
                   <TableCell className="px-3 py-3 align-middle">
                     <div className="flex flex-wrap items-center justify-end gap-1">
                       <Link
-                        href={`/lead-generation/my-queue/${r.stockId}`}
+                        href={buildDetailHref(r.stockId, returnToHref)}
                         className={cn(
                           buttonVariants({ variant: "secondary", size: "sm" }),
                           "h-8 px-2.5 text-xs font-semibold",
@@ -190,7 +203,7 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Pro
                         </Link>
                       ) : null}
                       <Link
-                        href={`/lead-generation/my-queue/${r.stockId}#suivi-activite`}
+                        href={`${buildDetailHref(r.stockId, returnToHref)}#suivi-activite`}
                         className={cn(
                           buttonVariants({ variant: "ghost", size: "sm" }),
                           "h-8 gap-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground",
@@ -200,7 +213,7 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false }: Pro
                         Note
                       </Link>
                       <Link
-                        href={`/lead-generation/my-queue/${r.stockId}#suivi-activite`}
+                        href={`${buildDetailHref(r.stockId, returnToHref)}#suivi-activite`}
                         className={cn(
                           buttonVariants({ variant: "ghost", size: "sm" }),
                           "h-8 gap-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground",
