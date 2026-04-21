@@ -3,7 +3,7 @@ export type RunGoogleMapsApifyImportInput = {
   searchStrings: string[];
   maxCrawledPlacesPerSearch?: number;
   includeWebResults?: boolean;
-  /** Zone géographique pour l’actor (`locationQuery`). Si absent ou vide → France métropolitaine côté serveur. */
+  /** Zone géographique pour l’actor (`locationQuery`). Si absent ou vide → France côté serveur. */
   locationQuery?: string;
   /** Libellé métier (lot / traçabilité), non envoyé tel quel à l’actor. */
   campaignName?: string;

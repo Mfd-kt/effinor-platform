@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadRow } from "@/lib/auth/lead-scope";
 import { getRestrictedAgentLeadEditBlockReason } from "@/lib/auth/restricted-agent-lead-edit";
+import { canAccessLeadForAssignedWorkflowRole } from "@/lib/auth/switch-cee-sheet-eligibility";
 import { createClient } from "@/lib/supabase/server";
 
 const AddNoteSchema = z.object({
@@ -51,7 +52,11 @@ export async function addLeadInternalNote(input: unknown): Promise<AddLeadIntern
     return { ok: false, message: leadFetchError?.message ?? "Lead introuvable." };
   }
 
-  if (!canAccessLeadRow(leadRow, access)) {
+  const hasLeadScopeAccess = canAccessLeadRow(leadRow, access);
+  const hasWorkflowAssignedAccess = hasLeadScopeAccess
+    ? true
+    : await canAccessLeadForAssignedWorkflowRole(supabase, access, parsed.data.leadId);
+  if (!hasLeadScopeAccess && !hasWorkflowAssignedAccess) {
     return { ok: false, message: "Accès refusé à ce lead." };
   }
 

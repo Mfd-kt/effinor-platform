@@ -1,3 +1,10 @@
+import {
+  DEFAULT_GOOGLE_MAPS_COUNTRY,
+  LEAD_GEN_GOOGLE_MAPS_GEO_OPTIONS,
+  injectGeoTargetInSearchStrings,
+} from "./google-maps-region-options";
+export { DEFAULT_GOOGLE_MAPS_COUNTRY };
+
 /** Limite alignée sur l’import Apify (lots cockpit). */
 export const MAX_GENERATE_QUERIES = 20;
 
@@ -98,29 +105,11 @@ export const LEAD_GENERATION_SECTOR_OPTIONS = [
 export type LeadGenerationSectorValue = (typeof LEAD_GENERATION_SECTOR_OPTIONS)[number];
 
 /**
- * Régions françaises (découpage administratif : métropole + DOM) pour cadrer les requêtes Maps.
- * « France métropolitaine » = cible élargie sur l’ensemble du territoire métropolitain.
+ * Ciblage géographique Google Maps : France par défaut + départements / territoires dédiés.
  */
 export const LEAD_GENERATION_ZONE_OPTIONS = [
-  "France métropolitaine",
-  "Auvergne-Rhône-Alpes",
-  "Bourgogne-Franche-Comté",
-  "Bretagne",
-  "Centre-Val de Loire",
-  "Corse",
-  "Grand Est",
-  "Guadeloupe",
-  "Guyane",
-  "Hauts-de-France",
-  "Île-de-France",
-  "La Réunion",
-  "Martinique",
-  "Mayotte",
-  "Normandie",
-  "Nouvelle-Aquitaine",
-  "Occitanie",
-  "Pays de la Loire",
-  "Provence-Alpes-Côte d’Azur",
+  DEFAULT_GOOGLE_MAPS_COUNTRY,
+  ...LEAD_GEN_GOOGLE_MAPS_GEO_OPTIONS.map((o) => o.value),
 ] as const;
 
 export type LeadGenerationZonePreset = (typeof LEAD_GENERATION_ZONE_OPTIONS)[number];
@@ -139,7 +128,7 @@ export function getDefaultGenerateCampaignConfig(): {
   return {
     campaignName: "",
     sector: LEAD_GENERATION_SECTOR_OPTIONS[0],
-    zone: LEAD_GENERATION_ZONE_OPTIONS[0],
+    zone: DEFAULT_GOOGLE_MAPS_COUNTRY,
     maxCrawledPlacesPerSearch: 50,
     maxTotalPlaces: 500,
     customQueriesText: "",
@@ -166,9 +155,17 @@ export function buildAutoQueriesFromSectorAndZone(sector: string, zone: string):
   const s = sector.trim();
   const z = zone.trim();
   if (sectorNeedsCustomQueries(s)) return [];
-  if (!s || !z) return [];
-  const base = [`${s} ${z}`, `${s} professionnel ${z}`, `${s} entreprise ${z}`];
-  return base.slice(0, MAX_GENERATE_QUERIES);
+  if (!s) return [];
+  const base = [`${s}`, `${s} professionnel`, `${s} entreprise`];
+  if (!z) return base.slice(0, MAX_GENERATE_QUERIES);
+  return injectGeoTargetInSearchStrings(base, z).slice(0, MAX_GENERATE_QUERIES);
+}
+
+function applyGeoToCustomQueries(customQueries: string[], zone: string): string[] {
+  if (customQueries.length === 0) return customQueries;
+  const z = zone.trim();
+  if (!z) return customQueries;
+  return injectGeoTargetInSearchStrings(customQueries, z).slice(0, MAX_GENERATE_QUERIES);
 }
 
 export function resolveRawSearchStrings(params: {
@@ -177,7 +174,7 @@ export function resolveRawSearchStrings(params: {
   customQueriesText: string;
 }): string[] {
   const custom = parseCustomQueries(params.customQueriesText);
-  if (custom.length > 0) return custom;
+  if (custom.length > 0) return applyGeoToCustomQueries(custom, params.zone);
   return buildAutoQueriesFromSectorAndZone(params.sector, params.zone);
 }
 

@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { Json } from "../domain/json";
 import { lgTable } from "../lib/lg-db";
+import {
+  getLeadGenGoogleMapsGeoOption,
+  injectGeoTargetInSearchStrings,
+} from "../lib/google-maps-region-options";
 
 import { getApifyEnv, startApifyActorRun } from "./client";
 import { leadGenerationBatchCeeInsertColumns, readCeeContextFromApifyInput } from "../lib/lead-generation-batch-cee-columns";
@@ -49,6 +53,8 @@ export async function startGoogleMapsApifyImport(
   const now = new Date().toISOString();
 
   const locationQuery = resolveGoogleMapsLocationQuery(input);
+  const geoTarget = getLeadGenGoogleMapsGeoOption(locationQuery);
+  const searchStrings = injectGeoTargetInSearchStrings(input.searchStrings, locationQuery);
   const campaignName = input.campaignName?.trim();
   const sourceLabel =
     campaignName && campaignName.length > 0
@@ -58,7 +64,7 @@ export async function startGoogleMapsApifyImport(
       : "Import Google Maps";
 
   const baseMetadata: Record<string, unknown> = {
-    searchStrings: input.searchStrings,
+    searchStrings,
     locationQuery,
     maxCrawledPlacesPerSearch: input.maxCrawledPlacesPerSearch ?? 50,
     ...(typeof input.includeWebResults === "boolean"
@@ -66,6 +72,16 @@ export async function startGoogleMapsApifyImport(
       : {}),
     ...(campaignName ? { campaignName } : {}),
     ...(input.campaignSector?.trim() ? { campaignSector: input.campaignSector.trim() } : {}),
+    ...(geoTarget
+      ? {
+          geoTarget: {
+            value: geoTarget.value,
+            label: geoTarget.label,
+            kind: geoTarget.kind,
+            departmentCode: geoTarget.departmentCode ?? null,
+          },
+        }
+      : {}),
   };
 
   const ceeCols = leadGenerationBatchCeeInsertColumns(readCeeContextFromApifyInput(input));
@@ -93,7 +109,11 @@ export async function startGoogleMapsApifyImport(
   const batchId = (inserted as { id: string }).id;
 
   try {
-    const runInput = buildGoogleMapsActorRunInput(input);
+    const runInput = buildGoogleMapsActorRunInput({
+      ...input,
+      searchStrings,
+      locationQuery,
+    });
     const started = await startApifyActorRun(token, actorId, runInput);
     const apifyRunId = started.id;
     const datasetId = started.defaultDatasetId ?? "";

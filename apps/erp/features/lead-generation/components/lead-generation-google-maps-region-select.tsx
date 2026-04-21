@@ -3,12 +3,18 @@
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 
-import { LEAD_GEN_GOOGLE_MAPS_REGION_OPTIONS } from "../lib/google-maps-region-options";
+import {
+  DEFAULT_GOOGLE_MAPS_COUNTRY,
+  LEAD_GEN_GOOGLE_MAPS_DEPARTMENT_OPTIONS,
+  LEAD_GEN_GOOGLE_MAPS_OVERSEAS_TERRITORY_OPTIONS,
+} from "../lib/google-maps-region-options";
 
 type Props = {
   id?: string;
@@ -23,7 +29,7 @@ export function LeadGenerationGoogleMapsRegionSelect({
   value,
   onValueChange,
   disabled,
-  placeholder = "Choisir une zone",
+  placeholder = "Choisir un département / territoire",
 }: Props) {
   return (
     <Select
@@ -39,11 +45,23 @@ export function LeadGenerationGoogleMapsRegionSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {LEAD_GEN_GOOGLE_MAPS_REGION_OPTIONS.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
+        <SelectItem value={DEFAULT_GOOGLE_MAPS_COUNTRY}>France (tout le pays)</SelectItem>
+        <SelectGroup>
+          <SelectLabel>Métropole + DOM (départements)</SelectLabel>
+          {LEAD_GEN_GOOGLE_MAPS_DEPARTMENT_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+        <SelectGroup>
+          <SelectLabel>Collectivités / territoires français d’outre-mer</SelectLabel>
+          {LEAD_GEN_GOOGLE_MAPS_OVERSEAS_TERRITORY_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
       </SelectContent>
     </Select>
   );

@@ -25,34 +25,25 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   buildAutoCampaignLabels,
   buildGenerateCampaignPlan,
+  DEFAULT_GOOGLE_MAPS_COUNTRY,
   getDefaultGenerateCampaignConfig,
   LEAD_GENERATION_SECTOR_OPTIONS,
-  LEAD_GENERATION_ZONE_OPTIONS,
   sectorNeedsCustomQueries,
 } from "../lib/generate-campaign";
+import { LeadGenerationGoogleMapsRegionSelect } from "./lead-generation-google-maps-region-select";
 import {
   appendGenerateCampaignPreset,
   mergeGenerateCampaignConfig,
   type GenerateCampaignStoredConfig,
   readGenerateCampaignPresets,
 } from "../lib/generate-campaign-storage";
+import { isLeadGenGoogleMapsGeoValue } from "../lib/google-maps-region-options";
 import type { LeadGenerationCeeImportScope } from "../queries/get-lead-generation-cee-import-scope";
 import { generateAndEnrichLeadsActionInputSchema } from "../schemas/lead-generation-actions.schema";
 
 import { LeadGenerationCeeTeamPickers } from "./lead-generation-cee-team-pickers";
 
 const PRESET_NONE = "__none__";
-
-/** Valeur interne du Select pour zone hors liste (saisie libre). */
-const ZONE_SELECT_CUSTOM = "__lg_zone_custom__";
-
-const zonePresetSet = new Set<string>(LEAD_GENERATION_ZONE_OPTIONS);
-
-function zoneSelectValue(zone: string): string {
-  const z = zone.trim();
-  if (zonePresetSet.has(z)) return z;
-  return ZONE_SELECT_CUSTOM;
-}
 
 export type LeadGenerationGenerateCampaignModalProps = {
   open: boolean;
@@ -81,10 +72,10 @@ function toPayload(form: GenerateCampaignStoredConfig): GenerateCampaignStoredCo
 function coerceStoredConfig(config: GenerateCampaignStoredConfig): GenerateCampaignStoredConfig {
   const merged = mergeGenerateCampaignConfig(config);
   const allowed = new Set<string>(LEAD_GENERATION_SECTOR_OPTIONS);
-  if (!allowed.has(merged.sector)) {
-    return { ...merged, sector: getDefaultGenerateCampaignConfig().sector };
-  }
-  return merged;
+  const nextSector = allowed.has(merged.sector) ? merged.sector : getDefaultGenerateCampaignConfig().sector;
+  const zone = merged.zone?.trim() || DEFAULT_GOOGLE_MAPS_COUNTRY;
+  const nextZone = isLeadGenGoogleMapsGeoValue(zone) ? zone : DEFAULT_GOOGLE_MAPS_COUNTRY;
+  return { ...merged, sector: nextSector, zone: nextZone };
 }
 
 export function LeadGenerationGenerateCampaignModal({
@@ -312,46 +303,20 @@ export function LeadGenerationGenerateCampaignModal({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lg-zone-select">Zone géographique</Label>
+              <Label htmlFor="lg-country">Pays</Label>
+              <Input id="lg-country" value={DEFAULT_GOOGLE_MAPS_COUNTRY} disabled />
+              <p className="text-[11px] text-muted-foreground">France est appliquée par défaut.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lg-zone-select">Département / territoire</Label>
               <p className="text-[11px] text-muted-foreground">
-                Région française (ou précisez une ville / bassin si vous choisissez « Autre »).
+                Facultatif: si vide, la recherche reste sur la France entière.
               </p>
-              <Select
-                value={zoneSelectValue(form.zone)}
-                onValueChange={(v) => {
-                  if (!v) return;
-                  if (v === ZONE_SELECT_CUSTOM) {
-                    setForm((f) => ({
-                      ...f,
-                      zone: zonePresetSet.has(f.zone.trim()) ? "" : f.zone,
-                    }));
-                  } else {
-                    setForm((f) => ({ ...f, zone: v }));
-                  }
-                }}
-              >
-                <SelectTrigger id="lg-zone-select" className="w-full">
-                  <SelectValue placeholder="Choisir une région" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[min(60vh,320px)]">
-                  {LEAD_GENERATION_ZONE_OPTIONS.map((z) => (
-                    <SelectItem key={z} value={z}>
-                      {z}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={ZONE_SELECT_CUSTOM}>Autre — saisie libre</SelectItem>
-                </SelectContent>
-              </Select>
-              {zoneSelectValue(form.zone) === ZONE_SELECT_CUSTOM ? (
-                <Input
-                  id="lg-zone-custom"
-                  value={form.zone}
-                  onChange={(e) => setForm((f) => ({ ...f, zone: e.target.value }))}
-                  placeholder="Ex. Bordeaux métropole, Lille Métropole…"
-                  autoComplete="off"
-                  aria-label="Zone personnalisée"
-                />
-              ) : null}
+              <LeadGenerationGoogleMapsRegionSelect
+                id="lg-zone-select"
+                value={form.zone}
+                onValueChange={(v) => setForm((f) => ({ ...f, zone: v }))}
+              />
             </div>
           </div>
 

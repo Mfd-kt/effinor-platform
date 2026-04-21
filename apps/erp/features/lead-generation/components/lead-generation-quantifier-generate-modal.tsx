@@ -90,7 +90,8 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
           <DialogTitle>Générer des leads (Google Maps)</DialogTitle>
           <DialogDescription>
             Les fiches créées arrivent en <strong>à valider</strong> : aucun commercial ne les reçoit tant qu’elles ne sont pas
-            qualifiées. Même principe que sur le tableau de bord : une recherche par ligne, zone géographique standardisée.
+            qualifiées. Même principe que sur le tableau de bord : une recherche par ligne, pays France par défaut, puis
+            ciblage fin par département / territoire.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
@@ -117,7 +118,11 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
             <p className="text-[11px] text-muted-foreground">Une idée de recherche par ligne (comme sur Google Maps).</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="qg-zone">Zone géographique</Label>
+            <Label htmlFor="qg-country">Pays</Label>
+            <Input id="qg-country" value="France" disabled />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="qg-zone">Département / territoire</Label>
             <LeadGenerationGoogleMapsRegionSelect
               id="qg-zone"
               value={locationQuery}
@@ -125,7 +130,7 @@ export function LeadGenerationQuantifierGenerateModal({ ceeScope }: Props) {
               disabled={pending}
             />
             <p className="text-[11px] text-muted-foreground">
-              Liste des régions — même réglage que sur le dashboard pour éviter les erreurs de ciblage.
+              Métropole + DOM + collectivités/territoires d’outre-mer. France entière reste possible.
             </p>
           </div>
           <div className="space-y-2">

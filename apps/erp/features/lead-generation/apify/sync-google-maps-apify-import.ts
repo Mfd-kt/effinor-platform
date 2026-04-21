@@ -11,6 +11,7 @@ import {
   buildApifyPartialDatasetRecoveryMetadata,
   APIFY_PARTIAL_IMPORT_META_KEY,
 } from "../lib/apify-partial-dataset-recovery";
+import { isApifyItemInGeoTarget } from "../lib/google-maps-region-options";
 import { getApifyDatasetItems, getApifyEnv, getApifyRun, isApifyRunFinished } from "./client";
 import { dedupeApifyGoogleMapsDatasetItems, mapGoogleMapsApifyItem } from "./map-google-maps-item";
 import type { SyncGoogleMapsApifyImportResult } from "./types";
@@ -218,6 +219,18 @@ export async function syncGoogleMapsApifyImport(input: {
   /** Même lieu = plusieurs lignes côté Apify (ex. avis par blocs) : une seule fiche stock par placeId. */
   rawItems = dedupeApifyGoogleMapsDatasetItems(rawItems);
 
+  const locationQuery =
+    typeof metaBase.locationQuery === "string" && metaBase.locationQuery.trim().length > 0
+      ? metaBase.locationQuery.trim()
+      : "France";
+  const geoScopedItems = rawItems.filter((item) =>
+    typeof item === "object" && item !== null && !Array.isArray(item)
+      ? isApifyItemInGeoTarget(item as Record<string, unknown>, locationQuery)
+      : false,
+  );
+  const geoRejectedCount = rawItems.length - geoScopedItems.length;
+  rawItems = geoScopedItems;
+
   if (fin === "fail" && rawItems.length === 0) {
     const finishedAt = new Date().toISOString();
     const summary = `Run Apify terminé en échec (${run.status}) — dataset vide.`;
@@ -353,6 +366,26 @@ export async function syncGoogleMapsApifyImport(input: {
         } as unknown as Json,
         error_summary: null,
         external_status: run.status,
+      } as never)
+      .eq("id", batchId);
+  }
+  if (geoRejectedCount > 0) {
+    const cur = await getLeadGenerationImportBatchById(batchId);
+    const metaRoot =
+      typeof cur?.metadata_json === "object" &&
+      cur.metadata_json !== null &&
+      !Array.isArray(cur.metadata_json)
+        ? { ...(cur.metadata_json as Record<string, unknown>) }
+        : {};
+    await batches
+      .update({
+        metadata_json: {
+          ...metaRoot,
+          geo_scope_filter: {
+            target: locationQuery,
+            rejected_out_of_scope_count: geoRejectedCount,
+          },
+        } as unknown as Json,
       } as never)
       .eq("id", batchId);
   }

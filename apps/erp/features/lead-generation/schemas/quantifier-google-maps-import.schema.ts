@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { isLeadGenGoogleMapsRegionValue } from "../lib/google-maps-region-options";
+import { isLeadGenGoogleMapsGeoValue } from "../lib/google-maps-region-options";
 import { parseGoogleMapsSearchLines } from "../lib/parse-google-maps-search-lines";
 
 const uuid = z.string().uuid("Identifiant UUID invalide.");
@@ -14,8 +14,8 @@ export const quantifierStartGoogleMapsApifyImportActionInputSchema = z
       .trim()
       .max(200)
       .optional()
-      .refine((q) => !q || isLeadGenGoogleMapsRegionValue(q), {
-        message: "Choisissez une zone dans la liste.",
+      .refine((q) => !q || isLeadGenGoogleMapsGeoValue(q), {
+        message: "Choisissez un département / territoire dans la liste.",
       }),
     maxCrawledPlacesPerSearch: z.number().int().min(1).max(500).optional(),
     ceeSheetId: uuid,

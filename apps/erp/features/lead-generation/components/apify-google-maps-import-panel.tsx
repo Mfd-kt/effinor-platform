@@ -113,8 +113,8 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
       <div className="space-y-3 rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold">Lancer un scraping Google Maps</h3>
         <p className="text-xs text-muted-foreground">
-          Saisissez vos requêtes comme sur Google Maps : une idée de recherche par ligne. La zone géographique est choisie
-          dans une liste de régions (même liste que la génération côté quantification).
+          Saisissez vos requêtes comme sur Google Maps : une idée de recherche par ligne. Pays France par défaut, puis
+          ciblage fin par département / territoire.
         </p>
         <LeadGenerationCeeTeamPickers
           scope={ceeScope}
@@ -137,7 +137,11 @@ export function ApifyGoogleMapsImportPanel({ ceeScope }: { ceeScope: LeadGenerat
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="apify-location-query">Zone géographique</Label>
+          <Label htmlFor="apify-country">Pays</Label>
+          <Input id="apify-country" value="France" disabled />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="apify-location-query">Département / territoire</Label>
           <LeadGenerationGoogleMapsRegionSelect
             id="apify-location-query"
             value={locationQuery}
