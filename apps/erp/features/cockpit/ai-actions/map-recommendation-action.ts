@@ -109,7 +109,7 @@ export function resolveRecommendationAction(id: string, rec: RecSlice | null): R
   }
 
   if (id === "ai:sla-confirmateur") {
-    return viewAutomation("/confirmateur");
+    return viewAutomation("/leads");
   }
 
   if (id.startsWith("ai:leads-hot-24h:")) {

@@ -1,11 +1,11 @@
 import type { CockpitVariant } from "@/lib/auth/cockpit-variant";
 
 function buildCloserQueuePath(_sheetId: string | null, _opts?: { tab?: string }): string {
-  return "/closer";
+  return "/leads";
 }
 
 function buildConfirmateurQueuePath(_sheetId: string | null, _opts?: { tab?: string }): string {
-  return "/confirmateur";
+  return "/leads";
 }
 import type {
   CockpitAlert,

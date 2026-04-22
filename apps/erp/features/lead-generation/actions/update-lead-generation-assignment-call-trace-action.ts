@@ -119,7 +119,6 @@ export async function updateLeadGenerationAssignmentCallTraceAction(
 
   revalidatePath("/lead-generation/my-queue");
   revalidatePath(`/lead-generation/my-queue/${r.stock_id}`);
-  revalidatePath("/agent");
 
   return { ok: true, removedFromQueue: Boolean(terminalOutcome) };
 }

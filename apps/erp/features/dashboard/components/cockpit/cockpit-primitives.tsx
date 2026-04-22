@@ -550,7 +550,7 @@ export function CockpitNetworkCallout() {
       <CardContent>
         <CardDescription>
           Vue détaillée fiches → équipes → rôles :{" "}
-          <Link href="/admin/cee-sheets" className="font-medium text-emerald-700 underline dark:text-emerald-400">
+          <Link href="/settings/roles" className="font-medium text-emerald-700 underline dark:text-emerald-400">
             Administration fiches CEE
           </Link>
         </CardDescription>

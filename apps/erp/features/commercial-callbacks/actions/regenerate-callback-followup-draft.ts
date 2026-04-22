@@ -53,7 +53,7 @@ export async function regenerateCallbackFollowupDraft(input: {
       return { ok: false, error: "Impossible d’enregistrer le brouillon. Réessayez." };
     }
 
-    revalidatePath("/agent");
+    revalidatePath("/");
     return { ok: true, source };
   } catch (e) {
     console.error("[regenerateCallbackFollowupDraft]", e);

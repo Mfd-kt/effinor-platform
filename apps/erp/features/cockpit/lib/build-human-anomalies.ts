@@ -84,7 +84,7 @@ export function buildHumanAnomalies(input: {
         role: "confirmateur",
         problem: `Backlog élevé : ${c.backlog} dossiers en attente.`,
         level: c.backlog >= 16 ? "critique" : "warning",
-        dossiersHref: "/confirmateur",
+        dossiersHref: "/leads",
         priorityScore: ps,
       });
     }
@@ -98,7 +98,7 @@ export function buildHumanAnomalies(input: {
         role: "confirmateur",
         problem: "Aucun dossier qualifié aujourd’hui malgré du stock.",
         level: "warning",
-        dossiersHref: "/confirmateur",
+        dossiersHref: "/leads",
         priorityScore: ps - 100,
       });
     }
@@ -112,7 +112,7 @@ export function buildHumanAnomalies(input: {
         role: "confirmateur",
         problem: `Temps moyen en file confirmateur trop élevé (~${c.avgBacklogAgeDays} j).`,
         level: "critique",
-        dossiersHref: "/confirmateur",
+        dossiersHref: "/leads",
         priorityScore: ps + 500,
       });
     }
@@ -129,7 +129,7 @@ export function buildHumanAnomalies(input: {
         role: "closer",
         problem: `Pipeline élevé (${c.pipelineOpen}) sans signature cette semaine.`,
         level: c.pipelineOpen >= 8 ? "critique" : "warning",
-        dossiersHref: "/closer",
+        dossiersHref: "/leads",
         priorityScore: ps,
       });
     }
@@ -147,7 +147,7 @@ export function buildHumanAnomalies(input: {
         role: "closer",
         problem: `Taux de signature faible (${c.signatureRatePct} %).`,
         level: "warning",
-        dossiersHref: "/closer",
+        dossiersHref: "/leads",
         priorityScore: ps,
       });
     }

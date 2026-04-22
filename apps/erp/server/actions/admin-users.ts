@@ -688,7 +688,6 @@ async function revalidateUsersAndLeadGenerationViews(): Promise<void> {
   revalidatePath("/lead-generation");
   revalidatePath("/lead-generation/my-queue");
   revalidatePath("/lead-generation/management");
-  revalidatePath("/agent");
   revalidatePath("/cockpit");
 }
 

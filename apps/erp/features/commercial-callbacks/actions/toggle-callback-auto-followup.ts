@@ -34,6 +34,6 @@ export async function toggleCallbackAutoFollowup(input: {
   }
 
   await scheduleCallbackAutoFollowupIfNeeded(input.callbackId);
-  revalidatePath("/agent");
+  revalidatePath("/");
   return { ok: true };
 }

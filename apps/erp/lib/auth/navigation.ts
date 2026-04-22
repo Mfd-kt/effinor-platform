@@ -47,20 +47,10 @@ export async function buildAllowedNavHrefs(
   const extra: string[] = [];
   const ceeTeamManager = await isCeeTeamManager(access.userId);
 
-  if (canAccessCeeWorkflowsModule(access)) {
-    extra.push("/agent");
-  }
   if (hasFullCeeWorkflowAccess(access)) {
     extra.push("/commercial-callbacks");
   }
-  if (canAccessConfirmateurWorkspace(access)) {
-    extra.push("/confirmateur");
-  }
-  if (canAccessCloserWorkspace(access)) {
-    extra.push("/closer");
-  }
   if (canAccessAdminCeeSheets(access)) {
-    extra.push("/admin/cee-sheets");
     extra.push("/admin/technical-visit-templates");
   }
   if (canAccessAdminCeeSheets(access) || ceeTeamManager) {
@@ -113,7 +103,6 @@ export async function buildAllowedNavHrefs(
       ...navigable,
       "/settings/users",
       "/settings/roles",
-      "/settings/cee",
       "/settings/products",
     ]);
   }

@@ -43,9 +43,6 @@ export async function deleteLead(leadId: string): Promise<DeleteLeadResult> {
 
   revalidatePath("/leads");
   revalidatePath(`/leads/${leadId}`);
-  revalidatePath("/agent");
-  revalidatePath("/confirmateur");
-  revalidatePath("/closer");
   revalidatePath("/cockpit");
   return { ok: true };
 }

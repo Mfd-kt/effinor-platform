@@ -37,11 +37,10 @@ export async function sendCallbackAutoFollowupNow(callbackId: string): Promise<S
     return { ok: false, error: res.error };
   }
 
+  revalidatePath("/");
   if (res.sent) {
-    revalidatePath("/agent");
     return { ok: true, sent: true, message: "E-mail envoyé." };
   }
 
-  revalidatePath("/agent");
   return { ok: true, sent: false, message: `Non envoyé : ${res.skipped}` };
 }

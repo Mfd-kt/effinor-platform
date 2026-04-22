@@ -113,22 +113,8 @@ export default async function LeadDetailPage({ params }: PageProps) {
 
   const workflowActivityEvents: any[] = [];
 
-  const leadListBackHref =
-    access.kind === "authenticated" &&
-    isRestrictedFieldAgent(access) &&
-    !canAccessLeadsDirectoryNav(access)
-      ? "/agent"
-      : access.kind === "authenticated" &&
-          access.roleCodes.includes("closer") &&
-          !canAccessLeadsDirectoryNav(access)
-        ? "/closer"
-        : "/leads";
-  const leadListBackLabel =
-    leadListBackHref === "/agent"
-      ? "Retour au poste Agent"
-      : leadListBackHref === "/closer"
-        ? "Retour au poste Closer"
-        : "Retour à la liste";
+  const leadListBackHref = "/leads";
+  const leadListBackLabel = "Retour à la liste";
 
   const contact = contactSalutationLine(lead);
   const createdByLabel =

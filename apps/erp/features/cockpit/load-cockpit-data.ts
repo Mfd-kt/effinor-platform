@@ -173,7 +173,7 @@ function buildSyntheticAlerts(input: {
       severity: "critical",
       title: "Aucun confirmateur actif en équipe",
       message: "Aucun membre actif avec le rôle confirmateur sur les équipes CEE.",
-      href: "/settings/cee",
+      href: "/settings/roles",
       actionLabel: "Réglages CEE",
     });
   }
@@ -184,7 +184,7 @@ function buildSyntheticAlerts(input: {
       severity: "critical",
       title: "Aucun closer actif en équipe",
       message: "Aucun membre actif avec le rôle closer sur les équipes CEE.",
-      href: "/settings/cee",
+      href: "/settings/roles",
       actionLabel: "Réglages CEE",
     });
   }
@@ -206,7 +206,7 @@ function buildSyntheticAlerts(input: {
       severity: "warning",
       title: "Backlog pipeline élevé",
       message: `${input.blockedConfirmCount} dossiers en attente confirmateur sur ${input.globalSnapshotTotal} dossiers actifs.`,
-      href: "/confirmateur",
+      href: "/leads",
       actionLabel: "Poste confirmateur",
     });
   }
@@ -400,14 +400,14 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     stageAlerts.push({
       id: "stage:confirm-slow",
       message: `Attente confirmateur : ~${awaitConfirmAvg} j. en moyenne sur le stock.`,
-      href: "/confirmateur",
+      href: "/leads",
     });
   }
   if (awaitCloserAvg != null && awaitCloserAvg >= 7) {
     stageAlerts.push({
       id: "stage:closer-slow",
       message: `Attente closer : ~${awaitCloserAvg} j. en moyenne.`,
-      href: "/closer",
+      href: "/leads",
     });
   }
   if (unassignedAvg != null && unassignedAvg >= 4) {
@@ -421,7 +421,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     stageAlerts.push({
       id: "stage:blocked-old",
       message: `Dossiers bloqués / stale : ~${blockedAvg} j. en moyenne.`,
-      href: "/admin/cee-sheets",
+      href: "/settings/roles",
     });
   }
 

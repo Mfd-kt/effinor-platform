@@ -77,7 +77,6 @@ export async function updateLeadGenerationStockDecisionMakerAction(
 
   revalidatePath("/lead-generation/my-queue");
   revalidatePath(`/lead-generation/my-queue/${parsed.data.stockId}`);
-  revalidatePath("/agent");
 
   return { ok: true };
 }

@@ -48,7 +48,6 @@ export async function softDeleteTechnicalVisitAdminAction(
     revalidatePath("/leads");
     revalidatePath(`/leads/${row.lead_id}`);
   }
-  revalidatePath("/confirmateur");
 
   return { ok: true };
 }

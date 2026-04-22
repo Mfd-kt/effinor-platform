@@ -246,7 +246,7 @@ export async function getCommercialAgentCockpitData(
       id: "callbacks_today",
       title: "Leads à rappeler aujourd’hui",
       count: callbacksToday,
-      href: "/agent",
+      href: "/commercial-callbacks",
       hint: "Rappel prévu aujourd’hui.",
     },
     {
@@ -259,7 +259,7 @@ export async function getCommercialAgentCockpitData(
       id: "agreements_stale",
       title: "Accords non signés depuis 3 jours",
       count: staleAgreementCount,
-      href: "/agent",
+      href: "/commercial-callbacks",
     },
     {
       id: "stalled",

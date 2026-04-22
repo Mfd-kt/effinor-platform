@@ -58,7 +58,7 @@ function appNotificationOpenHref(n: AppNotificationRow): string {
     return agentCommercialCallbackHref(n.entity_id);
   }
   if (n.type === "cockpit_ai_recommendation") return "/cockpit";
-  return "/agent";
+  return "/commercial-callbacks";
 }
 
 export function AppNotificationsBell({ userId }: AppNotificationsBellProps) {

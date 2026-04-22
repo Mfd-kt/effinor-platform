@@ -58,6 +58,6 @@ export async function startCommercialCallbackCall(raw: {
     return { ok: false, error: error.message };
   }
 
-  revalidatePath("/agent");
+  revalidatePath("/");
   return { ok: true };
 }

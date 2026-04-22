@@ -38,6 +38,6 @@ export async function setCommercialCallbackStatus(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath("/agent");
+  revalidatePath("/");
   return { ok: true };
 }

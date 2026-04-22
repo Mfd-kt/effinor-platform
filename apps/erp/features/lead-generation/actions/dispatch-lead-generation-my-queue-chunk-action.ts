@@ -60,7 +60,6 @@ export async function dispatchLeadGenerationMyQueueChunkAction(
   try {
     const data = await dispatchLeadGenerationMyQueueChunkForAgent(access.userId, chunkSize, ceeSheetIdForDispatch);
     revalidatePath("/lead-generation/my-queue");
-    revalidatePath("/agent");
     return { ok: true, data };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur lors de la récupération des fiches.";

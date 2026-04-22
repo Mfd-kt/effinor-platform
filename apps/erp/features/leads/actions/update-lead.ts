@@ -121,7 +121,5 @@ export async function updateLead(input: unknown): Promise<UpdateLeadResult> {
   revalidatePath("/leads");
   revalidatePath(`/leads/${id}`);
   revalidatePath("/technical-visits");
-  revalidatePath("/confirmateur");
-  revalidatePath("/closer");
   return { ok: true, data };
 }

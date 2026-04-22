@@ -309,7 +309,7 @@ export function buildCockpitAiRecommendationsFallback(
       relatedEntityType: "user",
       relatedEntityId: worstConf.userId,
       actionLabel: "Voir le backlog",
-      actionHref: "/confirmateur",
+      actionHref: "/leads",
       phone: null,
       _signals: {
         staffingCritical: worstConf.backlog >= 14,
@@ -330,7 +330,7 @@ export function buildCockpitAiRecommendationsFallback(
       relatedEntityType: "user",
       relatedEntityId: stuckCloser.userId,
       actionLabel: "Voir le closer",
-      actionHref: "/closer",
+      actionHref: "/leads",
       phone: null,
       _signals: {
         staffingCritical: stuckCloser.pipelineOpen >= 8,
@@ -350,12 +350,7 @@ export function buildCockpitAiRecommendationsFallback(
       relatedEntityType: "user",
       relatedEntityId: h.userId,
       actionLabel: "Voir ses dossiers",
-      actionHref:
-        h.role === "confirmateur"
-          ? "/confirmateur"
-          : h.role === "closer"
-            ? "/closer"
-            : "/leads",
+      actionHref: "/leads",
       phone: null,
       _signals: { staffingCritical: true },
     });
@@ -412,7 +407,7 @@ export function buildCockpitAiRecommendationsFallback(
       relatedEntityType: "sheet",
       relatedEntityId: null,
       actionLabel: "Voir les fiches",
-      actionHref: "/admin/cee-sheets",
+      actionHref: "/settings/roles",
       phone: null,
       _signals: {
         configBlocksWorkflows: stuckSheet.count,
@@ -431,7 +426,7 @@ export function buildCockpitAiRecommendationsFallback(
       relatedEntityType: "sheet",
       relatedEntityId: s.sheetId,
       actionLabel: "Corriger la fiche",
-      actionHref: "/admin/cee-sheets",
+      actionHref: "/settings/roles",
       phone: null,
       _signals: {
         configBlocksWorkflows: 12,
@@ -450,7 +445,7 @@ export function buildCockpitAiRecommendationsFallback(
       relatedEntityType: "system",
       relatedEntityId: null,
       actionLabel: "Voir confirmateur",
-      actionHref: "/confirmateur",
+      actionHref: "/leads",
       phone: null,
       _signals: { slaHoursExcess: true },
     });

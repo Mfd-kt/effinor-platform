@@ -15,9 +15,7 @@ const ALLOWED_REDIRECT_PREFIXES = [
   "/cockpit",
   "/commercial-callbacks",
   "/leads",
-  "/admin/cee-sheets",
-  "/confirmateur",
-  "/closer",
+  "/settings/roles",
 ] as const;
 
 export function sanitizeInternalRedirect(path: string): string {
@@ -195,7 +193,7 @@ export async function runAiActionHandler(
       void fixSheetPayload.safeParse(payload);
       return {
         ok: true,
-        clientRedirect: sanitizeInternalRedirect("/admin/cee-sheets"),
+        clientRedirect: sanitizeInternalRedirect("/settings/roles"),
         resultJson: payload as Json,
       };
     }
