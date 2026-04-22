@@ -39,7 +39,7 @@ export async function enqueueCallbackAppNotification(input: {
     severity: input.severity,
     entity_type: "commercial_callback",
     entity_id: input.entityId,
-    action_url: input.actionUrl ?? (input.entityId ? `/agent?callback=${input.entityId}` : "/agent"),
+    action_url: input.actionUrl ?? (input.entityId ? `/commercial-callbacks?callback=${input.entityId}` : "/commercial-callbacks"),
     is_read: false,
     is_dismissed: false,
     metadata_json: (input.metadata ?? null) as Json,

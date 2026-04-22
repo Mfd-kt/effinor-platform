@@ -51,7 +51,6 @@ export async function markCommercialCallbackLost(
     return { ok: false, error: "Rappel introuvable ou déjà clôturé." };
   }
 
-  revalidatePath("/agent");
   revalidatePath("/commercial-callbacks");
   return { ok: true };
 }

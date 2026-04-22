@@ -79,10 +79,7 @@ export function AppHeader({
         {actorIsSuperAdmin && !isImpersonating ? (
           <ImpersonationPicker roleOptions={impersonationRoleOptions} />
         ) : null}
-        <AppNotificationsBell
-          userId={userId}
-          includeCloserLeadReminders={includeCloserLeadReminders}
-        />
+        <AppNotificationsBell userId={userId} />
       </div>
     </header>
   );

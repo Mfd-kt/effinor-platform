@@ -79,7 +79,6 @@ export function insertFromLeadForm(data: LeadInsertInput): LeadInsert {
 export function updateFromLeadForm(data: Omit<LeadUpdatePayload, "id">): LeadUpdate {
   const { created_by_agent_id, ...dataForCommon } = data;
   const m = mapCommon(dataForCommon as LeadInsertInput);
-  // Le confirmateur est défini côté serveur à la création de visite technique, pas via ce formulaire.
   const { confirmed_by_user_id, ...patch } = m;
   void confirmed_by_user_id;
   const out: LeadUpdate = { ...patch };

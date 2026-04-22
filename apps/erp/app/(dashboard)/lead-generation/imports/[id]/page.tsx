@@ -12,13 +12,8 @@ import { LeadGenerationStockListView } from "@/features/lead-generation/componen
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
 import { formatMyQueueCeeSheetOptionLabel } from "@/features/lead-generation/lib/my-queue-cee-sheet-option";
 import { buildLeadGenerationStockPageUrl, type LeadGenerationListSearchState } from "@/features/lead-generation/lib/build-lead-generation-list-url";
-import {
-  formatApifyPartialRecoveryUiMessage,
-  readApifyPartialDatasetRecoveryMeta,
-} from "@/features/lead-generation/lib/apify-partial-dataset-recovery";
 import { assessLeadGenerationImportSyncRetryEligibility } from "@/features/lead-generation/lib/lead-generation-import-sync-retry-eligibility";
 import { humanizeLeadGenerationActionError } from "@/features/lead-generation/lib/humanize-lead-generation-action-error";
-import { readLeadGenerationImportGeoQuality } from "@/features/lead-generation/lib/import-batch-geo-quality";
 import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import { getLeadGenerationImportBatchById } from "@/features/lead-generation/queries/get-lead-generation-import-batch-by-id";
 import { getLeadGenerationStock } from "@/features/lead-generation/queries/get-lead-generation-stock";
@@ -70,43 +65,6 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function geoQualityBadgeModel(quality: ReturnType<typeof readLeadGenerationImportGeoQuality>) {
-  if (!quality) return null;
-  if (quality.level === "national") {
-    return {
-      label: "Périmètre national",
-      variant: "outline" as const,
-      className: "border-slate-400/40 text-slate-300",
-    };
-  }
-  if (quality.level === "very_clean") {
-    return {
-      label: "Très propre",
-      variant: "outline" as const,
-      className: "border-emerald-500/40 text-emerald-300",
-    };
-  }
-  if (quality.level === "correct") {
-    return {
-      label: "Correct",
-      variant: "outline" as const,
-      className: "border-sky-500/40 text-sky-300",
-    };
-  }
-  if (quality.level === "medium") {
-    return {
-      label: "Moyen",
-      variant: "outline" as const,
-      className: "border-amber-500/45 text-amber-300",
-    };
-  }
-  return {
-    label: "Bruit élevé",
-    variant: "outline" as const,
-    className: "border-rose-500/40 text-rose-300",
-  };
-}
-
 function importDetailPath(id: string, page: number): string {
   if (page <= 1) return `/lead-generation/imports/${id}`;
   return `/lead-generation/imports/${id}?page=${page}`;
@@ -152,13 +110,6 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
       ? ((batch.metadata_json as Record<string, unknown>).campaignName as string).trim()
       : "";
   const runRef = batch.external_run_id ?? batch.job_reference ?? "—";
-  const apifyPartialMeta = readApifyPartialDatasetRecoveryMeta(batch.metadata_json);
-  const geoQuality = readLeadGenerationImportGeoQuality({
-    source: batch.source,
-    metadataJson: batch.metadata_json,
-    acceptedCount: batch.accepted_count,
-  });
-  const geoBadge = geoQualityBadgeModel(geoQuality);
   const syncRetryEligibility = assessLeadGenerationImportSyncRetryEligibility(batch);
   const errorHuman = batch.error_summary
     ? humanizeLeadGenerationActionError(batch.error_summary)
@@ -231,15 +182,6 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
         ) : null}
       </div>
 
-      {apifyPartialMeta ? (
-        <div
-          className="rounded-lg border border-amber-500/45 bg-amber-500/[0.12] px-4 py-3 text-sm text-amber-950 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-50"
-          role="status"
-        >
-          <p className="font-medium leading-snug">{formatApifyPartialRecoveryUiMessage(apifyPartialMeta)}</p>
-        </div>
-      ) : null}
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Vue d’ensemble</CardTitle>
@@ -311,64 +253,6 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
           </dl>
         </CardContent>
       </Card>
-
-      {geoQuality ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Qualité géographique du lot</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Conformité entre la cible demandée et les résultats réellement importés.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            {!geoQuality.hasDetailedGeoData ? (
-              <p className="rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-muted-foreground">
-                Données géographiques détaillées non disponibles pour ce lot.
-              </p>
-            ) : null}
-
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/80 bg-muted/20 px-3 py-2">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Cible géographique</p>
-                <p className="font-medium">{geoQuality.target}</p>
-              </div>
-              {geoBadge ? (
-                <Badge variant={geoBadge.variant} className={cn("text-xs", geoBadge.className)}>
-                  {geoBadge.label}
-                </Badge>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <DetailRow
-                label="Type de ciblage"
-                value={
-                  geoQuality.targetingType === "france_wide"
-                    ? "France large"
-                    : "Département / territoire précis"
-                }
-              />
-              <DetailRow label="Acceptés" value={String(geoQuality.acceptedCount)} />
-              <DetailRow
-                label="Rejetés hors périmètre"
-                value={String(geoQuality.rejectedOutOfScopeCount)}
-              />
-              <DetailRow
-                label="Taux de conformité"
-                value={
-                  geoQuality.conformityRatePercent === null
-                    ? "—"
-                    : `${geoQuality.conformityRatePercent.toFixed(1)} %`
-                }
-              />
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Les résultats hors département/territoire demandé sont exclus avant ingestion.
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
 
       <Card>
         <CardHeader>

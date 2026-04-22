@@ -27,7 +27,6 @@ const ADMIN_BASE = "/admin/technical-visit-templates";
 
 function revalidateTemplatePaths(templateId?: string, versionId?: string) {
   revalidatePath(ADMIN_BASE);
-  revalidatePath("/admin/cee-sheets");
   if (templateId) {
     revalidatePath(`${ADMIN_BASE}/${templateId}`);
     if (versionId) {

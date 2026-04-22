@@ -431,11 +431,7 @@ export function CommandCockpitShell({ data }: Props) {
         <CardHeader className="border-b border-border py-3">
           <CardTitle className="text-sm font-semibold">Performance équipe</CardTitle>
           <CardDescription className="text-xs">
-            7 j. · Médiane confirm. (logs) :{" "}
-            {data.workflowLogMetrics.confirmateurMedianHours != null
-              ? `${data.workflowLogMetrics.confirmateurMedianHours} h`
-              : "—"}{" "}
-            · closer :{" "}
+            7 j. · Médiane closer (logs) :{" "}
             {data.workflowLogMetrics.closerMedianHours != null
               ? `${data.workflowLogMetrics.closerMedianHours} h`
               : "—"}{" "}
@@ -482,46 +478,6 @@ export function CommandCockpitShell({ data }: Props) {
                         {a.conversionRatePct != null ? `${a.conversionRatePct}` : "—"}
                       </td>
                       <td className="px-2 py-1.5 tabular-nums text-muted-foreground">{a.workflowTransitionsWeek}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Confirmateurs</p>
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full min-w-[260px] text-xs">
-                <thead className="bg-muted/50 text-muted-foreground">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left">Nom</th>
-                    <th className="px-2 py-1.5 tabular-nums">Backlog</th>
-                    <th className="px-2 py-1.5 tabular-nums">Trait.~</th>
-                    <th className="px-2 py-1.5 tabular-nums">Âge m.</th>
-                    <th className="px-2 py-1.5 tabular-nums" title="Médiane globale (logs)">
-                      Δ conf.
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.performance.confirmateurs.map((c) => (
-                    <tr
-                      key={c.userId}
-                      className={cn(
-                        "border-t border-border",
-                        c.highlight === "top" && "bg-emerald-500/10",
-                        c.highlight === "anomaly" && "bg-amber-500/10",
-                      )}
-                    >
-                      <td className="px-2 py-1.5 font-medium">{c.displayName}</td>
-                      <td className="px-2 py-1.5 tabular-nums">{c.backlog}</td>
-                      <td className="px-2 py-1.5 tabular-nums">{c.treatedApproxWeek}</td>
-                      <td className="px-2 py-1.5 tabular-nums">
-                        {c.avgBacklogAgeDays != null ? `${c.avgBacklogAgeDays} j` : "—"}
-                      </td>
-                      <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
-                        {c.medianHoursConfirmStageFromLogs != null ? `${c.medianHoursConfirmStageFromLogs} h` : "—"}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -684,12 +640,10 @@ export function CommandCockpitShell({ data }: Props) {
         <CardContent className="space-y-3 pt-3">
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <Kpi label="Sans agent" value={data.pipeline.unassignedAgent} warn={data.pipeline.unassignedAgent > 0} />
-            <Kpi label="Att. confirmateur" value={data.pipeline.awaitConfirmateur} />
             <Kpi label="Att. closer" value={data.pipeline.awaitCloser} />
             <Kpi label="Bloqués (files)" value={data.pipeline.blockedCount} warn={data.pipeline.blockedCount > 0} />
           </div>
           <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-            <LatencyPill label="Âge m. confirm." value={data.pipeline.stageLatency.awaitConfirmateurAvgDays} warnAbove={5} />
             <LatencyPill label="Âge m. closer" value={data.pipeline.stageLatency.awaitCloserAvgDays} warnAbove={7} />
             <LatencyPill label="Âge m. sans agent" value={data.pipeline.stageLatency.unassignedAvgDays} warnAbove={4} />
             <LatencyPill label="Âge m. bloqués" value={data.pipeline.stageLatency.blockedAvgDays} warnAbove={10} />

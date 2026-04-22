@@ -1,18 +1,28 @@
-import type { DestratCurrentHeatingModeId } from "@/features/leads/simulator/domain/types";
-import {
-  DESTRAT_CURRENT_HEATING_MODE_LABELS_FR,
-  DESTRAT_CURRENT_HEATING_MODE_VALUES,
-} from "@/features/leads/simulator/schemas/simulator.schema";
+// TODO: cee-workflows / simulator retiré — modes de chauffage inlinés ici en attendant
+// le nouveau pipeline simulation. La liste reflète l'ancien `DESTRAT_CURRENT_HEATING_MODE_VALUES`.
 
-/**
- * Même liste que le simulateur agent (`currentHeatingMode`) — stockée en `leads.heating_type` (`text[]`).
- * Une seule valeur métier à la fois (UI : select) ; le tableau garde la compatibilité schéma / imports.
- */
-export const HEATING_MODE_VALUES = DESTRAT_CURRENT_HEATING_MODE_VALUES;
-export type HeatingMode = DestratCurrentHeatingModeId;
+export const HEATING_MODE_VALUES = [
+  "chaudiere_eau",
+  "pac_air_eau",
+  "pac_air_air",
+  "electrique_direct",
+  "rayonnement",
+  "mix_air_rayonnement",
+  "air_chaud_soufflage",
+  "autre_inconnu",
+] as const;
+
+export type HeatingMode = (typeof HEATING_MODE_VALUES)[number];
 
 export const HEATING_MODE_LABELS: Record<HeatingMode, string> = {
-  ...DESTRAT_CURRENT_HEATING_MODE_LABELS_FR,
+  chaudiere_eau: "Chaudière (eau chaude)",
+  pac_air_eau: "PAC air/eau",
+  pac_air_air: "PAC air/air",
+  electrique_direct: "Chauffage électrique direct",
+  rayonnement: "Rayonnement",
+  mix_air_rayonnement: "Mix air/rayonnement",
+  air_chaud_soufflage: "Air chaud par soufflage",
+  autre_inconnu: "Autre / inconnu",
 };
 
 export const HEATING_MODE_OPTIONS: { value: HeatingMode; label: string }[] = HEATING_MODE_VALUES.map(
@@ -21,7 +31,6 @@ export const HEATING_MODE_OPTIONS: { value: HeatingMode; label: string }[] = HEA
 
 const ALLOWED = new Set<string>(HEATING_MODE_VALUES);
 
-/** Anciens codes CRM (`fioul`, `gaz`, …) → mode détaillé simulateur. */
 const LEGACY_HEATING_DB_VALUES: Record<string, HeatingMode> = {
   fioul: "chaudiere_eau",
   gaz: "chaudiere_eau",
@@ -37,10 +46,6 @@ function mapToCanonical(raw: string): HeatingMode | null {
   return LEGACY_HEATING_DB_VALUES[raw] ?? null;
 }
 
-/**
- * Normalise `heating_type` venant de la base : `text[]`, parfois encore une seule chaîne (legacy),
- * ou JSON mal typé côté client — évite `value.filter is not a function`.
- */
 export function normalizeHeatingModesFromDb(value: unknown): HeatingMode[] {
   if (value == null) return [];
   if (Array.isArray(value)) {

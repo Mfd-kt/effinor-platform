@@ -6,7 +6,6 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadGenerationQualificationQualityDashboard } from "@/features/lead-generation/components/lead-generation-qualification-quality-dashboard";
 import { ImportBatchSyncButton } from "@/features/lead-generation/components/import-batch-sync-button";
 import { LeadGenerationQuantifierGenerateModal } from "@/features/lead-generation/components/lead-generation-quantifier-generate-modal";
-import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { resolveQuantificationImportBatchScope } from "@/features/lead-generation/lib/quantification-viewer-scope";
 import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import type { LeadGenerationStockRow } from "@/features/lead-generation/domain/stock-row";
@@ -295,7 +294,6 @@ export default async function LeadGenerationQuantificationPage() {
               <th className="px-3 py-2.5 text-left font-medium">Fiche CEE</th>
               {hubView ? <th className="px-3 py-2.5 text-left font-medium">Lot (créateur)</th> : null}
               <th className="px-3 py-2.5 text-left font-medium">Dernière revue</th>
-              <th className="px-3 py-2.5 text-left font-medium">Maps</th>
               <th className="px-3 py-2.5 text-left font-medium">Statut</th>
               <th className="px-3 py-2.5 text-left font-medium">Origine</th>
               <th className="px-3 py-2.5 text-right font-medium whitespace-nowrap">Fiche</th>
@@ -304,13 +302,12 @@ export default async function LeadGenerationQuantificationPage() {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={hubView ? 10 : 9} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={hubView ? 9 : 8} className="px-3 py-8 text-center text-muted-foreground">
                   Aucun lead à qualifier pour le moment sur ce périmètre.
                 </td>
               </tr>
             ) : (
               rows.map(({ stock, cee_sheet_code, import_created_by_display, qualified_by_display }) => {
-                const maps = buildLeadGenerationStreetViewModel(stock);
                 const st = qualificationStatusLabel(stock);
                 return (
                   <tr key={stock.id} className="border-b border-border/60 last:border-0">
@@ -339,20 +336,6 @@ export default async function LeadGenerationQuantificationPage() {
                             .filter(Boolean)
                             .join(" · ") || "—"
                         : "—"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {maps.canShowSection ? (
-                        <a
-                          href={maps.openMapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary underline-offset-4 hover:underline"
-                        >
-                          Ouvrir
-                        </a>
-                      ) : (
-                        "—"
-                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <span

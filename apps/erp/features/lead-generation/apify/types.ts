@@ -1,81 +1,52 @@
-/** Paramètres d’entrée pour l’import Google Maps via Apify (V1). */
-export type RunGoogleMapsApifyImportInput = {
-  searchStrings: string[];
-  maxCrawledPlacesPerSearch?: number;
-  includeWebResults?: boolean;
-  /** Zone géographique pour l’actor (`locationQuery`). Si absent ou vide → France côté serveur. */
-  locationQuery?: string;
-  /** Libellé métier (lot / traçabilité), non envoyé tel quel à l’actor. */
-  campaignName?: string;
-  campaignSector?: string;
-  /** Rattachement métier (rempli côté serveur après validation fiche ↔ équipe). */
-  ceeSheetId?: string;
-  ceeSheetCode?: string;
-  targetTeamId?: string;
-  /** Traçabilité lot (quantificateur, etc.). */
-  createdByUserId?: string;
-  /** Fiches créées en `to_validate` (quantificateur) ou `qualified` (défaut historique). */
-  stockInitialQualification?: "qualified" | "to_validate";
+/**
+ * Types partagés pour l'intégration Apify.
+ * Doc API : https://docs.apify.com/api/v2
+ */
+
+/** Statuts possibles d'un run Apify (cf. Apify API v2). */
+export type ApifyRunStatus =
+  | "READY"
+  | "RUNNING"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "TIMING-OUT"
+  | "TIMED-OUT"
+  | "ABORTING"
+  | "ABORTED";
+
+/** Codes de sources Apify actives dans l'ERP. */
+export type ApifySourceCode =
+  | "leboncoin_immobilier";
+  // Prochains : "pap", "pages_jaunes", "seloger"
+
+/** Définition d'une source Apify dans le registry. */
+export type ApifySourceDefinition = {
+  code: ApifySourceCode;
+  label: string;
+  actorId: string;
+  description: string;
+  requiresCredentials: boolean;
 };
 
-/** @deprecated Import synchrone (étape 7) — conservé pour typage historique. */
-export type RunGoogleMapsApifyImportResult = {
-  batchId: string;
-  apifyRunId: string;
-  datasetId: string;
-  fetchedCount: number;
-  ingestedCount: number;
-  acceptedCount: number;
-  duplicateCount: number;
-  rejectedCount: number;
-  status: "completed" | "failed";
-  error?: string;
-};
-
-export type StartGoogleMapsApifyImportOk = {
-  batchId: string;
-  apifyRunId: string;
-  datasetId: string;
-  externalStatus: string;
-};
-
-export type StartGoogleMapsApifyImportOutcome =
-  | { ok: true; data: StartGoogleMapsApifyImportOk }
-  | { ok: false; error: string; batchId?: string };
-
-export type SyncGoogleMapsApifyImportPhase =
-  | "running"
-  | "failed"
-  | "completed"
-  | "already_completed"
-  | "batch_failed"
-  | "ingesting_elsewhere"
-  | "invalid_batch";
-
-export type SyncGoogleMapsApifyImportResult = {
-  phase: SyncGoogleMapsApifyImportPhase;
-  batchId: string;
-  apifyRunId?: string;
-  datasetId?: string;
-  externalStatus?: string;
-  fetchedCount?: number;
-  ingestedCount?: number;
-  acceptedCount?: number;
-  duplicateCount?: number;
-  rejectedCount?: number;
-  /** Run Apify en échec (ex. ABORTED) mais dataset non vide ingéré. */
-  partialApifyDatasetRecovery?: boolean;
-  message?: string;
-  error?: string;
-};
-
-/** Réponse minimale `GET /v2/actor-runs/:runId` (champs utiles). */
-export type ApifyActorRunData = {
+/** Représentation d'un run Apify retournée par l'API. */
+export type ApifyRun = {
   id: string;
-  status: string;
-  defaultDatasetId?: string;
+  actId: string;
+  status: ApifyRunStatus;
+  defaultDatasetId: string;
+  defaultKeyValueStoreId?: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  stats?: {
+    inputBodyLen?: number;
+    restartCount?: number;
+    resurrectCount?: number;
+    durationMillis?: number;
+  };
 };
 
-export type ApifyEnvelope<T> = {
-  data: T;
-};
+/** Input générique pour lancer un run Apify. */
+export type ApifyStartRunInput = Record<string, unknown>;
+
+/** Un item brut retourné par un dataset Apify. */
+export type ApifyDatasetItem = Record<string, unknown>;

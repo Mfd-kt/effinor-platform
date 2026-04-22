@@ -1,6 +1,3 @@
-import type { CeeWorkflowStatus } from "@/features/cee-workflows/domain/constants";
-import { CEE_WORKFLOW_STATUS_VALUES } from "@/features/cee-workflows/domain/constants";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type {
   CockpitChannelRollup,
   CockpitFunnelCounts,
@@ -18,10 +15,28 @@ import { COCKPIT_ALERT_THRESHOLDS as COCKPIT_THRESHOLDS } from "@/features/dashb
 export { getCockpitPeriodStartIso } from "@/features/dashboard/lib/cockpit-period";
 export type { CockpitIsoRange } from "@/features/dashboard/lib/cockpit-period";
 
+// TODO: cee-workflows retiré — la liste de statuts venait de CEE_WORKFLOW_STATUS_VALUES.
+// On pré-remplit ici les statuts encore consommés par l'UI/alertes pour éviter `undefined`.
+const FUNNEL_STATUS_KEYS = [
+  "draft",
+  "to_qualify",
+  "to_confirm",
+  "qualified",
+  "documents_in_preparation",
+  "documents_prepared",
+  "agreement_sent",
+  "agreement_received",
+  "agreement_signed",
+  "quote_signed",
+  "paid",
+  "lost",
+  "simulation_done",
+] as const;
+
 function emptyFunnel(): CockpitFunnelCounts {
   const base = { total: 0 } as CockpitFunnelCounts;
-  for (const s of CEE_WORKFLOW_STATUS_VALUES) {
-    (base as Record<string, number>)[s] = 0;
+  for (const k of FUNNEL_STATUS_KEYS) {
+    base[k] = 0;
   }
   return base;
 }
@@ -39,10 +54,10 @@ export function computeTrend(current: number, previous: number): CockpitTrend {
 
 /** Filtre mémoire (après fetch RLS). */
 export function filterWorkflowsForCockpit(
-  rows: WorkflowScopedListRow[],
+  rows: any[],
   filters: CockpitScopeFilters,
   opts?: { applyPeriod?: boolean },
-): WorkflowScopedListRow[] {
+): any[] {
   let next = rows.filter((w) => {
     if (filters.ceeSheetId && w.cee_sheet_id !== filters.ceeSheetId) return false;
     if (filters.teamId && w.cee_sheet_team_id !== filters.teamId) return false;
@@ -60,27 +75,27 @@ export function filterWorkflowsForCockpit(
 
 /** Filtre sur `created_at` du workflow : [start, end) cockpit (fin = maintenant). */
 export function filterWorkflowsByCreatedRange(
-  rows: WorkflowScopedListRow[],
+  rows: any[],
   range: CockpitIsoRange,
-): WorkflowScopedListRow[] {
+): any[] {
   return rows.filter((w) => w.created_at >= range.startIso && w.created_at < range.endIso);
 }
 
 /** Filtre sur `created_at` du workflow (pipeline « créé dans la période »). */
 export function filterWorkflowsByCreatedPeriod(
-  rows: WorkflowScopedListRow[],
+  rows: any[],
   period: CockpitScopeFilters["period"],
   now = new Date(),
-): WorkflowScopedListRow[] {
+): any[] {
   return filterWorkflowsByCreatedRange(rows, getCockpitPeriodRange(period, now));
 }
 
-function rowToQueueItem(w: WorkflowScopedListRow): CockpitQueueItem {
+function rowToQueueItem(w: any): CockpitQueueItem {
   return {
     workflowId: w.id,
     leadId: w.lead_id,
     companyName: w.lead?.company_name?.trim() || "—",
-    status: w.workflow_status as CeeWorkflowStatus,
+    status: w.workflow_status,
     sheetLabel: w.cee_sheet?.label ?? w.cee_sheet?.code ?? "—",
     teamId: w.cee_sheet_team_id ?? null,
     updatedAt: w.updated_at,
@@ -91,7 +106,7 @@ function rowToQueueItem(w: WorkflowScopedListRow): CockpitQueueItem {
 const MS_DAY = 86_400_000;
 
 export function buildWorkflowSnapshot(
-  rows: WorkflowScopedListRow[],
+  rows: any[],
   opts?: {
     staleDraftDays?: number;
     staleAgreementDays?: number;
@@ -111,13 +126,12 @@ export function buildWorkflowSnapshot(
   const channelMap = new Map<string, CockpitChannelRollup>();
 
   const staleDrafts: CockpitQueueItem[] = [];
-  const blockedConfirm: CockpitQueueItem[] = [];
   const docsPreparedStale: CockpitQueueItem[] = [];
   const agreementsAwaitingSign: CockpitQueueItem[] = [];
   const oldAgreementSent: CockpitQueueItem[] = [];
 
   for (const w of rows) {
-    const st = w.workflow_status as CeeWorkflowStatus;
+    const st = w.workflow_status;
     funnel.total += 1;
     funnel[st] = (funnel[st] ?? 0) + 1;
 
@@ -183,9 +197,6 @@ export function buildWorkflowSnapshot(
     if (st === "draft" && now - updated > staleDraftDays * MS_DAY) {
       staleDrafts.push(rowToQueueItem(w));
     }
-    if (st === "simulation_done" || st === "to_confirm") {
-      blockedConfirm.push(rowToQueueItem(w));
-    }
     if (st === "docs_prepared" && now - updated > docsPreparedStaleDays * MS_DAY) {
       docsPreparedStale.push(rowToQueueItem(w));
     }
@@ -202,7 +213,6 @@ export function buildWorkflowSnapshot(
     a.updatedAt.localeCompare(b.updatedAt);
 
   staleDrafts.sort(sortByUpdated);
-  blockedConfirm.sort(sortByUpdated);
   docsPreparedStale.sort(sortByUpdated);
   agreementsAwaitingSign.sort(sortByUpdated);
   oldAgreementSent.sort((a, b) => (b.agreementSentAt ?? "").localeCompare(a.agreementSentAt ?? ""));
@@ -214,7 +224,6 @@ export function buildWorkflowSnapshot(
     byChannel: [...channelMap.values()].sort((a, b) => b.workflowCount - a.workflowCount),
     priorityQueues: {
       staleDrafts: staleDrafts.slice(0, 12),
-      blockedConfirm: blockedConfirm.slice(0, 12),
       docsPreparedStale: docsPreparedStale.slice(0, 12),
       agreementsAwaitingSign: agreementsAwaitingSign.slice(0, 12),
       oldAgreementSent: oldAgreementSent.slice(0, 12),

@@ -63,16 +63,14 @@ export type CommandCockpitCallbacks = {
 };
 
 export type PipelineStageLatency = {
-  awaitConfirmateurAvgDays: number | null;
   awaitCloserAvgDays: number | null;
   unassignedAvgDays: number | null;
   blockedAvgDays: number | null;
-  /** Seuils : confirmateur / closer / brouillon stale */
+  /** Seuils : closer / brouillon stale */
   alerts: { id: string; message: string; href: string }[];
 };
 
 export type CommandCockpitPipeline = {
-  awaitConfirmateur: number;
   awaitCloser: number;
   unassignedAgent: number;
   staleDrafts: number;
@@ -135,17 +133,6 @@ export type CockpitAgentPerformanceRow = {
   highlight: "top" | "anomaly" | null;
 };
 
-export type CockpitConfirmateurPerformanceRow = {
-  userId: string;
-  displayName: string;
-  backlog: number;
-  treatedApproxWeek: number;
-  avgBacklogAgeDays: number | null;
-  /** Médiane globale (logs) : heures entre « sent_to_confirmateur » et « qualified ». */
-  medianHoursConfirmStageFromLogs: number | null;
-  highlight: "top" | "anomaly" | null;
-};
-
 export type CockpitCloserPerformanceRow = {
   userId: string;
   displayName: string;
@@ -160,7 +147,6 @@ export type CockpitCloserPerformanceRow = {
 
 export type CommandCockpitPerformanceDetail = {
   agents: CockpitAgentPerformanceRow[];
-  confirmateurs: CockpitConfirmateurPerformanceRow[];
   closers: CockpitCloserPerformanceRow[];
 };
 
@@ -211,7 +197,7 @@ export type CockpitHumanAnomaly = {
   userId: string;
   displayName: string;
   email: string | null;
-  role: "agent" | "confirmateur" | "closer";
+  role: "agent" | "closer";
   problem: string;
   level: "critique" | "warning";
   dossiersHref: string;
@@ -219,7 +205,6 @@ export type CockpitHumanAnomaly = {
 };
 
 export type WorkflowLogMetricsSummary = {
-  confirmateurMedianHours: number | null;
   closerMedianHours: number | null;
   conversionRateFromLogsPct: number | null;
   conversionNumerator: number;

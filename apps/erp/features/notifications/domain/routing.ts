@@ -23,7 +23,6 @@ export function resolveSlackWebhookUrl(channelKey: NotificationChannelKey): Webh
     direction: env.webhooks.direction,
     alerts: env.webhooks.alerts,
     closer: env.webhooks.closer,
-    confirmateur: env.webhooks.confirmateur,
   };
 
   const specific = map[channelKey]?.trim();

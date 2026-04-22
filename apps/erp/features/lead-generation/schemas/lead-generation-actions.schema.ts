@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { isLeadGenGoogleMapsGeoValue } from "../lib/google-maps-region-options";
 import { LEAD_GENERATION_SECTOR_OPTIONS } from "../lib/generate-campaign";
 import { LEAD_GENERATION_AUTOMATION_TYPES } from "../automation/types";
 import { LEAD_GENERATION_SETTINGS_KEYS } from "../settings/default-settings";
@@ -59,15 +58,8 @@ export const startGoogleMapsApifyImportActionInputSchema = z.object({
     .max(20, "Maximum 20 recherches."),
   maxCrawledPlacesPerSearch: z.number().int().min(1).max(500).optional(),
   includeWebResults: z.boolean().optional(),
-  /** Zone Maps (France + département / territoire) ; vide = défaut serveur (France). */
-  locationQuery: z
-    .string()
-    .trim()
-    .max(200)
-    .optional()
-    .refine((q) => !q || isLeadGenGoogleMapsGeoValue(q), {
-      message: "Choisissez un département / territoire dans la liste.",
-    }),
+  /** Zone Maps libre ; vide = défaut serveur (France). */
+  locationQuery: z.string().trim().max(200).optional(),
   ceeSheetId: uuid,
   targetTeamId: uuid,
 });
@@ -220,10 +212,7 @@ export const generateAndEnrichLeadsActionInputSchema = z.object({
     .string()
     .trim()
     .min(2, "Indiquez une zone géographique.")
-    .max(200)
-    .refine((q) => isLeadGenGoogleMapsGeoValue(q), {
-      message: "Choisissez un département / territoire dans la liste.",
-    }),
+    .max(200),
   maxCrawledPlacesPerSearch: z.number().int().min(1, "Minimum 1 fiche par recherche.").max(200),
   maxTotalPlaces: z.number().int().min(1, "Minimum 1 fiche au total.").max(50_000),
   customQueriesText: z.string().max(8000).optional().default(""),

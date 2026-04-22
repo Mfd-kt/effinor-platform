@@ -152,7 +152,6 @@ export async function convertCommercialCallbackToLead(
     return { ok: false, error: `Lead créé mais rappel non mis à jour : ${updErr.message}` };
   }
 
-  revalidatePath("/agent");
   revalidatePath("/leads");
   revalidatePath("/cockpit");
   revalidatePath("/commercial-callbacks");

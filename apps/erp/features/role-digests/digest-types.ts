@@ -1,4 +1,4 @@
-export type RoleDigestTarget = "agent" | "confirmateur" | "closer" | "manager" | "direction";
+export type RoleDigestTarget = "agent" | "closer" | "manager" | "direction";
 
 export type RoleDigestPriority = "low" | "normal" | "high" | "critical";
 

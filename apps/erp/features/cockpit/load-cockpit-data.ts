@@ -5,8 +5,6 @@ import type { AccessContext } from "@/lib/auth/access-context";
 import type { CockpitVariant } from "@/lib/auth/cockpit-variant";
 import { canAccessCommandCockpit } from "@/lib/auth/module-access";
 import { isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
-import { getLeadSheetWorkflowsForAccess } from "@/features/cee-workflows/queries/get-lead-sheet-workflows";
 import { DEFAULT_COCKPIT_FILTERS } from "@/features/dashboard/domain/cockpit";
 import type { CockpitAlert } from "@/features/dashboard/domain/cockpit";
 import { buildWorkflowSnapshot } from "@/features/dashboard/lib/cockpit-aggregates";
@@ -43,7 +41,6 @@ import type {
   CockpitAgentPerformanceRow,
   CockpitAiOrchestratorActivity,
   CockpitCloserPerformanceRow,
-  CockpitConfirmateurPerformanceRow,
   CommandCockpitAlert,
   CockpitAiRecommendation,
   CommandCockpitData,
@@ -121,11 +118,9 @@ function automationHealth(
 function buildSyntheticAlerts(input: {
   callbackKpis: { overdue: number };
   automationFailed48h: number;
-  activeConfirmateurs: number;
   activeClosers: number;
   pendingInitialEmail: number;
   globalSnapshotTotal: number;
-  blockedConfirmCount: number;
 }): CommandCockpitAlert[] {
   const out: CommandCockpitAlert[] = [];
 
@@ -169,24 +164,13 @@ function buildSyntheticAlerts(input: {
     });
   }
 
-  if (input.activeConfirmateurs === 0) {
-    out.push({
-      id: "cmd:no-confirmateur",
-      severity: "critical",
-      title: "Aucun confirmateur actif en équipe",
-      message: "Aucun membre actif avec le rôle confirmateur sur les équipes CEE.",
-      href: "/settings/cee",
-      actionLabel: "Réglages CEE",
-    });
-  }
-
   if (input.activeClosers === 0) {
     out.push({
       id: "cmd:no-closer",
       severity: "critical",
       title: "Aucun closer actif en équipe",
       message: "Aucun membre actif avec le rôle closer sur les équipes CEE.",
-      href: "/settings/cee",
+      href: "/settings/roles",
       actionLabel: "Réglages CEE",
     });
   }
@@ -199,17 +183,6 @@ function buildSyntheticAlerts(input: {
       message: `${input.pendingInitialEmail} rappels actifs sans email simulateur envoyé.`,
       href: "/commercial-callbacks",
       actionLabel: "Voir les rappels",
-    });
-  }
-
-  if (input.globalSnapshotTotal > 80 && input.blockedConfirmCount > 25) {
-    out.push({
-      id: "cmd:pipeline-backlog",
-      severity: "warning",
-      title: "Backlog pipeline élevé",
-      message: `${input.blockedConfirmCount} dossiers en attente confirmateur sur ${input.globalSnapshotTotal} dossiers actifs.`,
-      href: "/confirmateur",
-      actionLabel: "Poste confirmateur",
     });
   }
 
@@ -232,7 +205,7 @@ function toCallbackShort(
 }
 
 function wfTeamSheet(
-  workflowsById: Map<string, WorkflowScopedListRow>,
+  workflowsById: Map<string, any>,
   lead: { current_workflow_id: string | null; cee_sheet_id: string | null },
 ): { teamId: string | null; sheetId: string | null } {
   const wf = lead.current_workflow_id ? workflowsById.get(lead.current_workflow_id) : undefined;
@@ -263,8 +236,8 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
 
   const inWeek = (iso: string) => new Date(iso).getTime() >= weekStartMs;
 
-  const workflows = await getLeadSheetWorkflowsForAccess(access, { includeLostWorkflows: true });
-  const workflowsById = new Map(workflows.map((w) => [w.id, w]));
+  const workflows: any[] = [];
+  const workflowsById = new Map<string, any>();
 
   const [bundle, allCallbacks, automationRes, newLeadsRes, leadsWeekRes, workflowLogsRes] =
     await Promise.all([
@@ -307,12 +280,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   ).length;
   const wfLogs = (workflowLogsRes.error ? [] : (workflowLogsRes.data ?? [])) as WorkflowEventLogRow[];
   const logM = computeWorkflowLogMetrics(wfLogs, weekIso);
-  const confirmateurQualifiedToday = new Set<string>();
-  for (const r of wfLogs) {
-    if (r.event_type !== "qualified") continue;
-    if (calendarDateInParis(new Date(r.created_at)) !== todayParis) continue;
-    if (r.actor_user_id) confirmateurQualifiedToday.add(r.actor_user_id);
-  }
 
   const kpis = computeCommercialCallbackKpis(allCallbacks, now);
   const performanceCb = computeCallbackPerformanceStats(allCallbacks, now);
@@ -320,54 +287,41 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   const nonTerminal = allCallbacks.filter((r) => !isTerminalCallbackStatus(r.status));
   const pendingInitialEmail = nonTerminal.filter((r) => !r.initial_contact_email_sent).length;
 
-  const members = bundle.networkOverview?.members ?? [];
-  const activeConfirmateurs = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "confirmateur").map((m) => m.userId),
-  ).size;
+  const members: any[] = [];
   const activeClosers = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "closer").map((m) => m.userId),
+    members.filter((m: any) => m.isActive && m.roleInTeam === "closer").map((m: any) => m.userId as string),
   ).size;
 
   const teamMembersByTeam: Record<string, string[]> = {};
-  for (const m of members) {
+  for (const m of members as any[]) {
     if (!m.isActive) continue;
-    const tid = m.ceeSheetTeamId;
+    const tid = m.ceeSheetTeamId as string;
     if (!teamMembersByTeam[tid]) teamMembersByTeam[tid] = [];
-    teamMembersByTeam[tid].push(m.userId);
+    teamMembersByTeam[tid].push(m.userId as string);
   }
 
-  const agentRoleUserIds = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "agent").map((m) => m.userId),
+  const agentRoleUserIds = new Set<string>(
+    members.filter((m: any) => m.isActive && m.roleInTeam === "agent").map((m: any) => m.userId as string),
   );
-  const confirmateurRoleUserIds = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "confirmateur").map((m) => m.userId),
-  );
-  const closerRoleUserIds = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "closer").map((m) => m.userId),
+  const closerRoleUserIds = new Set<string>(
+    members.filter((m: any) => m.isActive && m.roleInTeam === "closer").map((m: any) => m.userId as string),
   );
 
   const globalSnapshot = buildWorkflowSnapshot(workflows);
-  const blockedConfirmCount =
-    globalSnapshot.funnel.simulation_done + globalSnapshot.funnel.to_confirm;
 
   const automationFailed48h = automationRows.filter((r) => r.status === "failed").length;
 
   const synth = buildSyntheticAlerts({
     callbackKpis: kpis,
     automationFailed48h,
-    activeConfirmateurs,
     activeClosers,
     pendingInitialEmail,
     globalSnapshotTotal: globalSnapshot.funnel.total,
-    blockedConfirmCount,
   });
 
   const bundleAlerts = [...bundle.periodAlerts, ...bundle.structuralAlerts].map(mapCockpitAlert);
   const alerts = sortAlerts(dedupeAlerts([...synth, ...bundleAlerts])).slice(0, MAX_ALERTS);
 
-  const awaitConfirmWf = workflows.filter((w) =>
-    ["simulation_done", "to_confirm"].includes(w.workflow_status),
-  );
   const awaitCloserWf = workflows.filter((w) => ["to_close", "docs_prepared"].includes(w.workflow_status));
   const unassignedWf = workflows.filter(
     (w) => !w.assigned_agent_user_id && w.workflow_status !== "lost",
@@ -380,7 +334,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   ];
   const blockedWfRows = blockedQueues
     .map((q) => workflowsById.get(q.workflowId))
-    .filter((w): w is WorkflowScopedListRow => w != null);
+    .filter((w): w is any => w != null);
 
   const stuckBySheet = new Map<string, number>();
   for (const w of blockedWfRows) {
@@ -392,24 +346,16 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
-  const awaitConfirmAvg = avgDaysSinceUpdated(awaitConfirmWf);
   const awaitCloserAvg = avgDaysSinceUpdated(awaitCloserWf);
   const unassignedAvg = avgDaysSinceUpdated(unassignedWf);
   const blockedAvg = avgDaysSinceUpdated(blockedWfRows);
 
   const stageAlerts: { id: string; message: string; href: string }[] = [];
-  if (awaitConfirmAvg != null && awaitConfirmAvg >= 5) {
-    stageAlerts.push({
-      id: "stage:confirm-slow",
-      message: `Attente confirmateur : ~${awaitConfirmAvg} j. en moyenne sur le stock.`,
-      href: "/confirmateur",
-    });
-  }
   if (awaitCloserAvg != null && awaitCloserAvg >= 7) {
     stageAlerts.push({
       id: "stage:closer-slow",
       message: `Attente closer : ~${awaitCloserAvg} j. en moyenne.`,
-      href: "/closer",
+      href: "/leads",
     });
   }
   if (unassignedAvg != null && unassignedAvg >= 4) {
@@ -423,7 +369,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     stageAlerts.push({
       id: "stage:blocked-old",
       message: `Dossiers bloqués / stale : ~${blockedAvg} j. en moyenne.`,
-      href: "/admin/cee-sheets",
+      href: "/settings/roles",
     });
   }
 
@@ -434,7 +380,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     const first = unassignedWf[0];
     if (!first?.cee_sheet_team_id) return null;
     const pick = members.find(
-      (m) => m.isActive && m.roleInTeam === "agent" && m.ceeSheetTeamId === first.cee_sheet_team_id,
+      (m: any) => m.isActive && m.roleInTeam === "agent" && m.ceeSheetTeamId === first.cee_sheet_team_id,
     );
     if (!pick) return null;
     return { workflowId: first.id, agentUserId: pick.userId };
@@ -443,7 +389,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   const sampleBlocked = (() => {
     const merged = [
       ...globalSnapshot.priorityQueues.staleDrafts.slice(0, 4),
-      ...globalSnapshot.priorityQueues.blockedConfirm.slice(0, 4),
     ];
     const seen = new Set<string>();
     const deduped: typeof merged = [];
@@ -468,7 +413,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   })();
 
   const pipeline = {
-    awaitConfirmateur: blockedConfirmCount,
     awaitCloser: globalSnapshot.funnel.to_close + globalSnapshot.funnel.docs_prepared,
     unassignedAgent,
     staleDrafts: globalSnapshot.priorityQueues.staleDrafts.length,
@@ -477,7 +421,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     blockedCount,
     sampleBlocked,
     stageLatency: {
-      awaitConfirmateurAvgDays: awaitConfirmAvg,
       awaitCloserAvgDays: awaitCloserAvg,
       unassignedAvgDays: unassignedAvg,
       blockedAvgDays: blockedAvg,
@@ -750,27 +693,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     }
   }
 
-  const confirmateurBacklog = new Map<string, WorkflowScopedListRow[]>();
-  const confirmateurBacklogSumAge = new Map<string, number>();
-  const confirmateurBacklogCount = new Map<string, number>();
-  for (const w of awaitConfirmWf) {
-    const u = w.assigned_confirmateur_user_id;
-    if (!u) continue;
-    if (!confirmateurBacklog.has(u)) confirmateurBacklog.set(u, []);
-    confirmateurBacklog.get(u)!.push(w);
-    const age = Date.now() - new Date(w.updated_at).getTime();
-    confirmateurBacklogSumAge.set(u, (confirmateurBacklogSumAge.get(u) ?? 0) + age);
-    confirmateurBacklogCount.set(u, (confirmateurBacklogCount.get(u) ?? 0) + 1);
-  }
-
-  const confirmateurTreatedWeek = new Map<string, number>();
-  for (const w of workflows) {
-    if (w.workflow_status !== "qualified") continue;
-    const u = w.assigned_confirmateur_user_id;
-    if (!u || !inWeek(w.updated_at)) continue;
-    confirmateurTreatedWeek.set(u, (confirmateurTreatedWeek.get(u) ?? 0) + 1);
-  }
-
   const closerOpenBy = new Map<string, number>();
   const closerOpenStatuses = new Set(["to_close", "docs_prepared", "agreement_sent"]);
   for (const w of workflows) {
@@ -805,7 +727,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
 
   const perfUserIds = new Set<string>();
   for (const id of agentRoleUserIds) perfUserIds.add(id);
-  for (const id of confirmateurRoleUserIds) perfUserIds.add(id);
   for (const id of closerRoleUserIds) perfUserIds.add(id);
   for (const [id] of leadsCreatedWeekByAgent) perfUserIds.add(id);
   for (const [id] of callbacksTreatedWeekByAgent) perfUserIds.add(id);
@@ -850,34 +771,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     }
   }
 
-  const confirmateurs: CockpitConfirmateurPerformanceRow[] = [];
-  for (const userId of confirmateurRoleUserIds) {
-    const backlog = confirmateurBacklog.get(userId)?.length ?? 0;
-    const n = confirmateurBacklogCount.get(userId) ?? 0;
-    const sum = confirmateurBacklogSumAge.get(userId) ?? 0;
-    const avgBacklogAgeDays =
-      n > 0 ? Math.round((sum / n / 86_400_000) * 10) / 10 : null;
-    confirmateurs.push({
-      userId,
-      displayName: displayName(userId),
-      backlog,
-      treatedApproxWeek: confirmateurTreatedWeek.get(userId) ?? 0,
-      avgBacklogAgeDays,
-      medianHoursConfirmStageFromLogs: logM.confirmateurMedianHours,
-      highlight: null,
-    });
-  }
-  const sortedConf = [...confirmateurs].sort(
-    (a, b) => b.treatedApproxWeek - a.treatedApproxWeek || a.backlog - b.backlog,
-  );
-  const topConfIds = new Set(sortedConf.slice(0, 2).filter((c) => c.treatedApproxWeek > 0).map((c) => c.userId));
-  for (const c of confirmateurs) {
-    if (topConfIds.has(c.userId)) c.highlight = "top";
-    else if (c.backlog >= 12 || (c.avgBacklogAgeDays != null && c.avgBacklogAgeDays >= 8)) {
-      c.highlight = "anomaly";
-    }
-  }
-
   const closers: CockpitCloserPerformanceRow[] = [];
   for (const userId of closerRoleUserIds) {
     const open = closerOpenBy.get(userId) ?? 0;
@@ -913,13 +806,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
       treatedWeek: callbacksTreatedWeekByAgent.get(userId) ?? 0,
       leadsWeek: leadsCreatedWeekByAgent.get(userId) ?? 0,
     })),
-    confirmateurs: confirmateurs.map((c) => ({
-      userId: c.userId,
-      displayName: c.displayName,
-      email: profileEmail(c.userId),
-      backlog: c.backlog,
-      avgBacklogAgeDays: c.avgBacklogAgeDays,
-    })),
     closers: closers.map((c) => ({
       userId: c.userId,
       displayName: c.displayName,
@@ -929,7 +815,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
       signatureRatePct: c.signatureRatePct,
     })),
     todayParis,
-    confirmateurQualifiedToday,
   });
 
   const workflowJournalPreview = wfLogs.slice(0, 25).map((r) => ({
@@ -941,7 +826,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   }));
 
   const workflowLogMetrics = {
-    confirmateurMedianHours: logM.confirmateurMedianHours,
     closerMedianHours: logM.closerMedianHours,
     conversionRateFromLogsPct: logM.conversionRatePct,
     conversionNumerator: logM.conversionNumerator,
@@ -987,7 +871,6 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     logs: { lines: logLines },
     performance: {
       agents,
-      confirmateurs,
       closers,
     },
     aiExecutionHints: { autoAssignAgent: autoAssignAgentHint },

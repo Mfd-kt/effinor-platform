@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import type { AccessContext } from "@/lib/auth/access-context";
 import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import type { CockpitVariant } from "@/lib/auth/cockpit-variant";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type { CockpitFilterOptions } from "@/features/dashboard/domain/cockpit";
 import type { CockpitWorkflowSnapshot } from "@/features/dashboard/domain/cockpit";
 import type { CockpitAlert } from "@/features/dashboard/domain/cockpit";
@@ -23,8 +22,6 @@ import { getCockpitPeriodLabel, getCockpitPeriodRange, getCockpitPreviousPeriodR
 import { countLeadsCreatedInRange } from "@/features/dashboard/queries/fetch-dashboard-period-counts";
 import { getLeadIdsForAccess } from "@/lib/auth/data-scope";
 import type { CockpitScopeFilters } from "@/features/dashboard/domain/cockpit";
-import { getAdminCeeNetworkOverview } from "@/features/cee-workflows/queries/get-admin-cee-network-overview";
-import { getLeadSheetWorkflowsForAccess } from "@/features/cee-workflows/queries/get-lead-sheet-workflows";
 
 export type CockpitBundle = {
   filters: CockpitScopeFilters;
@@ -45,12 +42,12 @@ export type CockpitBundle = {
   teamsWithoutCloser: { teamId: string; teamName: string; sheetLabel: string }[];
   /** Fiches commerciales actives sans équipe active. */
   sheetsWithoutTeam: { sheetId: string; label: string }[];
-  networkOverview: Awaited<ReturnType<typeof getAdminCeeNetworkOverview>> | null;
+  networkOverview: null;
 };
 
 async function loadFilterOptions(
   access: AccessContext,
-  workflows: WorkflowScopedListRow[],
+  workflows: any[],
 ): Promise<CockpitFilterOptions> {
   if (access.kind !== "authenticated") {
     return { sheets: [], teams: [], channels: [] };
@@ -224,7 +221,7 @@ export async function getCockpitBundle(
     includeAdminHealth?: boolean;
     cockpitVariant?: CockpitVariant;
     /** Évite un second fetch workflows quand l’appelant charge déjà la liste (ex. cockpit direction). */
-    preloadedWorkflows?: WorkflowScopedListRow[];
+    preloadedWorkflows?: any[];
   },
 ): Promise<CockpitBundle> {
   if (access.kind !== "authenticated") {
@@ -234,9 +231,7 @@ export async function getCockpitBundle(
   const cockpitVariant = opts?.cockpitVariant ?? "default";
 
   const supabase = await createClient();
-  const workflows =
-    opts?.preloadedWorkflows ??
-    (await getLeadSheetWorkflowsForAccess(access, { includeLostWorkflows: true }));
+  const workflows: any[] = opts?.preloadedWorkflows ?? [];
   const filterOptions = await loadFilterOptions(access, workflows);
 
   const leadIds = await getLeadIdsForAccess(supabase, access);
@@ -290,7 +285,7 @@ export async function getCockpitBundle(
 
   let teamsWithoutCloser: CockpitBundle["teamsWithoutCloser"] = [];
   let sheetsWithoutTeam: CockpitBundle["sheetsWithoutTeam"] = [];
-  let networkOverview: CockpitBundle["networkOverview"] = null;
+  const networkOverview: CockpitBundle["networkOverview"] = null;
   let structuralAlerts: CockpitAlert[] = [];
 
   const loadFullNetwork =
@@ -298,10 +293,9 @@ export async function getCockpitBundle(
     (opts?.includeAdminHealth === true || cockpitVariant === "sales_director");
 
   if (loadFullNetwork) {
-    const [{ data: allTeams }, { data: allSheets }, overview] = await Promise.all([
+    const [{ data: allTeams }, { data: allSheets }] = await Promise.all([
       supabase.from("cee_sheet_teams").select("id, name, cee_sheet_id, is_active"),
       supabase.from("cee_sheets").select("id, label, code").is("deleted_at", null),
-      getAdminCeeNetworkOverview(),
     ]);
 
     const sheetIdToLabel = new Map(
@@ -321,39 +315,15 @@ export async function getCockpitBundle(
         name: t.name?.trim() || t.id,
         ceeSheetId: t.cee_sheet_id,
       })),
-      (overview?.members ?? []).map((m) => ({
-        ceeSheetTeamId: m.ceeSheetTeamId,
-        roleInTeam: m.roleInTeam,
-        isActive: m.isActive,
-      })),
+      [],
       sheetIdToLabel,
     );
 
-    networkOverview = overview;
-
     const structuralRaw = buildStructuralBusinessAlerts({
       basePath: "",
-      sheets: overview.sheets.map((s) => ({
-        id: s.id,
-        code: s.code,
-        label: s.label,
-        simulatorKey: s.simulatorKey,
-        workflowKey: s.workflowKey,
-        presentationTemplateKey: s.presentationTemplateKey,
-        agreementTemplateKey: s.agreementTemplateKey,
-        isCommercialActive: s.isCommercialActive,
-      })),
-      teams: overview.teams.map((t) => ({
-        id: t.id,
-        name: t.name,
-        ceeSheetId: t.ceeSheetId,
-        isActive: t.isActive,
-      })),
-      members: overview.members.map((m) => ({
-        ceeSheetTeamId: m.ceeSheetTeamId,
-        roleInTeam: m.roleInTeam,
-        isActive: m.isActive,
-      })),
+      sheets: [],
+      teams: [],
+      members: [],
     });
     structuralAlerts = filterCockpitAlertsForVariant(structuralRaw, cockpitVariant, managerScope);
   } else if (cockpitVariant === "manager") {

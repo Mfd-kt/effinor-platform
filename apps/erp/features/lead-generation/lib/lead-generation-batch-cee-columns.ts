@@ -1,4 +1,9 @@
-import type { RunGoogleMapsApifyImportInput } from "../apify/types";
+// TODO: Replace with the new external scraping integration input type.
+type RunGoogleMapsApifyImportInputLike = {
+  ceeSheetId?: string;
+  targetTeamId?: string;
+  ceeSheetCode?: string;
+};
 
 export type LeadGenerationBatchCeeColumns = {
   cee_sheet_id: string;
@@ -22,7 +27,7 @@ export function leadGenerationBatchCeeInsertColumns(
 
 /** Propage le rattachement CEE depuis l’input Apify / parcours (après résolution côté serveur). */
 export function readCeeContextFromApifyInput(
-  input: RunGoogleMapsApifyImportInput,
+  input: RunGoogleMapsApifyImportInputLike,
 ): LeadGenerationBatchCeeColumns | null {
   const sheet = input.ceeSheetId?.trim();
   const team = input.targetTeamId?.trim();

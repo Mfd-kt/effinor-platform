@@ -1,8 +1,8 @@
-import type { CeeWorkflowStatus } from "@/features/cee-workflows/domain/constants";
-import { buildCloserQueuePath } from "@/features/cee-workflows/lib/closer-paths";
-import { buildConfirmateurQueuePath } from "@/features/cee-workflows/lib/confirmateur-paths";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type { CockpitVariant } from "@/lib/auth/cockpit-variant";
+
+function buildCloserQueuePath(_sheetId: string | null, _opts?: { tab?: string }): string {
+  return "/leads";
+}
 import type {
   CockpitAlert,
   CockpitAlertAudienceRole,
@@ -169,8 +169,8 @@ export type PeriodAlertBuildContext = {
   periodLabel: string;
   snapshot: CockpitWorkflowSnapshot;
   snapshotPrevious: CockpitWorkflowSnapshot;
-  scopedPeriodRows: WorkflowScopedListRow[];
-  scopedPreviousRows: WorkflowScopedListRow[];
+  scopedPeriodRows: any[];
+  scopedPreviousRows: any[];
   leadsCreatedCurrent: number;
   leadsCreatedPrevious: number;
   basePath: string;
@@ -194,7 +194,7 @@ export type StructuralNetworkInput = {
   members: Array<{ ceeSheetTeamId: string; roleInTeam: string; isActive: boolean }>;
 };
 
-const CONFIRM_BACKLOG_STATUSES = new Set<CeeWorkflowStatus>(["simulation_done", "to_confirm"]);
+const CONFIRM_BACKLOG_STATUSES = new Set<string>(["simulation_done", "to_confirm"]);
 
 function funnelSignedCount(f: CockpitFunnelCounts): number {
   return f.agreement_signed + f.paid + f.quote_signed;
@@ -213,7 +213,7 @@ function funnelLossRate(f: CockpitFunnelCounts): number | null {
   return f.lost / f.total;
 }
 
-function pipelineNonDraftCount(rows: WorkflowScopedListRow[]): number {
+function pipelineNonDraftCount(rows: any[]): number {
   return rows.filter((r) => r.workflow_status !== "draft").length;
 }
 
@@ -239,13 +239,13 @@ function teamRollupSignRate(tr: CockpitTeamRollup): { rate: number | null; denom
 }
 
 function groupCountConfirmBacklog(
-  rows: WorkflowScopedListRow[],
+  rows: any[],
 ): { global: number; bySheet: Map<string, { label: string; count: number }>; byTeam: Map<string, number> } {
   const bySheet = new Map<string, { label: string; count: number }>();
   const byTeam = new Map<string, number>();
   let global = 0;
   for (const w of rows) {
-    const st = w.workflow_status as CeeWorkflowStatus;
+    const st = w.workflow_status;
     if (!CONFIRM_BACKLOG_STATUSES.has(st)) continue;
     global += 1;
     const sid = w.cee_sheet_id;
@@ -259,11 +259,11 @@ function groupCountConfirmBacklog(
   return { global, bySheet, byTeam };
 }
 
-function countStaleConfirm(rows: WorkflowScopedListRow[], nowMs: number, days: number): number {
+function countStaleConfirm(rows: any[], nowMs: number, days: number): number {
   const limit = days * MS_DAY;
   let n = 0;
   for (const w of rows) {
-    const st = w.workflow_status as CeeWorkflowStatus;
+    const st = w.workflow_status;
     if (!CONFIRM_BACKLOG_STATUSES.has(st)) continue;
     const updated = new Date(w.updated_at).getTime();
     if (nowMs - updated > limit) n += 1;
@@ -271,11 +271,11 @@ function countStaleConfirm(rows: WorkflowScopedListRow[], nowMs: number, days: n
   return n;
 }
 
-function countDocsPrepared(rows: WorkflowScopedListRow[]): number {
+function countDocsPrepared(rows: any[]): number {
   return rows.filter((r) => r.workflow_status === "docs_prepared").length;
 }
 
-function countStaleDocsPrepared(rows: WorkflowScopedListRow[], nowMs: number, days: number): number {
+function countStaleDocsPrepared(rows: any[], nowMs: number, days: number): number {
   const limit = days * MS_DAY;
   return rows.filter((r) => {
     if (r.workflow_status !== "docs_prepared") return false;
@@ -283,11 +283,11 @@ function countStaleDocsPrepared(rows: WorkflowScopedListRow[], nowMs: number, da
   }).length;
 }
 
-function countAgreementSentOpen(rows: WorkflowScopedListRow[]): number {
+function countAgreementSentOpen(rows: any[]): number {
   return rows.filter((r) => r.workflow_status === "agreement_sent").length;
 }
 
-function countStaleAgreementSent(rows: WorkflowScopedListRow[], nowMs: number, days: number): number {
+function countStaleAgreementSent(rows: any[], nowMs: number, days: number): number {
   const limit = days * MS_DAY;
   return rows.filter((r) => {
     if (r.workflow_status !== "agreement_sent") return false;
@@ -296,7 +296,7 @@ function countStaleAgreementSent(rows: WorkflowScopedListRow[], nowMs: number, d
   }).length;
 }
 
-function countFollowUpsOverdue(rows: WorkflowScopedListRow[], nowMs: number): number {
+function countFollowUpsOverdue(rows: any[], nowMs: number): number {
   let n = 0;
   for (const w of rows) {
     if (w.workflow_status !== "agreement_sent") continue;
@@ -309,7 +309,7 @@ function countFollowUpsOverdue(rows: WorkflowScopedListRow[], nowMs: number): nu
   return n;
 }
 
-function countFollowUpsOverdueForUser(rows: WorkflowScopedListRow[], userId: string, nowMs: number): number {
+function countFollowUpsOverdueForUser(rows: any[], userId: string, nowMs: number): number {
   let n = 0;
   for (const w of rows) {
     if (w.assigned_closer_user_id !== userId) continue;
@@ -323,7 +323,7 @@ function countFollowUpsOverdueForUser(rows: WorkflowScopedListRow[], userId: str
   return n;
 }
 
-function countCallbacksOverdueForAgent(rows: WorkflowScopedListRow[], userId: string, nowMs: number): number {
+function countCallbacksOverdueForAgent(rows: any[], userId: string, nowMs: number): number {
   let n = 0;
   for (const w of rows) {
     if (w.assigned_agent_user_id !== userId) continue;
@@ -336,7 +336,7 @@ function countCallbacksOverdueForAgent(rows: WorkflowScopedListRow[], userId: st
   return n;
 }
 
-function countWorkflowsForAgent(rows: WorkflowScopedListRow[], userId: string): number {
+function countWorkflowsForAgent(rows: any[], userId: string): number {
   return rows.filter((w) => w.assigned_agent_user_id === userId).length;
 }
 
@@ -354,14 +354,12 @@ const AUD_LOSS: CockpitAlertAudienceRole[] = [
   "sales_director",
   "manager",
   "closer",
-  "confirmer",
 ];
 const AUD_CONF: CockpitAlertAudienceRole[] = [
   "super_admin",
   "admin",
   "sales_director",
   "manager",
-  "confirmer",
 ];
 const AUD_CLOSER: CockpitAlertAudienceRole[] = [
   "super_admin",
@@ -375,7 +373,6 @@ const AUD_OPS: CockpitAlertAudienceRole[] = [
   "admin",
   "sales_director",
   "manager",
-  "confirmer",
   "closer",
 ];
 const AUD_ALL_BUSINESS: CockpitAlertAudienceRole[] = [
@@ -383,7 +380,6 @@ const AUD_ALL_BUSINESS: CockpitAlertAudienceRole[] = [
   "admin",
   "sales_director",
   "manager",
-  "confirmer",
   "closer",
   "sales_agent",
 ];
@@ -392,183 +388,11 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
   const alerts: CockpitAlert[] = [];
   const base = ctx.basePath;
   const nowMs = ctx.now.getTime();
-  const xp = (pick: (w: WorkflowScopedListRow) => boolean, ctaLabel: string, href: string) =>
+  const xp = (pick: (w: any) => boolean, ctaLabel: string, href: string) =>
     buildPeriodAlertExecution(ctx.scopedPeriodRows, pick, ctx.now, { label: ctaLabel, href }, 5);
   const { funnel, priorityQueues, bySheet, byTeam, byChannel } = ctx.snapshot;
   const fPrev = ctx.snapshotPrevious.funnel;
   const channelPrev = new Map(ctx.snapshotPrevious.byChannel.map((c) => [c.channel, c.workflowCount] as const));
-
-  const backlog = groupCountConfirmBacklog(ctx.scopedPeriodRows);
-  const sevGlobal = isBacklogCritical(
-    backlog.global,
-    T.backlog.pendingGlobalWarning,
-    T.backlog.pendingGlobalCritical,
-  );
-  if (sevGlobal !== "ok") {
-    alerts.push(
-      finalizeCockpitAlert({
-        id: "period-backlog-confirm-global",
-        scope: "period",
-        severity: sevGlobal === "critical" ? "critical" : "warning",
-        category: "backlog",
-        title: "Stock confirmateur élevé",
-        message: `${backlog.global} dossier(s) simulé(s) ou à confirmer sur la période — risque de saturation file confirmateur.`,
-        suggestedAction: "Prioriser la qualification / confirmation, réaffecter si besoin.",
-        targetType: "global",
-        targetId: null,
-        targetLabel: null,
-        metricValue: backlog.global,
-        thresholdValue: T.backlog.pendingGlobalWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count: backlog.global,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) => CONFIRM_BACKLOG_STATUSES.has(w.workflow_status as CeeWorkflowStatus),
-          "Analyser le backlog confirmateur",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
-
-  for (const [sheetId, { label, count }] of backlog.bySheet) {
-    const sev = isBacklogCritical(count, T.backlog.pendingPerSheetWarning, T.backlog.pendingPerSheetCritical);
-    if (sev === "ok") continue;
-    alerts.push(
-      finalizeCockpitAlert({
-        id: `period-backlog-confirm-sheet-${sheetId}`,
-        scope: "period",
-        severity: sev === "critical" ? "critical" : "warning",
-        category: "backlog",
-        title: `Backlog confirmateur — ${label}`,
-        message: `${count} dossier(s) en attente côté confirmateur sur cette fiche.`,
-        suggestedAction: "Délester la file confirmateur pour cette fiche (créneaux, renfort, reprise des brouillons).",
-        targetType: "sheet",
-        targetId: sheetId,
-        targetLabel: label,
-        metricValue: count,
-        thresholdValue: T.backlog.pendingPerSheetWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(sheetId, { tab: "pending" })}`,
-        count,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) =>
-            CONFIRM_BACKLOG_STATUSES.has(w.workflow_status as CeeWorkflowStatus) &&
-            w.cee_sheet_id === sheetId,
-          "Traiter les dossiers de cette fiche",
-          `${base}${buildConfirmateurQueuePath(sheetId, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
-
-  for (const [teamId, count] of backlog.byTeam) {
-    const sev = isBacklogCritical(count, T.backlog.pendingPerTeamWarning, T.backlog.pendingPerTeamCritical);
-    if (sev === "ok") continue;
-    const tr = byTeam.find((t) => t.teamId === teamId);
-    const tlabel = tr?.teamName ?? teamId;
-    alerts.push(
-      finalizeCockpitAlert({
-        id: `period-backlog-confirm-team-${teamId}`,
-        scope: "period",
-        severity: sev === "critical" ? "critical" : "warning",
-        category: "backlog",
-        title: `Backlog confirmateur — équipe`,
-        message: `${count} dossier(s) à traiter pour l’équipe « ${tlabel} ».`,
-        suggestedAction: "Coordonner confirmateur / manager d’équipe pour absorber le stock.",
-        targetType: "team",
-        targetId: teamId,
-        targetLabel: tlabel,
-        metricValue: count,
-        thresholdValue: T.backlog.pendingPerTeamWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) =>
-            CONFIRM_BACKLOG_STATUSES.has(w.workflow_status as CeeWorkflowStatus) &&
-            w.cee_sheet_team_id === teamId,
-          "Voir le stock de l’équipe",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
-
-  const staleConfirmW = countStaleConfirm(ctx.scopedPeriodRows, nowMs, T.backlog.confirmStaleDaysWarning);
-  const staleConfirmC = countStaleConfirm(ctx.scopedPeriodRows, nowMs, T.backlog.confirmStaleDaysCritical);
-  if (staleConfirmC > 0) {
-    alerts.push(
-      finalizeCockpitAlert({
-        id: "period-confirm-stale-critical",
-        scope: "period",
-        severity: "critical",
-        category: "backlog",
-        title: "Dossiers confirmateur trop anciens",
-        message: `${staleConfirmC} dossier(s) simulés ou à confirmer sans mise à jour depuis plus de ${T.backlog.confirmStaleDaysCritical} jours.`,
-        suggestedAction: "Traiter ou requalifier en priorité — risque de perte commerciale.",
-        targetType: "global",
-        targetId: null,
-        targetLabel: null,
-        metricValue: staleConfirmC,
-        thresholdValue: T.backlog.confirmStaleDaysCritical,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count: staleConfirmC,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) => {
-            if (!CONFIRM_BACKLOG_STATUSES.has(w.workflow_status as CeeWorkflowStatus)) return false;
-            return nowMs - new Date(w.updated_at).getTime() > T.backlog.confirmStaleDaysCritical * MS_DAY;
-          },
-          "Traiter les dossiers les plus anciens",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  } else if (staleConfirmW > 0) {
-    alerts.push(
-      finalizeCockpitAlert({
-        id: "period-confirm-stale-warning",
-        scope: "period",
-        severity: "warning",
-        category: "backlog",
-        title: "Confirmations qui traînent",
-        message: `${staleConfirmW} dossier(s) sans activité depuis plus de ${T.backlog.confirmStaleDaysWarning} jours.`,
-        suggestedAction: "Accélérer la reprise confirmateur.",
-        targetType: "global",
-        targetId: null,
-        targetLabel: null,
-        metricValue: staleConfirmW,
-        thresholdValue: T.backlog.confirmStaleDaysWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count: staleConfirmW,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) => {
-            if (!CONFIRM_BACKLOG_STATUSES.has(w.workflow_status as CeeWorkflowStatus)) return false;
-            return nowMs - new Date(w.updated_at).getTime() > T.backlog.confirmStaleDaysWarning * MS_DAY;
-          },
-          "Reprendre la file confirmateur",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
 
   const docsN = countDocsPrepared(ctx.scopedPeriodRows);
   const docsStaleW = countStaleDocsPrepared(ctx.scopedPeriodRows, nowMs, T.docs.docsPreparedStaleDaysWarning);
@@ -592,13 +416,13 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         comparisonValue: null,
         period: ctx.periodLabel,
         roleAudience: AUD_OPS,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+        href: `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         count: docsN,
         relatedQueueKey: "docsPreparedStale",
         ...xp(
           (w) => w.workflow_status === "docs_prepared",
           "Transmettre au closer",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+          `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         ),
       }),
     );
@@ -621,7 +445,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         comparisonValue: null,
         period: ctx.periodLabel,
         roleAudience: AUD_OPS,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+        href: `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         count: docsStaleC,
         relatedQueueKey: "docsPreparedStale",
         ...xp(
@@ -629,7 +453,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
             w.workflow_status === "docs_prepared" &&
             nowMs - new Date(w.updated_at).getTime() > T.docs.docsPreparedStaleDaysCritical * MS_DAY,
           "Débloquer les docs en retard",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+          `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         ),
       }),
     );
@@ -642,7 +466,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         category: "documentation",
         title: "Docs prêts qui attendent",
         message: `${docsStaleW} dossier(s) sans transmission depuis plus de ${T.docs.docsPreparedStaleDaysWarning} jours.`,
-        suggestedAction: "Contrôler la file confirmateur → closer.",
+        suggestedAction: "Contrôler la file closer.",
         targetType: "global",
         targetId: null,
         targetLabel: null,
@@ -651,7 +475,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         comparisonValue: null,
         period: ctx.periodLabel,
         roleAudience: AUD_OPS,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+        href: `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         count: docsStaleW,
         relatedQueueKey: "docsPreparedStale",
         ...xp(
@@ -659,7 +483,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
             w.workflow_status === "docs_prepared" &&
             nowMs - new Date(w.updated_at).getTime() > T.docs.docsPreparedStaleDaysWarning * MS_DAY,
           "Accélérer la transmission",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+          `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         ),
       }),
     );
@@ -1099,7 +923,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         category: "activity",
         title: "Pipeline post-brouillon en baisse",
         message: `Moins de dossiers actifs (hors brouillon) créés sur la période vs la précédente.`,
-        suggestedAction: "Accélérer validation simulations et passages confirmateur.",
+        suggestedAction: "Accélérer validation simulations et passages closer.",
         targetType: "global",
         targetId: null,
         targetLabel: null,
@@ -1491,7 +1315,7 @@ export function buildStructuralBusinessAlerts(input: StructuralNetworkInput): Co
           category: "staffing",
           title: `Équipe sans membre actif — ${team.name}`,
           message: `L’équipe sur « ${sheetL} » n’a aucun membre actif.`,
-          suggestedAction: "Réactiver ou affecter des membres (agent, confirmateur, closer).",
+          suggestedAction: "Réactiver ou affecter des membres (agent, closer).",
           targetType: "team",
           targetId: team.id,
           targetLabel: team.name,
@@ -1540,29 +1364,6 @@ export function buildStructuralBusinessAlerts(input: StructuralNetworkInput): Co
           title: `Équipe sans agent — ${team.name}`,
           message: `Pas d’agent terrain actif sur l’équipe « ${team.name} ».`,
           suggestedAction: "Compléter le staffing pour absorber les leads.",
-          targetType: "team",
-          targetId: team.id,
-          targetLabel: team.name,
-          metricValue: null,
-          thresholdValue: null,
-          comparisonValue: null,
-          period: null,
-          roleAudience: AUD_ADMIN,
-          href: structCta,
-          ...structExec,
-        }),
-      );
-    }
-    if (!roles.has("confirmateur")) {
-      alerts.push(
-        finalizeCockpitAlert({
-          id: `struct-team-no-conf-${team.id}`,
-          scope: "structural",
-          severity: "warning",
-          category: "staffing",
-          title: `Équipe sans confirmateur — ${team.name}`,
-          message: `Pas de confirmateur actif — risque de goulot sur la validation.`,
-          suggestedAction: "Affecter un confirmateur dédié.",
           targetType: "team",
           targetId: team.id,
           targetLabel: team.name,

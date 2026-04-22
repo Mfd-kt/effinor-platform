@@ -78,7 +78,6 @@ export async function updateCommercialCallback(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath("/agent");
   revalidatePath("/commercial-callbacks");
   return { ok: true };
 }

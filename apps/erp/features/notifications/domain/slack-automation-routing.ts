@@ -7,8 +7,6 @@ import { getSlackEnv } from "@/features/notifications/infra/slack-env";
 export const SLACK_AUTOMATION_EVENT_TYPES = [
   "new_lead",
   "lead_contacted",
-  "send_to_confirmateur",
-  "confirmateur_backlog",
   "docs_missing",
   "send_to_closer",
   "closing_followup",
@@ -35,9 +33,7 @@ export type SlackWebhookForEventResult =
 const EVENT_TO_CHANNELS: Record<SlackAutomationEventType, NotificationChannelKey[]> = {
   new_lead: ["commercial"],
   lead_contacted: ["commercial"],
-  send_to_confirmateur: ["confirmateur"],
-  confirmateur_backlog: ["confirmateur"],
-  docs_missing: ["confirmateur", "administratif"],
+  docs_missing: ["administratif"],
   send_to_closer: ["closer"],
   closing_followup: ["closer"],
   deal_signed: ["commercial", "direction"],
@@ -107,7 +103,6 @@ export function resolveSlackWebhookForEvent(
 export function sanitizeSlackVisibleText(text: string): string {
   let s = text;
   const replacements: [RegExp, string][] = [
-    [/\bto_confirm\b/gi, "en attente du confirmateur"],
     [/\bdraft\b/gi, "brouillon"],
     [/\bsimulation_done\b/gi, "simulation validée"],
     [/\bqualified\b/gi, "qualifié"],
@@ -140,8 +135,6 @@ export function buildSlackMessageFromEvent(
   const titleByEvent: Record<SlackAutomationEventType, string> = {
     new_lead: "Nouveau lead",
     lead_contacted: "Lead contacté",
-    send_to_confirmateur: "Dossier envoyé au confirmateur",
-    confirmateur_backlog: "File confirmateur à traiter",
     docs_missing: "Documents manquants ou en retard",
     send_to_closer: "Dossier transmis au closer",
     closing_followup: "Relance closing",
@@ -156,7 +149,7 @@ export function buildSlackMessageFromEvent(
   const severity: NotificationSeverity =
     eventType === "critical_alert" || eventType === "sheet_misconfigured" || eventType === "no_team_member"
       ? "critical"
-      : eventType === "docs_missing" || eventType === "confirmateur_backlog" || eventType === "closing_followup"
+      : eventType === "docs_missing" || eventType === "closing_followup"
         ? "warning"
         : "info";
 
@@ -197,9 +190,6 @@ export function mapCockpitAlertToAutomationEventType(alert: CockpitAlert): Slack
   if (alert.category === "documentation" || alert.category === "quality") {
     return "docs_missing";
   }
-  if (alert.relatedQueueKey === "blockedConfirm") {
-    return "send_to_confirmateur";
-  }
   if (alert.relatedQueueKey === "docsPreparedStale") {
     return "docs_missing";
   }
@@ -211,9 +201,6 @@ export function mapCockpitAlertToAutomationEventType(alert: CockpitAlert): Slack
   }
   if (alert.category === "conversion" || alert.category === "funnel") {
     return "deal_signed";
-  }
-  if (alert.relatedQueueKey === "staleDrafts") {
-    return "send_to_confirmateur";
   }
   return "lead_contacted";
 }

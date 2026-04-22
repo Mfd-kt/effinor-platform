@@ -7,7 +7,10 @@ import {
   leadHeatingTypesFromSimulationPayloads,
   parseWorkflowSimulationSnapshotJson,
 } from "@/features/leads/lib/simulator-to-lead-technical";
-import { isPacPreferredLocalUsage } from "@/features/leads/simulator/domain/cee-solution-decision";
+// TODO: cee-workflows / simulator retiré — la logique « PAC préférée » dépendait du simulateur ; neutralisée.
+function isPacPreferredLocalUsage(_localUsage: any): boolean {
+  return false;
+}
 import { isoToDatetimeLocal } from "@/features/technical-visits/lib/datetime";
 import type { LeadFormInput, LeadInsertInput } from "@/features/leads/schemas/lead.schema";
 import type { LeadDetailRow, LeadRow } from "@/features/leads/types";

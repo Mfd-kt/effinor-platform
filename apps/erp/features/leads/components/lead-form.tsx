@@ -68,7 +68,7 @@ type LeadFormProps = {
   externalFooter?: boolean;
   /** Stable id to put on the <form> so an external submit button can target it. */
   formId?: string;
-  /** Fiche figée (ex. agent après envoi au confirmateur). */
+  /** Fiche figée (ex. agent après envoi au closer). */
   readOnly?: boolean;
   /** Agent commercial seul : masque audio, pipeline, pièces — saisie prospect + pré-qualif uniquement. */
   simplifiedAgentView?: boolean;
@@ -268,15 +268,13 @@ export function LeadForm({
       <form id={formId} onSubmit={handleSubmit(onSubmit)} className="min-w-0">
         {readOnly && mode === "edit" ? (
           <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
-            <strong>Consultation agent.</strong> Ce dossier est chez le confirmateur ou plus loin dans le pipeline : la
-            fiche est en <strong>lecture seule</strong>. Les brouillons ou simulations non transmises restent modifiables
-            depuis le menu <strong>Agent</strong>.
+            Cette fiche est en <strong>lecture seule</strong>.
           </div>
         ) : null}
         {simplifiedAgentView && mode === "edit" && !readOnly ? (
           <div className="mb-6 rounded-lg border border-sky-200/80 bg-sky-50/80 px-4 py-3 text-sm text-sky-950">
             <strong>Vue agent.</strong> Seules vos saisies (coordonnées, adresses, pré-qualification) et le détail du
-            simulateur sont affichés ici. Le reste du dossier est géré par confirmateur et closer.
+            simulateur sont affichés ici. Le reste du dossier est géré par closer.
           </div>
         ) : null}
         <fieldset
@@ -402,7 +400,7 @@ export function LeadForm({
             <CardDescription>
               {mode === "create"
                 ? "Source « Appel froid » enregistrée par défaut. Le reste (rappel, qualification) se complète sur la fiche lead après création."
-                : "Pipeline, rappel téléphonique, source et attribution. Le confirmateur est défini à la création d’une visite technique."}
+                : "Pipeline, rappel téléphonique, source et attribution."}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">

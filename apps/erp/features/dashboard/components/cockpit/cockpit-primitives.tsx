@@ -131,7 +131,6 @@ function formatImpactEur(value: number | null): string | null {
 
 const PRIORITY_QUEUE_LABELS: Record<CockpitPriorityQueueKey, string> = {
   staleDrafts: "File « brouillons inactifs »",
-  blockedConfirm: "File « stock confirmateur »",
   docsPreparedStale: "File « docs prêts (stale) »",
   agreementsAwaitingSign: "File « accords en signature »",
   oldAgreementSent: "File « accords à relancer »",
@@ -432,11 +431,6 @@ export function CockpitPriorityGrid({
         emptyLabel="Aucun brouillon ancien."
       />
       <CockpitQueueTable
-        title="Stock confirmateur"
-        items={snap.priorityQueues.blockedConfirm}
-        emptyLabel="Rien en attente de confirmation."
-      />
-      <CockpitQueueTable
         title="Docs prêts (délai)"
         items={snap.priorityQueues.docsPreparedStale}
         emptyLabel="Pas de docs prêts en retard."
@@ -506,8 +500,9 @@ export function CockpitKpiBusinessRow({
   leadsCreatedPeriod: number;
 }) {
   const f = snap.funnel;
-  const signed = f.agreement_signed + f.paid;
-  const sent = f.agreement_sent + signed + f.lost;
+  const fn = (k: string) => f[k] ?? 0;
+  const signed = fn("agreement_signed") + fn("paid");
+  const sent = fn("agreement_sent") + signed + fn("lost");
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
@@ -518,12 +513,12 @@ export function CockpitKpiBusinessRow({
       />
       <StatCard
         title="Simulations validées"
-        value={(f.simulation_done + f.to_confirm + f.qualified).toLocaleString("fr-FR")}
+        value={(fn("simulation_done") + fn("to_confirm") + fn("qualified")).toLocaleString("fr-FR")}
         hint="Pipeline post-simulation"
       />
       <StatCard
         title="Accords envoyés"
-        value={f.agreement_sent.toLocaleString("fr-FR")}
+        value={fn("agreement_sent").toLocaleString("fr-FR")}
         hint="En attente signature client"
       />
       <StatCard
@@ -549,7 +544,7 @@ export function CockpitNetworkCallout() {
       <CardContent>
         <CardDescription>
           Vue détaillée fiches → équipes → rôles :{" "}
-          <Link href="/admin/cee-sheets" className="font-medium text-emerald-700 underline dark:text-emerald-400">
+          <Link href="/settings/roles" className="font-medium text-emerald-700 underline dark:text-emerald-400">
             Administration fiches CEE
           </Link>
         </CardDescription>

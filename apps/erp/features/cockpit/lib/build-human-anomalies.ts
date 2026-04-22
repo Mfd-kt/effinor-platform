@@ -13,13 +13,6 @@ export function buildHumanAnomalies(input: {
     treatedWeek: number;
     leadsWeek: number;
   }[];
-  confirmateurs: {
-    userId: string;
-    displayName: string;
-    email: string | null;
-    backlog: number;
-    avgBacklogAgeDays: number | null;
-  }[];
   closers: {
     userId: string;
     displayName: string;
@@ -30,8 +23,6 @@ export function buildHumanAnomalies(input: {
   }[];
   /** Paris calendar date YYYY-MM-DD */
   todayParis: string;
- /** Logs: confirmateur a qualifié au moins un dossier aujourd'hui */
-  confirmateurQualifiedToday: Set<string>;
 }): CockpitHumanAnomaly[] {
   const out: CockpitHumanAnomaly[] = [];
 
@@ -73,51 +64,6 @@ export function buildHumanAnomalies(input: {
     }
   }
 
-  for (const c of input.confirmateurs) {
-    if (c.backlog >= 10) {
-      const ps = computeCockpitPriority({ valueCents: 0, backlogCount: c.backlog });
-      out.push({
-        id: `hum:conf-backlog-${c.userId}`,
-        userId: c.userId,
-        displayName: c.displayName,
-        email: c.email,
-        role: "confirmateur",
-        problem: `Backlog élevé : ${c.backlog} dossiers en attente.`,
-        level: c.backlog >= 16 ? "critique" : "warning",
-        dossiersHref: "/confirmateur",
-        priorityScore: ps,
-      });
-    }
-    if (!input.confirmateurQualifiedToday.has(c.userId) && c.backlog >= 3) {
-      const ps = computeCockpitPriority({ valueCents: 0, backlogCount: c.backlog });
-      out.push({
-        id: `hum:conf-noday-${c.userId}`,
-        userId: c.userId,
-        displayName: c.displayName,
-        email: c.email,
-        role: "confirmateur",
-        problem: "Aucun dossier qualifié aujourd’hui malgré du stock.",
-        level: "warning",
-        dossiersHref: "/confirmateur",
-        priorityScore: ps - 100,
-      });
-    }
-    if (c.avgBacklogAgeDays != null && c.avgBacklogAgeDays >= 9) {
-      const ps = computeCockpitPriority({ valueCents: 0, backlogCount: c.backlog });
-      out.push({
-        id: `hum:conf-slow-${c.userId}`,
-        userId: c.userId,
-        displayName: c.displayName,
-        email: c.email,
-        role: "confirmateur",
-        problem: `Temps moyen en file confirmateur trop élevé (~${c.avgBacklogAgeDays} j).`,
-        level: "critique",
-        dossiersHref: "/confirmateur",
-        priorityScore: ps + 500,
-      });
-    }
-  }
-
   for (const c of input.closers) {
     if (c.signedWeek === 0 && c.pipelineOpen >= 5) {
       const ps = computeCockpitPriority({ valueCents: 0, isBlocked: true });
@@ -129,7 +75,7 @@ export function buildHumanAnomalies(input: {
         role: "closer",
         problem: `Pipeline élevé (${c.pipelineOpen}) sans signature cette semaine.`,
         level: c.pipelineOpen >= 8 ? "critique" : "warning",
-        dossiersHref: "/closer",
+        dossiersHref: "/leads",
         priorityScore: ps,
       });
     }
@@ -147,7 +93,7 @@ export function buildHumanAnomalies(input: {
         role: "closer",
         problem: `Taux de signature faible (${c.signatureRatePct} %).`,
         level: "warning",
-        dossiersHref: "/closer",
+        dossiersHref: "/leads",
         priorityScore: ps,
       });
     }

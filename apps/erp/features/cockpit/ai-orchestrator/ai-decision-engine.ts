@@ -68,25 +68,6 @@ export function decideAiActions(state: BusinessStateAnalysis): AiOrchestratorDec
     });
   }
 
-  if (
-    state.worstConfirmateurBacklog &&
-    state.worstConfirmateurBacklog.backlog >= BACKLOG_NOTIFY_THRESHOLD
-  ) {
-    const uid = directionIds[0] ?? state.worstConfirmateurBacklog.userId;
-    out.push({
-      recommendationId: `orch:notify-backlog:${state.worstConfirmateurBacklog.userId}`,
-      actionType: "notify_user",
-      payload: notifyPayload(
-        "Backlog confirmateur élevé",
-        `File « à confirmer » : ~${state.worstConfirmateurBacklog.backlog} dossiers pour un confirmateur — rééquilibrage manuel recommandé (pas de redistribution auto en V1).`,
-        uid,
-      ),
-      priority: 55,
-      autoExecutable: true,
-      reason: "Anomalie pipeline — information direction (pas de mutation masse des affectations).",
-    });
-  }
-
   out.sort((a, b) => b.priority - a.priority);
   return out;
 }

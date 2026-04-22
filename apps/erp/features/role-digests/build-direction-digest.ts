@@ -64,7 +64,7 @@ export function buildDirectionDigest(s: RoleDigestLoaderSnapshot): RoleDigest | 
       label: "Fiches CEE & équipes",
       description: "Corriger les dossiers sans équipe ou la config réseau.",
       actionType: "fix",
-      actionHref: "/settings/cee",
+      actionHref: "/settings/roles",
       priority: noTeam >= 2 ? "high" : "low",
     }),
   ];

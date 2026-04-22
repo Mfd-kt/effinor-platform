@@ -222,7 +222,7 @@ export function CommercialAgentPremiumDashboard({ data }: Props) {
               ))
             )}
           </ul>
-          <Link href="/agent" className={cn(buttonVariants({ variant: "link", size: "sm" }), "px-0 text-xs")}>
+          <Link href="/commercial-callbacks" className={cn(buttonVariants({ variant: "link", size: "sm" }), "px-0 text-xs")}>
             Poste agent
           </Link>
         </div>

@@ -1,6 +1,5 @@
 "use server";
 
-import { markAgreementSent as markAgreementSentInService } from "@/features/cee-workflows/services/workflow-service";
 import { resolvePublicAppBaseUrl } from "@/lib/app-public-url";
 import { sendEmail } from "@/lib/email/email-orchestrator";
 import { getFromAddress, getMailTransport } from "@/lib/email/gmail-transport";
@@ -224,14 +223,8 @@ export async function sendStudyEmail(
         gmail_message_id: gmailMessageId,
       });
 
-      if ((emailType === "study" || emailType === "relance_signature") && lead?.current_workflow_id) {
-        await markAgreementSentInService(supabase, {
-          workflowId: lead.current_workflow_id,
-          signatureProvider: "email",
-          signatureRequestId: trackingId,
-          signatureStatus: "sent",
-        });
-      }
+      // TODO: cee-workflows retiré — la transition workflow CEE (markAgreementSent)
+      // est désactivée jusqu'au nouveau modèle workflow.
     }
 
     return { ok: true, trackingId: trackingId ?? "" };

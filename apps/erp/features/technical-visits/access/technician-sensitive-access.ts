@@ -7,7 +7,7 @@ export const TECHNICIAN_SENSITIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Rôles / profils qui ne sont jamais soumis à la réduction « technicien avant J-24h ».
- * Aligné sur le périmètre métier (manager, commercial élargi, confirmateur, super admin).
+ * Aligné sur le périmètre métier (manager, commercial élargi, super admin).
  */
 export function bypassesTechnicianPreVisitRedaction(roleCodes: readonly string[]): boolean {
   if (roleCodes.includes("super_admin")) return true;
@@ -109,7 +109,7 @@ export function getTechnicalVisitFieldAccessLevelForAuthenticatedViewer(
 
 /**
  * Technicien affecté (vue « pleine » J-24h) : le formulaire terrain / dynamique n’apparaît qu’après
- * « Démarrer la visite » (`started_at`). Les profils bureau (confirmateur, manager, etc.) ne sont pas concernés.
+ * « Démarrer la visite » (`started_at`). Les profils bureau (manager, etc.) ne sont pas concernés.
  */
 export function shouldHideTechnicianFieldworkFormUntilVisitStarted(
   access: Extract<AccessContext, { kind: "authenticated" }>,

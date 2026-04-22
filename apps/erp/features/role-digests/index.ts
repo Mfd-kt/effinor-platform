@@ -9,7 +9,6 @@ export type {
 export { computeRoleDigestForAccess } from "./digest-scheduler";
 export { loadRoleDigestData, type RoleDigestLoaderSnapshot } from "./load-role-digest-data";
 export { buildAgentDigest } from "./build-agent-digest";
-export { buildConfirmateurDigest } from "./build-confirmateur-digest";
 export { buildCloserDigest } from "./build-closer-digest";
 export { buildManagerDigest } from "./build-manager-digest";
 export { buildDirectionDigest } from "./build-direction-digest";

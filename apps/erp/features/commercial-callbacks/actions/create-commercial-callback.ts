@@ -75,7 +75,6 @@ export async function createCommercialCallback(
     return { ok: false, error: "Création impossible." };
   }
 
-  revalidatePath("/agent");
   revalidatePath("/commercial-callbacks");
 
   try {

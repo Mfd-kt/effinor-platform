@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { assignWorkflowUsers } from "@/features/cee-workflows/services/workflow-service";
 import { convertCommercialCallbackToLead } from "@/features/commercial-callbacks/actions/convert-callback-to-lead";
 import { computeQuickRescheduleParis } from "@/features/commercial-callbacks/lib/quick-reschedule-paris";
 import type { CockpitAiActionType } from "@/features/cockpit/types";
@@ -16,9 +15,7 @@ const ALLOWED_REDIRECT_PREFIXES = [
   "/cockpit",
   "/commercial-callbacks",
   "/leads",
-  "/admin/cee-sheets",
-  "/confirmateur",
-  "/closer",
+  "/settings/roles",
 ] as const;
 
 export function sanitizeInternalRedirect(path: string): string {
@@ -57,7 +54,7 @@ const convertCallbackPayload = z.object({
 const assignWorkflowPayload = z.object({
   workflow_id: z.string().uuid(),
   assignee_user_id: z.string().uuid(),
-  role: z.enum(["agent", "confirmateur", "closer"]),
+  role: z.enum(["agent", "closer"]),
 });
 
 const notifyUserPayload = z.object({
@@ -124,61 +121,9 @@ export async function runAiActionHandler(
       return { ok: true, clientRedirect: `/leads/${r.leadId}`, resultJson: { leadId: r.leadId } };
     }
     case "assign_workflow": {
-      if (!ctx.orchestratorMode && ctx.access.kind !== "authenticated") return { ok: false, error: "Non authentifié." };
       const p = assignWorkflowPayload.safeParse(payload);
       if (!p.success) return { ok: false, error: "Affectation invalide." };
-
-      const { data: wf, error: wfErr } = await ctx.supabase
-        .from("lead_sheet_workflows")
-        .select(
-          "id, cee_sheet_team_id, assigned_agent_user_id, assigned_confirmateur_user_id, assigned_closer_user_id, workflow_status",
-        )
-        .eq("id", p.data.workflow_id)
-        .maybeSingle();
-      if (wfErr || !wf) return { ok: false, error: wfErr?.message ?? "Workflow introuvable." };
-      if (wf.workflow_status === "lost") return { ok: false, error: "Workflow perdu." };
-      if (!wf.cee_sheet_team_id) return { ok: false, error: "Workflow sans équipe." };
-
-      const { data: member, error: memErr } = await ctx.supabase
-        .from("cee_sheet_team_members")
-        .select("user_id, role_in_team")
-        .eq("cee_sheet_team_id", wf.cee_sheet_team_id)
-        .eq("user_id", p.data.assignee_user_id)
-        .eq("is_active", true)
-        .maybeSingle();
-      if (memErr || !member) return { ok: false, error: "Membre d’équipe introuvable." };
-      if (member.role_in_team !== p.data.role) {
-        return { ok: false, error: "Rôle incompatible avec l’équipe." };
-      }
-
-      const { assignee_user_id, role } = p.data;
-      if (role === "agent" && wf.assigned_agent_user_id && wf.assigned_agent_user_id !== assignee_user_id) {
-        return { ok: false, error: "Un agent est déjà assigné." };
-      }
-      if (
-        role === "confirmateur" &&
-        wf.assigned_confirmateur_user_id &&
-        wf.assigned_confirmateur_user_id !== assignee_user_id
-      ) {
-        return { ok: false, error: "Un confirmateur est déjà assigné." };
-      }
-      if (role === "closer" && wf.assigned_closer_user_id && wf.assigned_closer_user_id !== assignee_user_id) {
-        return { ok: false, error: "Un closer est déjà assigné." };
-      }
-
-      try {
-        await assignWorkflowUsers(ctx.supabase, {
-          workflowId: p.data.workflow_id,
-          actorUserId: ctx.actorUserId,
-          ...(role === "agent" ? { assignedAgentUserId: assignee_user_id } : {}),
-          ...(role === "confirmateur" ? { assignedConfirmateurUserId: assignee_user_id } : {}),
-          ...(role === "closer" ? { assignedCloserUserId: assignee_user_id } : {}),
-        });
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : "Échec affectation." };
-      }
-
-      return { ok: true, resultJson: { workflow_id: p.data.workflow_id, assignee_user_id, role } };
+      return { ok: false, error: "Affectation workflow CEE désactivée." };
     }
     case "notify_user": {
       const p = notifyUserPayload.safeParse(payload);
@@ -248,7 +193,7 @@ export async function runAiActionHandler(
       void fixSheetPayload.safeParse(payload);
       return {
         ok: true,
-        clientRedirect: sanitizeInternalRedirect("/admin/cee-sheets"),
+        clientRedirect: sanitizeInternalRedirect("/settings/roles"),
         resultJson: payload as Json,
       };
     }

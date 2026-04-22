@@ -52,6 +52,5 @@ export async function deleteCommercialCallback(
   }
 
   revalidatePath("/commercial-callbacks");
-  revalidatePath("/agent");
   return { ok: true };
 }

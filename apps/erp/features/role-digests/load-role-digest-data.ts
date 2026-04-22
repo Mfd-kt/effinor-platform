@@ -24,7 +24,6 @@ export type WorkflowDigestRow = {
   workflow_status: string;
   updated_at: string;
   agreement_sent_at: string | null;
-  assigned_confirmateur_user_id: string | null;
   assigned_closer_user_id: string | null;
 };
 
@@ -57,9 +56,6 @@ export type RoleDigestLoaderSnapshot = {
     simulated_at: string | null;
     sim_saving_eur_30_selected: number | null;
   }>;
-  /** Confirmateur */
-  confirmateurBacklog?: WorkflowDigestRow[];
-  confirmateurSla?: SlaInstanceDigestRow[];
   /** Closer */
   closerPipeline?: WorkflowDigestRow[];
   closerStaleAgreements?: WorkflowDigestRow[];
@@ -68,7 +64,6 @@ export type RoleDigestLoaderSnapshot = {
   managedTeamIds?: string[];
   managedMemberIds?: string[];
   managerSla?: SlaInstanceDigestRow[];
-  managerConfirmateurLoads?: Array<{ userId: string; backlog: number }>;
   /** Direction */
   directionLeadsToday?: number;
   directionAutomationFailed48h?: number;
@@ -127,38 +122,11 @@ export async function loadRoleDigestData(
     };
   }
 
-  if (roleTarget === "confirmateur") {
-    const { data: backlog } = await supabase
-      .from("lead_sheet_workflows")
-      .select(
-        "id, lead_id, workflow_status, updated_at, agreement_sent_at, assigned_confirmateur_user_id, assigned_closer_user_id",
-      )
-      .eq("assigned_confirmateur_user_id", userId)
-      .eq("workflow_status", "to_confirm")
-      .eq("is_archived", false)
-      .order("updated_at", { ascending: true })
-      .limit(30);
-    const { data: sla } = await supabase
-      .from("internal_sla_instances")
-      .select("id, rule_code, entity_type, entity_id, status, target_due_at, assigned_user_id, manager_user_id")
-      .eq("assigned_user_id", userId)
-      .in("status", ["warning", "breached", "critical"])
-      .limit(20);
-    const admin = createAdminClient();
-    const aiOpsBrief = await loadAiOpsBrief(admin, userId);
-    return {
-      ...base,
-      confirmateurBacklog: (backlog ?? []) as WorkflowDigestRow[],
-      confirmateurSla: (sla ?? []) as SlaInstanceDigestRow[],
-      aiOpsBrief,
-    };
-  }
-
   if (roleTarget === "closer") {
     const { data: pipe } = await supabase
       .from("lead_sheet_workflows")
       .select(
-        "id, lead_id, workflow_status, updated_at, agreement_sent_at, assigned_confirmateur_user_id, assigned_closer_user_id",
+        "id, lead_id, workflow_status, updated_at, agreement_sent_at, assigned_closer_user_id",
       )
       .eq("assigned_closer_user_id", userId)
       .in("workflow_status", ["to_close", "agreement_sent"])
@@ -193,17 +161,6 @@ export async function loadRoleDigestData(
     const ctx = await getManagedTeamsContext(userId);
     if (!ctx) return { ...base, managedTeamIds: [], managedMemberIds: [], aiOpsBrief: await loadAiOpsBrief(createAdminClient(), userId) };
     const memberIds = [...new Set(ctx.members.filter((m) => m.isActive).map((m) => m.userId))];
-    const confirmateurIds = ctx.members.filter((m) => m.isActive && m.roleInTeam === "confirmateur").map((m) => m.userId);
-    const loads: Array<{ userId: string; backlog: number }> = [];
-    for (const cid of confirmateurIds.slice(0, 8)) {
-      const { count } = await supabase
-        .from("lead_sheet_workflows")
-        .select("id", { count: "exact", head: true })
-        .eq("assigned_confirmateur_user_id", cid)
-        .eq("workflow_status", "to_confirm")
-        .eq("is_archived", false);
-      loads.push({ userId: cid, backlog: count ?? 0 });
-    }
     const { data: sla } = await supabase
       .from("internal_sla_instances")
       .select("id, rule_code, entity_type, entity_id, status, target_due_at, assigned_user_id, manager_user_id")
@@ -216,7 +173,6 @@ export async function loadRoleDigestData(
       ...base,
       managedTeamIds: ctx.teamIds,
       managedMemberIds: memberIds,
-      managerConfirmateurLoads: loads.sort((a, b) => b.backlog - a.backlog),
       managerSla: (sla ?? []) as SlaInstanceDigestRow[],
       aiOpsBrief,
     };

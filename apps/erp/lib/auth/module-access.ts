@@ -19,10 +19,7 @@ function legacyInternalFullPipeline(access: Extract<AccessContext, { kind: "auth
   if (rc.includes("super_admin")) {
     return true;
   }
-  if (hasFullCommercialDataAccess(rc)) {
-    return true;
-  }
-  return rc.includes("confirmer");
+  return hasFullCommercialDataAccess(rc);
 }
 
 function legacyTechnicalVisitsModule(_access: Extract<AccessContext, { kind: "authenticated" }>): boolean {
@@ -57,7 +54,7 @@ export function canAccessLeadsModule(access: AccessContext): boolean {
 
 /**
  * Lien « liste globale des leads » dans la barre latérale : direction / admin uniquement.
- * Les autres rôles accèdent aux fiches via leurs postes (agent, confirmateur, closer) ou URL directe autorisée par la matrice.
+ * Les autres rôles accèdent aux fiches via leurs postes (agent, closer) ou URL directe autorisée par la matrice.
  */
 export function canAccessLeadsDirectoryNav(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {
@@ -109,8 +106,7 @@ export function shouldHideTerrainSuiviSidebar(access: AccessContext): boolean {
     rc.includes("admin") ||
     rc.includes("sales_director") ||
     rc.includes("technician") ||
-    rc.includes("closer") ||
-    rc.includes("confirmer")
+    rc.includes("closer")
   ) {
     return false;
   }
@@ -174,21 +170,6 @@ export function canAccessCeeWorkflowsModule(access: AccessContext): boolean {
     return false;
   }
   return canAccessCeeWorkflowsModuleByScope(access);
-}
-
-export function canAccessConfirmateurWorkspace(access: AccessContext): boolean {
-  if (access.kind !== "authenticated") {
-    return false;
-  }
-  if (!canAccessCeeWorkflowsModuleByScope(access)) {
-    return false;
-  }
-  return (
-    access.roleCodes.includes("super_admin") ||
-    access.roleCodes.includes("admin") ||
-    access.roleCodes.includes("sales_director") ||
-    access.roleCodes.includes("confirmer")
-  );
 }
 
 export function canAccessCloserWorkspace(access: AccessContext): boolean {

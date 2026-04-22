@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 
-import { linkTechnicalVisitToWorkflow } from "@/features/cee-workflows/services/workflow-service";
 import { geocodeWorksiteForSave } from "@/features/technical-visits/lib/geocode-worksite-for-save";
 import { insertFromTechnicalVisitForm } from "@/features/technical-visits/lib/map-to-db";
 import { TechnicalVisitInsertSchema } from "@/features/technical-visits/schemas/technical-visit.schema";
@@ -79,14 +78,7 @@ export async function createTechnicalVisit(
     return { ok: false, message: "Aucune donnée retournée après création." };
   }
 
-  if (row.workflow_id) {
-    await linkTechnicalVisitToWorkflow(supabase, {
-      workflowId: row.workflow_id,
-      technicalVisitId: data.id,
-      actorUserId: user.id,
-      markDone: false,
-    });
-  }
+  // TODO: cee-workflows retiré — l'association VT ↔ workflow CEE est désactivée.
 
   revalidatePath("/technical-visits");
   return { ok: true, data };

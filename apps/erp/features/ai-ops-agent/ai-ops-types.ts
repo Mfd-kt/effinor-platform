@@ -2,7 +2,6 @@ import type { Json } from "@/types/database.types";
 
 export type AiOpsRoleTarget =
   | "agent"
-  | "confirmateur"
   | "closer"
   | "manager"
   | "direction"

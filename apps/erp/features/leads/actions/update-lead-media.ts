@@ -73,7 +73,5 @@ export async function updateLeadMediaFieldAction(
 
   revalidatePath("/leads");
   revalidatePath(`/leads/${parsed.data.leadId}`);
-  revalidatePath("/confirmateur");
-  revalidatePath("/closer");
   return { ok: true };
 }

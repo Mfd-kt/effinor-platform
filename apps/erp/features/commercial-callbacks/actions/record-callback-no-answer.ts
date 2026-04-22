@@ -49,6 +49,6 @@ export async function recordCallbackNoAnswer(raw: { id: string }): Promise<Recor
     return { ok: false, error: error.message };
   }
 
-  revalidatePath("/agent");
+  revalidatePath("/");
   return { ok: true, attempts: nextAttempts, status };
 }

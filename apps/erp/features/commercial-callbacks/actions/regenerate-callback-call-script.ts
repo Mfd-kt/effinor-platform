@@ -53,7 +53,7 @@ export async function regenerateCallbackCallScript(input: {
       return { ok: false, error: "Impossible d’enregistrer le script. Réessayez." };
     }
 
-    revalidatePath("/agent");
+    revalidatePath("/");
     return { ok: true, source };
   } catch (e) {
     console.error("[regenerateCallbackCallScript]", e);

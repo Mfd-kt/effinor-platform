@@ -8,7 +8,6 @@ export type CockpitVariant =
   | "sales_director"
   | "manager"
   | "closer"
-  | "confirmer"
   | "sales_agent"
   | "technician"
   | "default";
@@ -28,7 +27,7 @@ export async function userIsActiveCeeTeamManager(userId: string): Promise<boolea
 }
 
 /**
- * Priorité cockpit : direction → rôles spécialisés (closer / confirmateur) → manager d’équipe CEE → agent.
+ * Priorité cockpit : direction → rôles spécialisés (closer) → manager d’équipe CEE → agent.
  */
 export async function resolveCockpitVariant(access: AccessContext): Promise<CockpitVariant> {
   if (access.kind !== "authenticated") {
@@ -39,7 +38,6 @@ export async function resolveCockpitVariant(access: AccessContext): Promise<Cock
   if (codes.includes("admin")) return "admin";
   if (codes.includes("sales_director")) return "sales_director";
   if (codes.includes("closer")) return "closer";
-  if (codes.includes("confirmer")) return "confirmer";
   if (await userIsActiveCeeTeamManager(access.userId)) return "manager";
   if (codes.includes("sales_agent")) return "sales_agent";
   if (codes.includes("technician")) return "technician";

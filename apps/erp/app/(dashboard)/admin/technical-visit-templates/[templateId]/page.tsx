@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TechnicalVisitTemplateMetaForm } from "@/features/technical-visits/template-builder/components/admin/technical-visit-template-meta-form";
 import { TechnicalVisitTemplateVersionsTable } from "@/features/technical-visits/template-builder/components/admin/technical-visit-template-versions-table";
 import { getTechnicalVisitTemplateDetailForAdmin } from "@/features/technical-visits/template-builder/queries/get-technical-visit-templates-admin";
-import { getAdminCeeSheets } from "@/features/cee-workflows/queries/get-admin-cee-sheets";
 import { requireCeeAdminAccess } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -23,8 +22,7 @@ export default async function TechnicalVisitTemplateDetailPage({ params }: PageP
     notFound();
   }
 
-  const sheets = await getAdminCeeSheets();
-  const ceeSheets = sheets.map((s) => ({ id: s.id, label: `${s.code} — ${s.name}` }));
+  const ceeSheets: { id: string; label: string }[] = [];
   const draftExists = detail.versions.some((v) => v.status === "draft");
   const hasPublished = detail.versions.some((v) => v.status === "published");
   const canStartNewDraft = !draftExists && hasPublished;
@@ -73,8 +71,7 @@ export default async function TechnicalVisitTemplateDetailPage({ params }: PageP
             <CardTitle className="text-base">Versions</CardTitle>
             <CardDescription>
               Une version publiée ne s’édite pas : utilisez « Modifier le formulaire (brouillon) » pour cloner la
-              dernière publication, puis publiez la nouvelle version (même clé template, numéro suivant). Sur la fiche
-              CEE, ajustez la version si vous passez de v1 à v2.
+              dernière publication, puis publiez la nouvelle version (même clé template, numéro suivant).
             </CardDescription>
           </CardHeader>
           <CardContent>

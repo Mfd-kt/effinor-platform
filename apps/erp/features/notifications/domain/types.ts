@@ -10,7 +10,6 @@ export const NOTIFICATION_CHANNEL_KEYS = [
   "direction",
   "alerts",
   "closer",
-  "confirmateur",
 ] as const;
 
 export type NotificationChannelKey = (typeof NOTIFICATION_CHANNEL_KEYS)[number];

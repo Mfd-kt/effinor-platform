@@ -3,7 +3,6 @@ export type DashboardVariant =
   | "admin"
   | "sales_director"
   | "closer"
-  | "confirmer"
   | "sales_agent"
   | "default";
 
@@ -19,9 +18,6 @@ export function resolveDashboardVariant(roleCodes: readonly string[]): Dashboard
   }
   if (roleCodes.includes("closer")) {
     return "closer";
-  }
-  if (roleCodes.includes("confirmer")) {
-    return "confirmer";
   }
   if (roleCodes.includes("sales_agent")) {
     return "sales_agent";

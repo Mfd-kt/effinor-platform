@@ -87,9 +87,6 @@ export function entityStillMatchesSlaRule(
 
   if (rule.entity_type === "workflow" && "workflow_status" in entity) {
     const w = entity as WorkflowLite;
-    if (rule.code === "wf_confirmateur_24h") {
-      return w.workflow_status === String(cond.workflow_status ?? "to_confirm");
-    }
     if (rule.code === "wf_closer_48h") {
       const any = cond.workflow_status_any;
       const statuses = Array.isArray(any) ? any.map(String) : ["to_close", "agreement_sent"];

@@ -10,7 +10,6 @@ const CH = {
   direction: "direction",
   alerts: "alerts",
   closer: "closer",
-  confirmateur: "confirmateur",
 } as const satisfies Record<string, NotificationChannelKey>;
 
 function baseUrl(): string {

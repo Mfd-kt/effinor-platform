@@ -50,8 +50,6 @@ import type {
   LeadGenerationPipelineRecommendedStep,
 } from "../queries/get-lead-generation-pipeline-cockpit-snapshot";
 import { LeadGenerationGenerateCampaignModal } from "./lead-generation-generate-campaign-modal";
-import { LeadGenerationSyncingImportsBanner } from "./lead-generation-syncing-imports-banner";
-
 /** @deprecated Utiliser `LeadGenerationPipelineCockpitSnapshot` côté page. */
 export type LeadGenerationCockpitMetrics = {
   leadsReadyNow: number;
@@ -1024,15 +1022,6 @@ export function LeadGenerationMainActions({
           recommendedAction={recoImports}
         />
       </div>
-
-      {syncingImportBatches.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Import en cours. Les résultats apparaîtront dès que la synchronisation sera terminée.
-          </p>
-          <LeadGenerationSyncingImportsBanner batches={syncingImportBatches} />
-        </div>
-      ) : null}
 
       {pipelineBusy && pipelineMode ? (
         <div className="flex animate-in fade-in-0 slide-in-from-top-1 duration-300 items-center gap-3 rounded-xl border border-border bg-background/50 px-3.5 py-2.5 text-sm text-foreground">

@@ -5,13 +5,13 @@ import { revalidatePath } from "next/cache";
 import { leadAddressesComplete } from "@/features/leads/lib/lead-address-validation";
 import { fetchLeadInternalNotesPlainBlock } from "@/features/leads/lib/lead-internal-notes-export";
 import { buildTechnicalVisitDefaultsFromLead } from "@/features/leads/lib/lead-to-technical-visit";
-import { linkTechnicalVisitToWorkflow } from "@/features/cee-workflows/services/workflow-service";
 import type { LeadRow } from "@/features/leads/types";
 import { ACTIVE_TECHNICAL_VISIT_STATUSES } from "@/features/leads/constants/technical-visit-active-statuses";
 import { createTechnicalVisitFromWorkflow } from "@/features/technical-visits/actions/create-technical-visit-from-workflow";
 import { geocodeWorksiteForSave } from "@/features/technical-visits/lib/geocode-worksite-for-save";
 import { insertFromTechnicalVisitForm } from "@/features/technical-visits/lib/map-to-db";
-import { CEE_SHEET_VISIT_TEMPLATE_RESOLUTION_FIELDS } from "@/features/cee-workflows/queries/cee-sheet-workflow-embed";
+// TODO: cee-workflows retiré — sélection minimale en attendant la nouvelle source de templates VT.
+const CEE_SHEET_VISIT_TEMPLATE_RESOLUTION_FIELDS = "id, code, label";
 import {
   resolveVisitTemplateForCeeSheetAsync,
   type CeeSheetForVisitTemplateResolution,
@@ -151,7 +151,7 @@ export async function createTechnicalVisitFromLead(
         });
         return { ok: false, message: sheetErr.message };
       }
-      sheet = sheetRow;
+      sheet = sheetRow as unknown as CeeSheetForVisitTemplateResolution | null;
     }
 
     const resolvedTemplate = await resolveVisitTemplateForCeeSheetAsync(supabase, sheet);
@@ -349,7 +349,6 @@ export async function createTechnicalVisitFromLead(
     snapshot_present: vtLegacyRow?.visit_schema_snapshot_json != null,
   });
 
-  /** Confirmateur : l’utilisateur qui crée la VT est enregistré sur le lead (si encore vide). */
   if (user.id) {
     await supabase
       .from("leads")
@@ -372,14 +371,8 @@ export async function createTechnicalVisitFromLead(
       .is("deleted_at", null);
   }
 
-  if (lead.current_workflow_id) {
-    await linkTechnicalVisitToWorkflow(supabase, {
-      workflowId: lead.current_workflow_id,
-      technicalVisitId: vt.id,
-      actorUserId: user.id,
-      markDone: false,
-    });
-  }
+  // TODO: cee-workflows retiré — l'association VT ↔ workflow CEE est désactivée.
+  // À réintégrer quand le nouveau modèle workflow sera défini.
 
   revalidatePath("/leads");
   revalidatePath(`/leads/${trimmedId}`);

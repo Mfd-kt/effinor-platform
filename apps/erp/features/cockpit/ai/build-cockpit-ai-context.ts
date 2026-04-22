@@ -91,12 +91,6 @@ export function buildCockpitAiContext(data: CockpitDataForAi): CockpitAiContext 
     userId: h.userId,
   }));
 
-  const confirmateurBacklogs = data.performance.confirmateurs
-    .filter((c) => c.backlog > 0)
-    .sort((a, b) => b.backlog - a.backlog)
-    .slice(0, 8)
-    .map((c) => ({ userId: c.userId, name: c.displayName, backlog: c.backlog }));
-
   const closerLoads = data.performance.closers
     .filter((c) => c.pipelineOpen > 0 || c.signedWeek > 0)
     .sort((a, b) => b.pipelineOpen - a.pipelineOpen)
@@ -120,7 +114,6 @@ export function buildCockpitAiContext(data: CockpitDataForAi): CockpitAiContext 
       criticalBandCallbacks: data.callbacks.critical.length,
       hotSimulatedLeads24h: data.hotSimulatedLeads24h,
       unassignedWorkflows: data.pipeline.unassignedAgent,
-      totalBacklogConfirmateur: data.pipeline.awaitConfirmateur,
       pipelineCloserOpen: data.pipeline.awaitCloser,
       automationFailed48h: data.automation.failed,
       cronHealthy: data.automation.cronHealthy,
@@ -134,10 +127,8 @@ export function buildCockpitAiContext(data: CockpitDataForAi): CockpitAiContext 
     sheetsWithoutTeam: data.sheetsWithoutTeam,
     workflowStuckBySheet: data.workflowStuckBySheet,
     humanAnomaliesTop,
-    confirmateurBacklogs,
     closerLoads,
     workflowLog: {
-      confirmateurMedianH: data.workflowLogMetrics.confirmateurMedianHours,
       closerMedianH: data.workflowLogMetrics.closerMedianHours,
       conversionPct: data.workflowLogMetrics.conversionRateFromLogsPct,
     },

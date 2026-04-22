@@ -12,10 +12,11 @@ export const PERM_TECH_VISITS_SCOPE_CREATOR = "perm.technical_visits.scope_creat
 
 export const PERM_ACCESS_INSTALLATIONS = "perm.access.installations" as const;
 export const PERM_ACCESS_TECHNICAL_VISITS = "perm.access.technical_visits" as const;
-export const PERM_ACCESS_CEE_WORKFLOWS = "perm.access.cee_workflows" as const;
-export const PERM_CEE_WORKFLOWS_SCOPE_ALL = "perm.cee_workflows.scope_all" as const;
-export const PERM_CEE_WORKFLOWS_SCOPE_TEAM = "perm.cee_workflows.scope_team" as const;
-export const PERM_CEE_WORKFLOWS_MANAGE_TEAMS = "perm.cee_workflows.manage_teams" as const;
+
+export const PERM_ACCESS_ADMIN_MODULE = "perm.access.admin_module" as const;
+export const PERM_ACCESS_INSTALLER_MODULE = "perm.access.installer_module" as const;
+export const PERM_ACCESS_FINANCE_MODULE = "perm.access.finance_module" as const;
+export const PERM_INSTALLATIONS_SCOPE_ASSIGNED = "perm.installations.scope_assigned" as const;
 
 export type AppPermissionCode =
   | typeof PERM_LEADS_SCOPE_ALL
@@ -26,9 +27,9 @@ export type AppPermissionCode =
   | typeof PERM_TECH_VISITS_SCOPE_CREATOR
   | typeof PERM_ACCESS_INSTALLATIONS
   | typeof PERM_ACCESS_TECHNICAL_VISITS
-  | typeof PERM_ACCESS_CEE_WORKFLOWS
-  | typeof PERM_CEE_WORKFLOWS_SCOPE_ALL
-  | typeof PERM_CEE_WORKFLOWS_SCOPE_TEAM
-  | typeof PERM_CEE_WORKFLOWS_MANAGE_TEAMS
+  | typeof PERM_ACCESS_ADMIN_MODULE
+  | typeof PERM_ACCESS_INSTALLER_MODULE
+  | typeof PERM_ACCESS_FINANCE_MODULE
+  | typeof PERM_INSTALLATIONS_SCOPE_ASSIGNED
   | "perm.installations.scope_all"
   | "perm.installations.scope_creator";

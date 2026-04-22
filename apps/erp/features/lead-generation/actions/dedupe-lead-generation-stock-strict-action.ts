@@ -26,7 +26,6 @@ export async function dedupeLeadGenerationStockStrictAction(): Promise<
     revalidatePath("/lead-generation/stock");
     revalidatePath("/lead-generation/imports");
     revalidatePath("/lead-generation/my-queue");
-    revalidatePath("/agent");
     return { ok: true, data };
   } catch (e) {
     const raw = e instanceof Error ? e.message : "Erreur lors du nettoyage.";

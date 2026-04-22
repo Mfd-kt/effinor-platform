@@ -1,6 +1,12 @@
 import type { LeadGenerationDecisionMakerConfidence, LeadGenerationDecisionMakerSource } from "../domain/statuses";
 
-import type { FirecrawlWebSearchHit } from "../firecrawl/search-web";
+// TODO: Replace with the new public-search hit shape once a Firecrawl replacement is wired.
+type SearchHitLike = {
+  url: string;
+  title?: string | null;
+  description?: string | null;
+  markdown?: string | null;
+};
 
 /** Mot-clés métier — uniquement pour repérer un segment de rôle déjà présent dans le texte. */
 const ROLE_REGEX =
@@ -144,7 +150,7 @@ export function extractFromLinkedInTitle(title: string): { name: string; role: s
 }
 
 export function extractFromSearchHit(
-  hit: FirecrawlWebSearchHit,
+  hit: SearchHitLike,
   source: LeadGenerationDecisionMakerSource,
   confidence: LeadGenerationDecisionMakerConfidence,
 ): DecisionMakerCandidate | null {

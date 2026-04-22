@@ -59,7 +59,6 @@ export async function deleteLeadGenerationStockAction(
   revalidatePath("/lead-generation/imports");
   revalidatePath("/lead-generation/my-queue");
   revalidatePath(`/lead-generation/${stockId}`);
-  revalidatePath("/agent");
 
   return { ok: true };
 }

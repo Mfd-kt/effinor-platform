@@ -2,7 +2,6 @@ import type { NotificationChannelKey } from "@/features/notifications/domain/typ
 
 export type AutomationType =
   | "slack_smart_alert"
-  | "auto_assign_confirmateur"
   | "auto_assign_closer"
   | "ai_follow_up_draft"
   | "ai_follow_up_sent"

@@ -5,7 +5,6 @@ export { dispatchLeadGenerationStockForAgentsAction } from "./actions/dispatch-l
 export { getAgentStockSummaryAction } from "./actions/get-agent-stock-summary-action";
 export { getLeadGenerationStockAction } from "./actions/get-lead-generation-stock-action";
 export { getLeadGenerationStockByIdAction } from "./actions/get-lead-generation-stock-by-id-action";
-export { startGoogleMapsApifyImportAction } from "./actions/start-google-maps-apify-import-action";
 export { reviewLeadGenerationStockAction } from "./actions/review-lead-generation-stock-action";
 export { runLeadGenerationAutomationAction } from "./actions/run-lead-generation-automation-action";
 export { cleanupOrphanLeadGenerationAssignmentsAction } from "./actions/cleanup-orphan-lead-generation-assignments-action";
@@ -21,7 +20,6 @@ export type { UpdateLeadGenerationAssignmentCallTraceResult } from "./actions/up
 export { autoDispatchLeadsAction } from "./actions/auto-dispatch-leads-action";
 export { getLeadGenerationSettingsAction } from "./actions/get-lead-generation-settings-action";
 export { updateLeadGenerationSettingsAction } from "./actions/update-lead-generation-settings-action";
-export { syncGoogleMapsApifyImportAction } from "./actions/sync-google-maps-apify-import-action";
 export type {
   GetLeadGenerationStockFilters,
   GetLeadGenerationStockParams,

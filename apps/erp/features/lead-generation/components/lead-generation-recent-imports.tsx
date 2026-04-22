@@ -13,9 +13,9 @@ import {
   formatLeadGenerationBatchCeeHint,
   formatLeadGenerationSourceLabel,
 } from "@/features/lead-generation/lib/lead-generation-display";
-import { getLeadGenerationImportSyncHint } from "@/features/lead-generation/lib/import-batch-sync-hint";
 import type { LeadGenerationImportBatchListItem } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { ImportBatchSyncButton } from "./import-batch-sync-button";
+import { SyncLeboncoinImportButton } from "./sync-leboncoin-import-button";
 
 function shortRef(id: string): string {
   return id.length <= 10 ? id : `${id.slice(0, 6)}…${id.slice(-4)}`;
@@ -52,14 +52,12 @@ export function LeadGenerationRecentImports({ rows }: Props) {
             <TableHead>État</TableHead>
             <TableHead className="hidden sm:table-cell">Côté Apify</TableHead>
             <TableHead className="text-right">Fiches</TableHead>
-            <TableHead className="hidden md:table-cell">Indication</TableHead>
             <TableHead className="w-[200px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((row) => {
             const label = row.source_label?.trim() || formatLeadGenerationSourceLabel(row.source);
-            const hint = getLeadGenerationImportSyncHint(row);
             const ceeHint = formatLeadGenerationBatchCeeHint(row);
             return (
               <TableRow key={row.id}>
@@ -87,7 +85,6 @@ export function LeadGenerationRecentImports({ rows }: Props) {
                 <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
                   {row.imported_count} / {row.accepted_count} / {row.duplicate_count} / {row.rejected_count}
                 </TableCell>
-                <TableCell className="hidden text-xs text-muted-foreground md:table-cell">{hint}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
@@ -96,7 +93,13 @@ export function LeadGenerationRecentImports({ rows }: Props) {
                     >
                       Détail
                     </Link>
-                    <ImportBatchSyncButton batchId={row.id} compact />
+                    {row.source === "leboncoin_immobilier" &&
+                    row.status !== "completed" &&
+                    row.status !== "failed" ? (
+                      <SyncLeboncoinImportButton batchId={row.id} />
+                    ) : (
+                      <ImportBatchSyncButton batchId={row.id} compact />
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

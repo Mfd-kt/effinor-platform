@@ -22,6 +22,9 @@ yarn-error.log*
 # Build
 dist
 
+# TypeScript incremental cache (généré par tsc --incremental, ne doit jamais être commité)
+**/*.tsbuildinfo
+
 # Tooling / CI
 coverage
 .turbo

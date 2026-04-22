@@ -18,7 +18,6 @@ import {
 } from "@/features/dashboard/lib/cockpit-aggregates";
 import { getCockpitPeriodLabel, getCockpitPeriodRange, getCockpitPreviousPeriodRange } from "@/features/dashboard/lib/cockpit-period";
 import { countLeadsCreatedInRange } from "@/features/dashboard/queries/fetch-dashboard-period-counts";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type { Database } from "@/types/database.types";
 
 type Supabase = SupabaseClient<Database>;
@@ -28,7 +27,6 @@ const WORKFLOW_SELECT = `
   lead:leads!lead_id(id, created_at, company_name, lead_status, cee_sheet_id, current_workflow_id, contact_name, phone, email, worksite_address, worksite_city, worksite_postal_code, heating_type, recording_notes, lead_channel, lead_origin, callback_at),
   cee_sheet:cee_sheets!cee_sheet_id(id, code, label, simulator_key, workflow_key, is_commercial_active),
   assigned_agent:profiles!assigned_agent_user_id(id, full_name, email),
-  assigned_confirmateur:profiles!assigned_confirmateur_user_id(id, full_name, email),
   assigned_closer:profiles!assigned_closer_user_id(id, full_name, email)
 `;
 
@@ -52,7 +50,7 @@ export async function loadGlobalCockpitAlertsForAutomation(): Promise<CockpitAle
     throw new Error(wfError.message);
   }
 
-  const workflows = (workflowRows ?? []) as unknown as WorkflowScopedListRow[];
+  const workflows = workflowRows ?? [];
 
   const [leadsCreatedCurrent, leadsCreatedPrevious] = await Promise.all([
     countLeadsCreatedInRange(supabase, "all", periodRange.startIso, periodRange.endIso),

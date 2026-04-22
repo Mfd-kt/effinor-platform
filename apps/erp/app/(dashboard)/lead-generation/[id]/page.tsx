@@ -21,14 +21,11 @@ import {
   LeadGenerationPremiumLeadBadge,
   LeadGenerationTierOutlineBadge,
 } from "@/features/lead-generation/components/lead-generation-premium-badges";
-import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
 import { LeadGenerationVerifySiteButton } from "@/features/lead-generation/components/lead-generation-verify-site-button";
-import { isEligibleForDropcontactEnrichment } from "@/features/lead-generation/dropcontact/build-dropcontact-request";
 import { isEligibleForLeadGenerationEnrichment } from "@/features/lead-generation/enrichment/enrich-lead-generation-stock";
 import { isEligibleForVerifiedLeadGenerationEnrichment } from "@/features/lead-generation/enrichment/verified-enrichment-eligibility";
 import { formatDuplicateMatchReasonsForDisplay } from "@/features/lead-generation/dedup/duplicate-match-labels";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
-import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { lgTable } from "@/features/lead-generation/lib/lg-db";
 import { leadGenerationConvertedStockMessage } from "@/features/lead-generation/lib/lead-generation-operational-scope";
 import { LeadGenerationCommercialActivitySection } from "@/features/lead-generation/components/lead-generation-commercial-activity-section";
@@ -39,8 +36,6 @@ import { getLeadGenerationAssignmentRecycleSnapshot } from "@/features/lead-gene
 import { LeadGenerationClosingReadinessBadge } from "@/features/lead-generation/components/lead-generation-closing-readiness-badge";
 import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
 import { LeadGenerationDeleteStockButton } from "@/features/lead-generation/components/lead-generation-delete-stock-button";
-import { LeadGenerationDropcontactAdminDebug } from "@/features/lead-generation/components/lead-generation-dropcontact-admin-debug";
-import { LeadGenerationDropcontactPanel } from "@/features/lead-generation/components/lead-generation-dropcontact-panel";
 import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
 import { LeadGenerationManualReviewPanel } from "@/features/lead-generation/components/lead-generation-manual-review-panel";
 import { getLeadGenerationManualReviews } from "@/features/lead-generation/queries/get-lead-generation-manual-reviews";
@@ -172,10 +167,8 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
   const defaultAgentId = await getAssignmentAgentId(stock.current_assignment_id);
   const enrichElig = isEligibleForLeadGenerationEnrichment(stock);
   const verifiedElig = isEligibleForVerifiedLeadGenerationEnrichment(stock);
-  const dropcontactElig = isEligibleForDropcontactEnrichment(stock);
 
   const rawJson = JSON.stringify(stock.raw_payload ?? {}, null, 2);
-  const streetViewModel = buildLeadGenerationStreetViewModel(stock);
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-8">
@@ -199,49 +192,14 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
 
       <LeadGenerationQuickValidationPanel
         stockId={stock.id}
-        mapsUrl={streetViewModel.openMapsUrl}
-        showMapsLink={streetViewModel.canShowSection}
+        mapsUrl={null}
+        showMapsLink={false}
         variant="hub"
         disabled={
           Boolean(stock.converted_lead_id) ||
           stock.stock_status === "rejected" ||
           stock.qualification_status === "duplicate"
         }
-      />
-
-      <LeadGenerationDropcontactPanel
-        stockId={stock.id}
-        canResetDropcontact
-        eligible={dropcontactElig.ok}
-        disabled={
-          Boolean(stock.converted_lead_id) ||
-          stock.stock_status === "rejected" ||
-          stock.qualification_status === "duplicate"
-        }
-        dropcontactStatus={stock.dropcontact_status ?? "idle"}
-        dropcontactRequestId={stock.dropcontact_request_id ?? null}
-        dropcontactRequestedAt={stock.dropcontact_requested_at ?? null}
-        dropcontactCompletedAt={stock.dropcontact_completed_at ?? null}
-        dropcontactLastError={stock.dropcontact_last_error ?? null}
-        email={stock.email?.trim() || stock.enriched_email?.trim() || null}
-        phone={stock.phone?.trim() || stock.normalized_phone?.trim() || null}
-        decisionMakerName={stock.decision_maker_name ?? null}
-        decisionMakerRole={stock.decision_maker_role ?? null}
-        linkedinUrl={stock.linkedin_url ?? null}
-      />
-
-      <LeadGenerationDropcontactAdminDebug
-        stockId={stock.id}
-        snapshot={{
-          dropcontact_status: stock.dropcontact_status ?? null,
-          dropcontact_request_id: stock.dropcontact_request_id ?? null,
-          dropcontact_requested_at: stock.dropcontact_requested_at ?? null,
-          dropcontact_completed_at: stock.dropcontact_completed_at ?? null,
-          dropcontact_last_error: stock.dropcontact_last_error ?? null,
-          enrichment_status: stock.enrichment_status ?? null,
-          enrichment_error: stock.enrichment_error ?? null,
-          updated_at: stock.updated_at ?? null,
-        }}
       />
 
       <LeadGenerationCallReadinessCard stock={stock} />
@@ -322,8 +280,6 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
           <DetailRow label="SIRET" value={stock.siret ?? "—"} />
         </CardContent>
       </Card>
-
-      <LeadGenerationStreetViewSection stock={stock} />
 
       <Card className="border-emerald-500/20 bg-emerald-500/[0.04]">
         <CardHeader>
@@ -532,11 +488,7 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
             {stock.enrichment_status === "completed" ? (
               <>
                 <Badge variant="secondary" className="text-xs font-normal">
-                  {(stock.enrichment_source ?? "heuristic") === "firecrawl"
-                    ? "Site public"
-                    : (stock.enrichment_source ?? "heuristic") === "dropcontact"
-                      ? "Dropcontact"
-                      : "Heuristique"}
+                  Heuristique
                 </Badge>
                 <LeadGenerationEnrichmentConfidenceBadge level={stock.enrichment_confidence ?? "low"} />
               </>

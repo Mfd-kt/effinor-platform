@@ -32,14 +32,6 @@ export function heuristicAdminInsights(ctx: AdminInsightContext): AiInsightResul
     recommendations.push("Affecter un closer sur chaque équipe commerciale active.");
   }
 
-  const top = ctx.backlogBySheet[0];
-  if (top && top.sharePct >= 35) {
-    findings.push(
-      `Le backlog confirmateur est concentré à ${top.sharePct} % sur la fiche « ${top.label} » (${top.count} dossiers).`,
-    );
-    recommendations.push(`Prioriser le désengorgement confirmateur sur « ${top.label} » (renfort ou réallocation).`);
-  }
-
   for (const a of ctx.structural.filter((x) => x.severity === "critical").slice(0, 3)) {
     risks.push(`${a.title} : ${a.message}`);
   }
@@ -93,7 +85,7 @@ export function heuristicDirectorInsights(ctx: DirectorInsightContext): AiInsigh
     findings.push(
       `Fuite probable entre ${ctx.funnelLeakHint.from} et ${ctx.funnelLeakHint.to} (~${ctx.funnelLeakHint.dropPct} % de chute relative).`,
     );
-    recommendations.push("Auditer le passage docs → envoi d’accord (confirmateur / closer).");
+    recommendations.push("Auditer le passage docs → envoi d’accord (closer).");
   }
 
   const heavy = ctx.sheetRollup.find((s) => s.workflows > 0 && s.sent > 0 && s.signed / (s.sent + s.signed) < 0.12);
@@ -120,7 +112,7 @@ export function heuristicDirectorInsights(ctx: DirectorInsightContext): AiInsigh
     recommendations:
       recommendations.length > 0
         ? recommendations.slice(0, 5)
-        : ["Aligner marketing / centre d’appel avec la capacité confirmateur + closer."],
+        : ["Aligner marketing / centre d’appel avec la capacité closer."],
     risks: risks.slice(0, 5),
     heuristicOnly: true,
   };

@@ -101,7 +101,6 @@ export async function attachLeadGenerationConversionAction(
 
   revalidatePath("/lead-generation/my-queue");
   revalidatePath(`/lead-generation/my-queue/${parsed.data.stockId}`);
-  revalidatePath("/agent");
   revalidatePath(`/leads/${parsed.data.leadId}`);
 
   return { ok: true, leadId: res.leadId };

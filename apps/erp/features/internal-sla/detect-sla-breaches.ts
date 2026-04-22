@@ -57,20 +57,6 @@ function eventTypeForStatus(s: SlaInstanceStatus): SlaLogEventType | null {
   return null;
 }
 
-async function getConfirmAnchor(admin: Admin, workflowId: string): Promise<Date> {
-  const { data } = await admin
-    .from("workflow_event_logs")
-    .select("created_at")
-    .eq("workflow_id", workflowId)
-    .eq("to_status", "to_confirm")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (data?.created_at) return new Date(data.created_at);
-  const { data: w } = await admin.from("lead_sheet_workflows").select("updated_at").eq("id", workflowId).maybeSingle();
-  return w?.updated_at ? new Date(w.updated_at) : new Date();
-}
-
 async function getCloserAnchor(admin: Admin, w: {
   id: string;
   workflow_status: string;
@@ -270,7 +256,7 @@ export async function detectSlaBreaches(admin: Admin, now: Date): Promise<Detect
     if (rule.entity_type === "workflow") {
       const { data: rows } = await admin
         .from("lead_sheet_workflows")
-        .select("id, lead_id, workflow_status, agreement_sent_at, updated_at, assigned_confirmateur_user_id, assigned_closer_user_id")
+        .select("id, lead_id, workflow_status, agreement_sent_at, updated_at, assigned_closer_user_id")
         .eq("is_archived", false)
         .neq("workflow_status", "lost")
         .limit(2000);
@@ -278,10 +264,7 @@ export async function detectSlaBreaches(admin: Admin, now: Date): Promise<Detect
         if (!entityStillMatchesSlaRule(rule, w, now)) continue;
         let anchor: Date;
         let assignee: string | null = null;
-        if (rule.code === "wf_confirmateur_24h") {
-          anchor = await getConfirmAnchor(admin, w.id);
-          assignee = w.assigned_confirmateur_user_id;
-        } else if (rule.code === "wf_closer_48h") {
+        if (rule.code === "wf_closer_48h") {
           anchor = await getCloserAnchor(admin, w);
           assignee = w.assigned_closer_user_id;
         } else continue;

@@ -70,8 +70,6 @@ export async function updateLeadCallTraceAction(input: unknown): Promise<UpdateL
 
   revalidatePath("/leads");
   revalidatePath(`/leads/${leadId}`);
-  revalidatePath("/agent");
-  revalidatePath("/closer");
 
   return { ok: true };
 }

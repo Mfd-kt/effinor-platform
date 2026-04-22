@@ -17,10 +17,7 @@ import type {
   CallbackPerformanceStats,
   CommercialCallbackKpis,
 } from "@/features/commercial-callbacks/queries/get-commercial-callbacks-for-agent";
-import { CommercialCallbackConvertSimulatorDialog } from "@/features/commercial-callbacks/components/commercial-callback-convert-simulator-dialog";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
-import type { AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
-import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 import { cn } from "@/lib/utils";
 
 type CommercialCallbacksSectionProps = {
@@ -33,11 +30,6 @@ type CommercialCallbacksSectionProps = {
   assignedAgentLabels?: Record<string, string>;
   /** Affiche libellé agent (vue équipe). */
   directorTeamMode?: boolean;
-  /** Fiches CEE + produits destrat pour le simulateur de conversion (même bundle que le poste agent). */
-  agentSimulator?: {
-    sheets: AgentAvailableSheet[];
-    destratProducts: SimulatorProductCardViewModel[];
-  };
 };
 
 const TABS: { key: AgentCallbackTabKey; label: string; description?: string }[] = [
@@ -105,14 +97,12 @@ export function CommercialCallbacksSection({
   onEdit,
   assignedAgentLabels,
   directorTeamMode = false,
-  agentSimulator,
 }: CommercialCallbacksSectionProps) {
   const router = useRouter();
   const [callRow, setCallRow] = useState<CommercialCallbackRow | null>(null);
-  const [convertSimRow, setConvertSimRow] = useState<CommercialCallbackRow | null>(null);
   const [tab, setTab] = useState<AgentCallbackTabKey>("due_now");
   const views = partitionAgentCallbackViews(rows);
-  const canRunSimulator = (agentSimulator?.sheets.length ?? 0) > 0;
+  const canRunSimulator = false;
 
   function refresh() {
     router.refresh();
@@ -206,7 +196,7 @@ export function CommercialCallbacksSection({
                   row={row}
                   onEdit={onEdit}
                   onOpenCall={(r) => setCallRow(r)}
-                  onOpenConvertSimulator={() => setConvertSimRow(row)}
+                  onOpenConvertSimulator={() => undefined}
                   canRunSimulator={canRunSimulator}
                   assignedAgentLabel={
                     directorTeamMode
@@ -230,21 +220,9 @@ export function CommercialCallbacksSection({
         }}
         onDone={refresh}
         canRunSimulator={canRunSimulator}
-        onRequestConvertSimulator={(r) => {
+        onRequestConvertSimulator={() => {
           setCallRow(null);
-          setConvertSimRow(r);
         }}
-      />
-
-      <CommercialCallbackConvertSimulatorDialog
-        open={convertSimRow != null}
-        onOpenChange={(o) => {
-          if (!o) setConvertSimRow(null);
-        }}
-        row={convertSimRow}
-        sheets={agentSimulator?.sheets ?? []}
-        destratProducts={agentSimulator?.destratProducts ?? []}
-        onConverted={() => setConvertSimRow(null)}
       />
     </div>
   );

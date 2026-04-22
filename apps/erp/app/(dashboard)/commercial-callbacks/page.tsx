@@ -7,8 +7,6 @@ import {
   fetchCommercialCallbacksAllVisible,
   fetchProfileDisplayNamesByIds,
 } from "@/features/commercial-callbacks/queries/get-commercial-callbacks-for-agent";
-import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
-import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
 import { PageHeader } from "@/components/shared/page-header";
 import { getAccessContext } from "@/lib/auth/access-context";
 
@@ -18,10 +16,8 @@ export default async function CommercialCallbacksTeamPage() {
     redirect("/");
   }
 
-  const [rows, dashboard, destratProducts, assigneeOptions] = await Promise.all([
+  const [rows, assigneeOptions] = await Promise.all([
     fetchCommercialCallbacksAllVisible(),
-    getAgentDashboardData(access, undefined, { restrictToLeadsCreatedByCurrentUser: false }),
-    getAgentDestratSimulatorProducts(),
     getCommercialCallbackAssigneeOptions(),
   ]);
   const agentIds = rows
@@ -40,7 +36,6 @@ export default async function CommercialCallbacksTeamPage() {
         agentNameById={agentNameById}
         currentUserId={access.userId}
         assigneeOptions={assigneeOptions}
-        agentSimulator={{ sheets: dashboard.sheets, destratProducts }}
       />
     </div>
   );

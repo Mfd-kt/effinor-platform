@@ -36,7 +36,6 @@ export type AutomationTickResult = {
   /** Flags effectifs au moment du tick (sans exposer de secrets). */
   configSnapshot: {
     slackSmartEnabled: boolean;
-    autoAssignConfirmateur: boolean;
     autoAssignCloser: boolean;
     aiFollowUpDraftOnly: boolean;
     aiFollowUpAutoSend: boolean;
@@ -54,7 +53,6 @@ export async function runAutomationTick(): Promise<AutomationTickResult> {
 
   const baseConfig = {
     slackSmartEnabled: cfg.slackSmartEnabled,
-    autoAssignConfirmateur: cfg.autoAssignConfirmateur,
     autoAssignCloser: cfg.autoAssignCloser,
     aiFollowUpDraftOnly: cfg.aiFollowUpDraftOnly,
     aiFollowUpAutoSend: cfg.aiFollowUpAutoSend,

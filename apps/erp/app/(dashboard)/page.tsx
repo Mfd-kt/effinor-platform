@@ -6,7 +6,6 @@ import {
   CockpitAdminView,
   CockpitAgentView,
   CockpitCloserView,
-  CockpitConfirmateurView,
   CockpitDirectorView,
 } from "@/features/dashboard/components/cockpit/cockpit-role-views";
 import { DashboardDefault } from "@/features/dashboard/components/dashboard-default";
@@ -62,8 +61,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       return <CockpitDirectorView metrics={metrics} bundle={bundle} />;
     case "sales_agent":
       return await CockpitAgentView({ access, metrics, bundle });
-    case "confirmer":
-      return await CockpitConfirmateurView({ access, metrics, bundle });
     case "closer":
       return await CockpitCloserView({ access, metrics, bundle });
     default:

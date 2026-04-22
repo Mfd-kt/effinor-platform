@@ -1,9 +1,10 @@
-import type { DestratModel } from "@/features/leads/simulator/domain/types";
-
-/**
- * Identifiant catalogue — modèles simulateur déstrat + fiches PAC / autres (PDF, études).
- */
-export type DestratProductId = DestratModel | "bosch_pac_air_eau";
+// TODO: simulator retiré — `DestratModel` provenait de features/leads/simulator.
+// Identifiants inlinés ici en attendant le nouveau module catalogue / simulation.
+export type DestratProductId =
+  | "teddington_ds3"
+  | "teddington_ds7"
+  | "generfeu"
+  | "bosch_pac_air_eau";
 
 export type ProductSpec = {
   label: string;

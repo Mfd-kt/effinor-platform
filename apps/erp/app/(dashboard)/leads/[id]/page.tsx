@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { LeadCloserWorkflowTools } from "@/features/cee-workflows/components/lead-closer-workflow-tools";
-import { LeadCurrentWorkflowCard } from "@/features/cee-workflows/components/lead-current-workflow-card";
-import { workflowsEligibleForCloserLeadPageTools } from "@/features/cee-workflows/lib/closer-lead-page-tools";
-import { getCloserWorkflowDetail } from "@/features/cee-workflows/queries/get-closer-workflow-detail";
-import { getLeadSheetWorkflowsForLead } from "@/features/cee-workflows/queries/get-lead-sheet-workflows";
 import { LeadDetailVtActions } from "@/features/leads/components/lead-detail-vt-actions";
 import { LeadSimulationResults } from "@/features/leads/components/lead-simulation-results";
 import { DeleteLeadButton } from "@/features/leads/components/delete-lead-button";
@@ -18,7 +13,6 @@ import { LeadRealtimeListener } from "@/features/leads/components/lead-realtime-
 import { getLeadStudyDocuments } from "@/features/leads/study-pdf/queries/get-lead-study-documents";
 import { getEmailTrackingForLead } from "@/features/leads/study-pdf/queries/get-email-tracking";
 import { getLeadEmails } from "@/features/leads/queries/get-lead-emails";
-import { getLeadWorkflowActivityEvents } from "@/features/leads/queries/get-lead-workflow-activity-events";
 import { contactSalutationLine } from "@/features/leads/lib/contact-map";
 import { leadAddressesComplete } from "@/features/leads/lib/lead-address-validation";
 import { leadRowToFormValues } from "@/features/leads/lib/form-defaults";
@@ -40,7 +34,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getLeadInternalNotes } from "@/features/leads/queries/get-lead-internal-notes";
 import { getActiveTechnicalVisitForLead } from "@/features/leads/queries/get-active-technical-visit-for-lead";
 import { getTechnicalVisitRefsForLead } from "@/features/leads/queries/get-technical-visits-for-lead";
-import { getAdminCeeSheets } from "@/features/cee-workflows/queries/get-admin-cee-sheets";
 import { getLeadFormOptions, getLeadProfileOptionsForReassign } from "@/features/leads/queries/get-lead-form-options";
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -92,7 +85,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const isAgentLeadExperience =
     access.kind === "authenticated" && isRestrictedFieldAgent(access);
 
-  const [lead, vtRefs, activeVisit, internalNotes, studyDocs, emailTracking, leadEmails, ceeWorkflows, leadFormOpts] =
+  const [lead, vtRefs, activeVisit, internalNotes, studyDocs, emailTracking, leadEmails, leadFormOpts] =
     await Promise.all([
       getLeadById(id, access.kind === "authenticated" ? access : undefined),
       isAgentLeadExperience
@@ -105,12 +98,11 @@ export default async function LeadDetailPage({ params }: PageProps) {
       isAgentLeadExperience ? Promise.resolve([]) : getLeadStudyDocuments(id),
       isAgentLeadExperience ? Promise.resolve([]) : getEmailTrackingForLead(id),
       isAgentLeadExperience ? Promise.resolve([]) : getLeadEmails(id),
-      access.kind === "authenticated" ? getLeadSheetWorkflowsForLead(id, access) : Promise.resolve([]),
       canEditWorkflowAssignments ? getLeadFormOptions() : Promise.resolve({ profiles: [] }),
     ]);
+  const ceeWorkflows: any[] = [];
 
   const agentProfiles = canReassign ? await getLeadProfileOptionsForReassign() : [];
-  const workflowProfileOptions = leadFormOpts.profiles;
 
   if (!lead) {
     notFound();
@@ -119,53 +111,10 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const supabase = await createClient();
   const agentConsultationReadOnly = await isRestrictedAgentLeadConsultationReadOnly(supabase, access, lead.id);
 
-  const canSwitchLeadCeeSheet = await canUserSwitchLeadCeeSheetOnLead(supabase, access, {
-    id: lead.id,
-    created_by_agent_id: lead.created_by_agent_id,
-    confirmed_by_user_id: lead.confirmed_by_user_id,
-  });
+  const workflowActivityEvents: any[] = [];
 
-  const ceeSheetSwitchOptions = canSwitchLeadCeeSheet
-    ? (await getAdminCeeSheets())
-        .filter((s) => s.isCommercialActive)
-        .map((s) => ({ id: s.id, code: s.code, name: s.name }))
-    : [];
-
-  const closerToolWorkflows =
-    access.kind === "authenticated" &&
-    canAccessCloserWorkspace(access) &&
-    !isAgentLeadExperience
-      ? workflowsEligibleForCloserLeadPageTools(ceeWorkflows)
-      : [];
-
-  const closerDetails =
-    closerToolWorkflows.length > 0
-      ? (
-          await Promise.all(closerToolWorkflows.map((w) => getCloserWorkflowDetail(w.id, access)))
-        ).filter((d): d is NonNullable<typeof d> => d != null)
-      : [];
-
-  const workflowActivityEvents =
-    !isAgentLeadExperience && ceeWorkflows.length > 0
-      ? await getLeadWorkflowActivityEvents(ceeWorkflows.map((w) => w.id))
-      : [];
-
-  const leadListBackHref =
-    access.kind === "authenticated" &&
-    isRestrictedFieldAgent(access) &&
-    !canAccessLeadsDirectoryNav(access)
-      ? "/agent"
-      : access.kind === "authenticated" &&
-          access.roleCodes.includes("closer") &&
-          !canAccessLeadsDirectoryNav(access)
-        ? "/closer"
-        : "/leads";
-  const leadListBackLabel =
-    leadListBackHref === "/agent"
-      ? "Retour au poste Agent"
-      : leadListBackHref === "/closer"
-        ? "Retour au poste Closer"
-        : "Retour à la liste";
+  const leadListBackHref = "/leads";
+  const leadListBackLabel = "Retour à la liste";
 
   const contact = contactSalutationLine(lead);
   const createdByLabel =
@@ -295,21 +244,6 @@ export default async function LeadDetailPage({ params }: PageProps) {
               "lg:pr-[calc(28rem+2rem)] xl:pr-[calc(31rem+2.25rem)] 2xl:pr-[calc(34rem+2.5rem)]",
           )}
         >
-          {!isAgentLeadExperience ? (
-            <CollapsibleSection title="Workflow fiche CEE" defaultOpen>
-              <LeadCurrentWorkflowCard
-                workflows={ceeWorkflows}
-                profileOptions={workflowProfileOptions}
-                readOnly={agentConsultationReadOnly}
-                canEditAssignments={canEditWorkflowAssignments}
-                leadId={lead.id}
-                currentCeeSheetId={lead.cee_sheet_id}
-                canSwitchCeeSheet={canSwitchLeadCeeSheet}
-                ceeSheetSwitchOptions={ceeSheetSwitchOptions}
-              />
-            </CollapsibleSection>
-          ) : null}
-
           {/* 1. Fiche contact — toujours visible pour contexte rapide */}
           <CollapsibleSection
             title={isAgentLeadExperience ? "Vos informations" : "Informations du lead"}
@@ -352,41 +286,21 @@ export default async function LeadDetailPage({ params }: PageProps) {
 
           {!isAgentLeadExperience ? (
             <>
-              {/* 3. Documents — étude + accord (masqué si « Poste closer » : même flux dans CloserDocumentsSignaturePanel) */}
-              {closerDetails.length === 0 ? (
-                <CollapsibleSection title="Documents projet">
-                  <LeadStudyPdfCard
-                    leadId={lead.id}
-                    documents={studyDocs}
-                    clientEmail={lead.email ?? undefined}
-                    clientName={lead.contact_name ?? undefined}
-                    companyName={lead.company_name ?? undefined}
-                    siteName={
-                      [lead.worksite_address, lead.worksite_postal_code, lead.worksite_city]
-                        .filter(Boolean)
-                        .join(", ") || undefined
-                    }
-                  />
-                </CollapsibleSection>
-              ) : null}
-
-              {closerDetails.length > 0 ? (
-                <>
-                  {closerDetails.map((d) => (
-                    <CollapsibleSection
-                      key={d.workflow.id}
-                      title={`Poste closer — ${d.workflow.cee_sheet?.code ?? d.workflow.cee_sheet?.label ?? "fiche"}`}
-                      defaultOpen
-                    >
-                      <p className="mb-4 max-w-4xl text-sm text-muted-foreground">
-                        Relances, pack commercial, envoi d&apos;accord et clôture. La file d&apos;attente reste sur le
-                        menu <strong>Closer</strong>.
-                      </p>
-                      <LeadCloserWorkflowTools detail={d} />
-                    </CollapsibleSection>
-                  ))}
-                </>
-              ) : null}
+              {/* 3. Documents — étude + accord */}
+              <CollapsibleSection title="Documents projet">
+                <LeadStudyPdfCard
+                  leadId={lead.id}
+                  documents={studyDocs}
+                  clientEmail={lead.email ?? undefined}
+                  clientName={lead.contact_name ?? undefined}
+                  companyName={lead.company_name ?? undefined}
+                  siteName={
+                    [lead.worksite_address, lead.worksite_postal_code, lead.worksite_city]
+                      .filter(Boolean)
+                      .join(", ") || undefined
+                  }
+                />
+              </CollapsibleSection>
 
               {/* Visite technique — en bas de fiche (après emails / closer) */}
               <CollapsibleSection title="Visite technique">

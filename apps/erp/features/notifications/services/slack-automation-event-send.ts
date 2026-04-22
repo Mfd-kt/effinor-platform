@@ -22,7 +22,7 @@ function buildAbsoluteLeadUrl(leadId: string): string | undefined {
 
 /**
  * Envoie un message Slack sur le(s) webhook(s) définis par `resolveSlackWebhookForEvent`.
- * À utiliser sur les transitions workflow (ex. envoi confirmateur) pour un routage métier fiable.
+ * À utiliser sur les transitions workflow (ex. envoi closer) pour un routage métier fiable.
  */
 export async function sendSlackAutomationTypedEvent(
   eventType: SlackAutomationEventType,

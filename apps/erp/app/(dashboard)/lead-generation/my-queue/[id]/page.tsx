@@ -7,31 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ConvertMyLeadAssignmentCeeBundle } from "@/features/lead-generation/components/convert-my-lead-assignment-button";
 import { ConvertMyLeadAssignmentButton } from "@/features/lead-generation/components/convert-my-lead-assignment-button";
 import { MyQueueConvertedAutoRedirect } from "@/features/lead-generation/components/my-queue-converted-auto-redirect";
-import type { LeadGenerationGptResearchPayload } from "@/features/lead-generation/domain/lead-generation-gpt-research";
 import { LeadGenerationUnifiedAgentActivitySection } from "@/features/lead-generation/components/lead-generation-unified-agent-activity-section";
 import { LeadGenerationCommercialPriorityBadge } from "@/features/lead-generation/components/lead-generation-commercial-priority-badge";
 import { LeadGenerationDispatchQueueBadge } from "@/features/lead-generation/components/lead-generation-dispatch-queue-badge";
-import {
-  LeadGenerationGptCommercialInsightBlock,
-  shouldShowLeadGenerationGptCommercialInsight,
-} from "@/features/lead-generation/components/lead-generation-gpt-commercial-insight-block";
 import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
 import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
-import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
 import { MyLeadQueueDecisionMakerFields } from "@/features/lead-generation/components/my-lead-queue-decision-maker-fields";
 import { MyLeadQueueTopActionBar } from "@/features/lead-generation/components/my-lead-queue-top-action-bar";
 import { getLeadGenerationAssignmentActivities } from "@/features/lead-generation/queries/get-lead-generation-assignment-activities";
 import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
-import { isLeadGenerationGptResearchSuccessful } from "@/features/lead-generation/lib/lead-generation-gpt-research-terminal-status";
-import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { getLeadGenerationMyQueueStockPageDetail } from "@/features/lead-generation/queries/get-lead-generation-stock-for-agent";
 import { getFirstMyQueueStockId, getNextMyQueueStockIdAfter } from "@/features/lead-generation/lib/my-queue-next-stock";
-import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
-import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import {
-  canAccessCeeWorkflowsModule,
   canAccessLeadGenerationMyQueue,
   canBypassLeadGenMyQueueAsImpersonationActor,
 } from "@/lib/auth/module-access";
@@ -143,23 +131,9 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
     : [];
   const phoneLine = stock.phone ?? stock.normalized_phone ?? null;
 
-  let ceeBundle: ConvertMyLeadAssignmentCeeBundle | null = null;
-  if (canAccessCeeWorkflowsModule(access)) {
-    const [dashboard, destratProducts] = await Promise.all([
-      getAgentDashboardData(access, undefined, {
-        restrictToLeadsCreatedByCurrentUser: !hasFullCeeWorkflowAccess(access),
-      }),
-      getAgentDestratSimulatorProducts(),
-    ]);
-    ceeBundle = {
-      sheets: dashboard.sheets,
-      activity: dashboard.activity,
-      destratProducts,
-    };
-  }
+  const ceeBundle: ConvertMyLeadAssignmentCeeBundle | null = null;
 
   const primaryEmail = stock.email?.trim() || stock.enriched_email?.trim() || null;
-  const streetViewModel = buildLeadGenerationStreetViewModel(stock);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8">
       {openedViaSupportBypass ? (
@@ -210,8 +184,8 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
 
       <LeadGenerationQuickValidationPanel
         stockId={stock.id}
-        mapsUrl={streetViewModel.openMapsUrl}
-        showMapsLink={streetViewModel.canShowSection}
+        mapsUrl={null}
+        showMapsLink={false}
         variant="agent"
         disabled={
           stock.stock_status === "rejected" || lockActionsForSupportView || callTraceReadOnly
@@ -220,26 +194,6 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
       />
 
       <LeadGenerationCallReadinessCard stock={stock} />
-
-      {isLeadGenerationGptResearchSuccessful(stock.research_gpt_status) &&
-      stock.research_gpt_payload &&
-      shouldShowLeadGenerationGptCommercialInsight(stock.research_gpt_payload) ? (
-        <Card className="border-primary/15 bg-card/80 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Aide appel (GPT)</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Script et contact suggérés pour le premier appel — sans le détail technique quantificateur.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <LeadGenerationGptCommercialInsightBlock
-              payload={stock.research_gpt_payload as LeadGenerationGptResearchPayload}
-              researchGptStatus={stock.research_gpt_status ?? "idle"}
-              variant="agent"
-            />
-          </CardContent>
-        </Card>
-      ) : null}
 
       {assignmentIdForHistory ? (
         <MyLeadQueueTopActionBar
@@ -250,8 +204,6 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
           readOnly={lockActionsForSupportView || callTraceReadOnly}
         />
       ) : null}
-
-      <LeadGenerationStreetViewSection stock={stock} />
 
       <Card>
         <CardHeader>
