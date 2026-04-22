@@ -18,13 +18,9 @@ export {
 } from "./services/slack-smart-alert-service";
 
 export {
-  getAssignableUsersForWorkflow,
   computeAssignmentLoad,
   computeAssignmentLoadsForUsers,
   pickLeastLoadedUser,
-  assignWorkflowAutomatically,
-  maybeAutoAssignAfterHandoff,
-  rebalanceWorkflowAssignments,
 } from "./services/workflow-assignment-service";
 
 export {

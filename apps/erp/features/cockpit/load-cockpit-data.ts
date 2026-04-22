@@ -5,8 +5,6 @@ import type { AccessContext } from "@/lib/auth/access-context";
 import type { CockpitVariant } from "@/lib/auth/cockpit-variant";
 import { canAccessCommandCockpit } from "@/lib/auth/module-access";
 import { isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams-context";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
-import { getLeadSheetWorkflowsForAccess } from "@/features/cee-workflows/queries/get-lead-sheet-workflows";
 import { DEFAULT_COCKPIT_FILTERS } from "@/features/dashboard/domain/cockpit";
 import type { CockpitAlert } from "@/features/dashboard/domain/cockpit";
 import { buildWorkflowSnapshot } from "@/features/dashboard/lib/cockpit-aggregates";
@@ -232,7 +230,7 @@ function toCallbackShort(
 }
 
 function wfTeamSheet(
-  workflowsById: Map<string, WorkflowScopedListRow>,
+  workflowsById: Map<string, any>,
   lead: { current_workflow_id: string | null; cee_sheet_id: string | null },
 ): { teamId: string | null; sheetId: string | null } {
   const wf = lead.current_workflow_id ? workflowsById.get(lead.current_workflow_id) : undefined;
@@ -263,8 +261,8 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
 
   const inWeek = (iso: string) => new Date(iso).getTime() >= weekStartMs;
 
-  const workflows = await getLeadSheetWorkflowsForAccess(access, { includeLostWorkflows: true });
-  const workflowsById = new Map(workflows.map((w) => [w.id, w]));
+  const workflows: any[] = [];
+  const workflowsById = new Map<string, any>();
 
   const [bundle, allCallbacks, automationRes, newLeadsRes, leadsWeekRes, workflowLogsRes] =
     await Promise.all([
@@ -320,30 +318,30 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   const nonTerminal = allCallbacks.filter((r) => !isTerminalCallbackStatus(r.status));
   const pendingInitialEmail = nonTerminal.filter((r) => !r.initial_contact_email_sent).length;
 
-  const members = bundle.networkOverview?.members ?? [];
+  const members: any[] = [];
   const activeConfirmateurs = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "confirmateur").map((m) => m.userId),
+    members.filter((m: any) => m.isActive && m.roleInTeam === "confirmateur").map((m: any) => m.userId as string),
   ).size;
   const activeClosers = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "closer").map((m) => m.userId),
+    members.filter((m: any) => m.isActive && m.roleInTeam === "closer").map((m: any) => m.userId as string),
   ).size;
 
   const teamMembersByTeam: Record<string, string[]> = {};
-  for (const m of members) {
+  for (const m of members as any[]) {
     if (!m.isActive) continue;
-    const tid = m.ceeSheetTeamId;
+    const tid = m.ceeSheetTeamId as string;
     if (!teamMembersByTeam[tid]) teamMembersByTeam[tid] = [];
-    teamMembersByTeam[tid].push(m.userId);
+    teamMembersByTeam[tid].push(m.userId as string);
   }
 
-  const agentRoleUserIds = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "agent").map((m) => m.userId),
+  const agentRoleUserIds = new Set<string>(
+    members.filter((m: any) => m.isActive && m.roleInTeam === "agent").map((m: any) => m.userId as string),
   );
-  const confirmateurRoleUserIds = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "confirmateur").map((m) => m.userId),
+  const confirmateurRoleUserIds = new Set<string>(
+    members.filter((m: any) => m.isActive && m.roleInTeam === "confirmateur").map((m: any) => m.userId as string),
   );
-  const closerRoleUserIds = new Set(
-    members.filter((m) => m.isActive && m.roleInTeam === "closer").map((m) => m.userId),
+  const closerRoleUserIds = new Set<string>(
+    members.filter((m: any) => m.isActive && m.roleInTeam === "closer").map((m: any) => m.userId as string),
   );
 
   const globalSnapshot = buildWorkflowSnapshot(workflows);
@@ -380,7 +378,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
   ];
   const blockedWfRows = blockedQueues
     .map((q) => workflowsById.get(q.workflowId))
-    .filter((w): w is WorkflowScopedListRow => w != null);
+    .filter((w): w is any => w != null);
 
   const stuckBySheet = new Map<string, number>();
   for (const w of blockedWfRows) {
@@ -434,7 +432,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     const first = unassignedWf[0];
     if (!first?.cee_sheet_team_id) return null;
     const pick = members.find(
-      (m) => m.isActive && m.roleInTeam === "agent" && m.ceeSheetTeamId === first.cee_sheet_team_id,
+      (m: any) => m.isActive && m.roleInTeam === "agent" && m.ceeSheetTeamId === first.cee_sheet_team_id,
     );
     if (!pick) return null;
     return { workflowId: first.id, agentUserId: pick.userId };
@@ -750,7 +748,7 @@ export async function loadCommandCockpitData(access: AccessContext): Promise<Com
     }
   }
 
-  const confirmateurBacklog = new Map<string, WorkflowScopedListRow[]>();
+  const confirmateurBacklog = new Map<string, any[]>();
   const confirmateurBacklogSumAge = new Map<string, number>();
   const confirmateurBacklogCount = new Map<string, number>();
   for (const w of awaitConfirmWf) {

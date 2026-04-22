@@ -15,15 +15,6 @@ import {
 } from "@/features/commercial-callbacks/domain/callback-status";
 import { partitionAgentCallbackViews } from "@/features/commercial-callbacks/domain/callback-buckets";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
-import {
-  loadCloserBellReminders,
-  type CloserBellReminderRow,
-} from "@/features/cee-workflows/actions/load-closer-bell-reminders";
-import {
-  phoneRdvReminderLabelFr,
-  phoneRdvReminderLevel,
-  type PhoneRdvReminderLevel,
-} from "@/features/cee-workflows/lib/closer-phone-rdv-reminder";
 import { markAppNotificationRead, markAllAppNotificationsRead } from "@/features/notifications/actions/mark-app-notification-read";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -33,8 +24,6 @@ type AppNotificationRow = Database["public"]["Tables"]["app_notifications"]["Row
 
 type AppNotificationsBellProps = {
   userId: string;
-  /** Profils closer / direction : relances leads dans la cloche. */
-  includeCloserLeadReminders?: boolean;
 };
 
 function isCallbackAppNotificationType(type: string | null): boolean {
@@ -72,58 +61,15 @@ function appNotificationOpenHref(n: AppNotificationRow): string {
   return "/agent";
 }
 
-/** Fiche lead (outils closer : relance, accord, signature). */
-function closerLeadDetailHref(leadId: string): string {
-  return `/leads/${encodeURIComponent(leadId)}`;
-}
-
-function closerRelanceBadgeClass(level: PhoneRdvReminderLevel): string {
-  switch (level) {
-    case "overdue":
-      return "border-destructive/40 bg-destructive/15 text-destructive";
-    case "imminent":
-      return "border-orange-600/35 bg-orange-500/15 text-orange-900 dark:text-orange-100";
-    case "soon":
-      return "border-amber-600/35 bg-amber-500/15 text-amber-950 dark:text-amber-100";
-    case "upcoming":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-50";
-    default:
-      return "border-border bg-muted/50 text-muted-foreground";
-  }
-}
-
-function formatRelanceWhen(iso: string | null): string {
-  if (!iso?.trim()) return "—";
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return iso;
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-export function AppNotificationsBell({
-  userId,
-  includeCloserLeadReminders = false,
-}: AppNotificationsBellProps) {
+export function AppNotificationsBell({ userId }: AppNotificationsBellProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<AppNotificationRow[]>([]);
   const [callbacks, setCallbacks] = useState<CommercialCallbackRow[]>([]);
-  const [closerFollowUps, setCloserFollowUps] = useState<CloserBellReminderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef<ReturnType<Awaited<ReturnType<typeof createClient>>["channel"]> | null>(null);
   const callbackChannelRef = useRef<ReturnType<Awaited<ReturnType<typeof createClient>>["channel"]> | null>(null);
-  const closerWorkflowBellChannelRef = useRef<ReturnType<
-    Awaited<ReturnType<typeof createClient>>["channel"]
-  > | null>(null);
-  const leadsBellChannelRef = useRef<ReturnType<Awaited<ReturnType<typeof createClient>>["channel"]> | null>(null);
-  const leadsBellDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabaseRef = useRef<Awaited<ReturnType<typeof createClient>> | null>(null);
-  /** Horloge pour pastilles relance closer (évite Date.now() impur au rendu). */
-  const [closerReminderNowMs, setCloserReminderNowMs] = useState(() => Date.now());
 
   const unread = rows.filter((r) => !r.is_read && !r.is_dismissed).length;
 
@@ -138,9 +84,7 @@ export function AppNotificationsBell({
     callbackViews.today.length +
     upcomingPriority.length;
 
-  const displayedCloserFollowUps = includeCloserLeadReminders ? closerFollowUps : [];
-  const closerReminderCount = displayedCloserFollowUps.length;
-  const badgeTotal = unread + urgentTaskCount + closerReminderCount;
+  const badgeTotal = unread + urgentTaskCount;
 
   const loadCallbacks = useCallback(async () => {
     const supabase = await createClient();
@@ -158,18 +102,6 @@ export function AppNotificationsBell({
     }
   }, [userId]);
 
-  const loadCloserReminders = useCallback(async () => {
-    if (!includeCloserLeadReminders) return;
-    const data = await loadCloserBellReminders();
-    setCloserFollowUps(data);
-  }, [includeCloserLeadReminders]);
-
-  useEffect(() => {
-    if (!includeCloserLeadReminders) return;
-    const id = window.setInterval(() => setCloserReminderNowMs(Date.now()), 60_000);
-    return () => window.clearInterval(id);
-  }, [includeCloserLeadReminders]);
-
   const load = useCallback(async () => {
     const supabase = await createClient();
     const notifResult = await supabase
@@ -185,11 +117,8 @@ export function AppNotificationsBell({
     }
 
     await loadCallbacks();
-    if (includeCloserLeadReminders) {
-      await loadCloserReminders();
-    }
     setLoading(false);
-  }, [userId, loadCallbacks, includeCloserLeadReminders, loadCloserReminders]);
+  }, [userId, loadCallbacks]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial centre de notifications
@@ -214,15 +143,11 @@ export function AppNotificationsBell({
   useEffect(() => {
     function onVisibility() {
       if (document.visibilityState !== "visible") return;
-      void Promise.all([
-        refetchNotificationsQuiet(),
-        loadCallbacks(),
-        ...(includeCloserLeadReminders ? [loadCloserReminders()] : []),
-      ]);
+      void Promise.all([refetchNotificationsQuiet(), loadCallbacks()]);
     }
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [refetchNotificationsQuiet, loadCallbacks, includeCloserLeadReminders, loadCloserReminders]);
+  }, [refetchNotificationsQuiet, loadCallbacks]);
 
   useEffect(() => {
     let cancelled = false;
@@ -338,63 +263,20 @@ export function AppNotificationsBell({
         .subscribe();
 
       callbackChannelRef.current = cbCh;
-
-      if (includeCloserLeadReminders) {
-        closerWorkflowBellChannelRef.current = supabase
-          .channel(`closer-wf-bell-${userId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "lead_sheet_workflows",
-              filter: `assigned_closer_user_id=eq.${userId}`,
-            },
-            () => {
-              void loadCloserReminders();
-            },
-          )
-          .subscribe();
-
-        leadsBellChannelRef.current = supabase
-          .channel(`leads-bell-${userId}`)
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: "leads" },
-            () => {
-              if (leadsBellDebounceRef.current) clearTimeout(leadsBellDebounceRef.current);
-              leadsBellDebounceRef.current = setTimeout(() => {
-                leadsBellDebounceRef.current = null;
-                void loadCloserReminders();
-              }, 750);
-            },
-          )
-          .subscribe();
-      }
     })();
 
     return () => {
       cancelled = true;
-      if (leadsBellDebounceRef.current) {
-        clearTimeout(leadsBellDebounceRef.current);
-        leadsBellDebounceRef.current = null;
-      }
       const sb = supabaseRef.current;
       const ch = channelRef.current;
       const cbCh = callbackChannelRef.current;
-      const cwCh = closerWorkflowBellChannelRef.current;
-      const lCh = leadsBellChannelRef.current;
       if (sb && ch) sb.removeChannel(ch);
       if (sb && cbCh) sb.removeChannel(cbCh);
-      if (sb && cwCh) sb.removeChannel(cwCh);
-      if (sb && lCh) sb.removeChannel(lCh);
       channelRef.current = null;
       callbackChannelRef.current = null;
-      closerWorkflowBellChannelRef.current = null;
-      leadsBellChannelRef.current = null;
       supabaseRef.current = null;
     };
-  }, [userId, loadCallbacks, includeCloserLeadReminders, loadCloserReminders]);
+  }, [userId, loadCallbacks]);
 
   async function onReadOne(id: string) {
     const res = await markAppNotificationRead(id);
@@ -419,7 +301,6 @@ export function AppNotificationsBell({
     callbackViews.overdue.length > 0 ||
     callbackViews.today.length > 0 ||
     upcomingPriority.length > 0;
-  const hasCloserSection = displayedCloserFollowUps.length > 0;
 
   function callbackTierBadgeClasses(tier: "now" | "late" | "today" | "prio"): string {
     if (tier === "now" || tier === "late") {
@@ -501,9 +382,7 @@ export function AppNotificationsBell({
       onOpenChange={(o) => {
         setOpen(o);
         if (o) {
-          setCloserReminderNowMs(Date.now());
           void loadCallbacks();
-          if (includeCloserLeadReminders) void loadCloserReminders();
         }
       }}
     >
@@ -547,7 +426,7 @@ export function AppNotificationsBell({
         <ScrollArea className="h-[calc(100vh-6rem)]">
           {loading ? (
             <p className="p-4 text-sm text-muted-foreground">Chargement…</p>
-          ) : !hasRappelSection && !hasCloserSection && systemNotifications.length === 0 ? (
+          ) : !hasRappelSection && systemNotifications.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">Aucune notification pour l’instant.</p>
           ) : (
             <div>
@@ -558,56 +437,6 @@ export function AppNotificationsBell({
                   {renderCallbackBlock("En retard", "late", callbackViews.overdue)}
                   {renderCallbackBlock("Aujourd’hui (plus tard)", "today", callbackViews.today)}
                   {renderCallbackBlock("Priorité élevée à venir", "prio", upcomingPriority)}
-                </div>
-              ) : null}
-
-              {hasCloserSection ? (
-                <div className="border-b border-border bg-muted/15">
-                  <p className="px-4 py-2.5 text-sm font-semibold text-foreground">
-                    Relances closer — leads à rappeler
-                    <span className="ml-2 tabular-nums text-sm font-normal text-muted-foreground">
-                      ({displayedCloserFollowUps.length})
-                    </span>
-                  </p>
-                  <ul className="divide-y divide-border/80">
-                    {displayedCloserFollowUps.map((item) => {
-                      const level = phoneRdvReminderLevel(item.relanceAt, closerReminderNowMs);
-                      const levelLabel = phoneRdvReminderLabelFr(level) ?? "Relance";
-                      return (
-                        <li key={`${item.workflowId}-${item.leadId}`}>
-                          <div className="flex flex-col gap-1 px-4 py-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <Link
-                                href={closerLeadDetailHref(item.leadId)}
-                                className="min-w-0 text-sm font-semibold leading-snug text-foreground hover:underline"
-                              >
-                                {item.companyName?.trim() || "—"}
-                              </Link>
-                              <span
-                                className={cn(
-                                  "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase",
-                                  closerRelanceBadgeClass(level),
-                                )}
-                              >
-                                {levelLabel}
-                              </span>
-                            </div>
-                            <p className="text-xs leading-relaxed text-muted-foreground">
-                              {[item.contactLabel?.trim(), item.sheetCode, formatRelanceWhen(item.relanceAt)]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                            <Link
-                              href={closerLeadDetailHref(item.leadId)}
-                              className="text-xs font-medium text-primary hover:underline"
-                            >
-                              Ouvrir la fiche lead
-                            </Link>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
                 </div>
               ) : null}
 

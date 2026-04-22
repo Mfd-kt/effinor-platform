@@ -18,7 +18,6 @@ import {
 } from "@/features/dashboard/lib/cockpit-aggregates";
 import { getCockpitPeriodLabel, getCockpitPeriodRange, getCockpitPreviousPeriodRange } from "@/features/dashboard/lib/cockpit-period";
 import { countLeadsCreatedInRange } from "@/features/dashboard/queries/fetch-dashboard-period-counts";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type { Database } from "@/types/database.types";
 
 type Supabase = SupabaseClient<Database>;
@@ -52,7 +51,7 @@ export async function loadGlobalCockpitAlertsForAutomation(): Promise<CockpitAle
     throw new Error(wfError.message);
   }
 
-  const workflows = (workflowRows ?? []) as unknown as WorkflowScopedListRow[];
+  const workflows = workflowRows ?? [];
 
   const [leadsCreatedCurrent, leadsCreatedPrevious] = await Promise.all([
     countLeadsCreatedInRange(supabase, "all", periodRange.startIso, periodRange.endIso),

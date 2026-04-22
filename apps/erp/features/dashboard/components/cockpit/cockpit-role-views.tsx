@@ -1,8 +1,5 @@
 import { Suspense } from "react";
 
-import { CeeNetworkOverview } from "@/features/cee-workflows/components/admin/cee-network-overview";
-import { getCloserDashboardData } from "@/features/cee-workflows/queries/get-closer-dashboard-data";
-import { getConfirmateurDashboardData } from "@/features/cee-workflows/queries/get-confirmateur-dashboard-data";
 import { DashboardAnalyticsCharts } from "@/features/dashboard/components/dashboard-analytics-charts";
 import { DashboardPeriodOverview } from "@/features/dashboard/components/dashboard-period-overview";
 import { CockpitAiInsightsSection } from "@/features/dashboard/ai-insights/components/cockpit-ai-insights";
@@ -87,13 +84,7 @@ export function CockpitAdminView({
           <CockpitPriorityGrid snap={snap} />
         </CockpitSection>
 
-        {bundle.networkOverview ? (
-          <CockpitSection title="Réseau temps réel" description="Volumes par statut mis à jour en direct (Supabase Realtime).">
-            <CeeNetworkOverview initial={bundle.networkOverview} />
-          </CockpitSection>
-        ) : (
-          <CockpitNetworkCallout />
-        )}
+        <CockpitNetworkCallout />
 
         <CockpitSection title="Volume leads (période)">
           <DashboardAnalyticsCharts charts={metrics.charts} />
@@ -222,7 +213,6 @@ export async function CockpitConfirmateurView({
   bundle: CockpitBundle;
 }) {
   if (access.kind !== "authenticated") return null;
-  const data = await getConfirmateurDashboardData(access, bundle.periodRange);
   const snap = bundle.snapshot;
   return (
     <CockpitRealtimeBoundary>
@@ -241,22 +231,6 @@ export async function CockpitConfirmateurView({
           periodLabel={periodLabel(bundle)}
         />
         <CockpitFunnelStrip funnel={snap.funnel} />
-        <CockpitSection title="Files confirmateur (période)">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">À confirmer</p>
-              <p className="mt-2 text-2xl font-semibold">{data.queue.pending.length}</p>
-            </div>
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Qualifiés</p>
-              <p className="mt-2 text-2xl font-semibold">{data.queue.qualified.length}</p>
-            </div>
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Docs prêts / à closer</p>
-              <p className="mt-2 text-2xl font-semibold">{data.queue.docsReady.length}</p>
-            </div>
-          </div>
-        </CockpitSection>
         <CockpitPriorityGrid snap={snap} />
         <DashboardPeriodOverview metrics={metrics} />
       </div>
@@ -274,7 +248,6 @@ export async function CockpitCloserView({
   bundle: CockpitBundle;
 }) {
   if (access.kind !== "authenticated") return null;
-  const data = await getCloserDashboardData(access, bundle.periodRange);
   const snap = bundle.snapshot;
   return (
     <CockpitRealtimeBoundary>
@@ -293,34 +266,6 @@ export async function CockpitCloserView({
           periodLabel={periodLabel(bundle)}
         />
         <CockpitFunnelStrip funnel={snap.funnel} />
-        <CockpitSection title="Pipeline closer (période)">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">À closer</p>
-              <p className="mt-2 text-2xl font-semibold">{data.queue.pending.length}</p>
-            </div>
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Signature</p>
-              <p className="mt-2 text-2xl font-semibold">{data.queue.waitingSignature.length}</p>
-            </div>
-            <div className="rounded-xl border border-amber-200/70 bg-amber-50/40 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Relances dues</p>
-              <p className="mt-2 text-2xl font-semibold tabular-nums">{data.queue.followUps.length}</p>
-            </div>
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Signés / payés</p>
-              <p className="mt-2 text-2xl font-semibold text-emerald-700 dark:text-emerald-400">
-                {data.queue.signed.length}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border/80 p-4">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">Perdus</p>
-              <p className="mt-2 text-2xl font-semibold text-amber-800 dark:text-amber-300">
-                {data.queue.lost.length}
-              </p>
-            </div>
-          </div>
-        </CockpitSection>
         <CockpitPriorityGrid snap={snap} />
         <DashboardPeriodOverview metrics={metrics} />
       </div>

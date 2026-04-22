@@ -55,13 +55,7 @@ export function buildAdminInsightContext(bundle: CockpitBundle): AdminInsightCon
       title: a.title,
       message: a.message,
     })),
-    network: bundle.networkOverview
-      ? {
-          sheets: bundle.networkOverview.sheets.length,
-          teams: bundle.networkOverview.teams.filter((t) => t.isActive).length,
-          activeWorkflows: bundle.networkOverview.workflows.filter((w) => !w.isArchived).length,
-        }
-      : null,
+    network: null,
     backlogBySheet,
     channelsTop,
     teamsWithoutCloser: bundle.teamsWithoutCloser.length,

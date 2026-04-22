@@ -1,43 +1,12 @@
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
-import type { LeadFormInput } from "@/features/leads/schemas/lead.schema";
-import { buildingTypeFromSimulatorClientType } from "@/features/leads/lib/form-defaults";
-import {
-  leadBuildingTypeFromSimulatorCee,
-  leadHeatingTypesFromSimulationPayloads,
-  parseWorkflowSimulationSnapshotJson,
-} from "@/features/leads/lib/simulator-to-lead-technical";
-import { isPacPreferredLocalUsage } from "@/features/leads/simulator/domain/cee-solution-decision";
+// TODO: cee-workflows / simulator retiré — la fusion d'un workflow CEE dans le formulaire lead
+// est désactivée. Les utilitaires conservent leur signature mais retournent des valeurs neutres.
 
-function toNum(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(String(v).trim().replace(",", "."));
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
+import type { LeadFormInput } from "@/features/leads/schemas/lead.schema";
 
 export function isWorkflowQualificationDataEmpty(raw: unknown): boolean {
   if (raw == null) return true;
   if (typeof raw !== "object" || Array.isArray(raw)) return true;
   return Object.keys(raw as object).length === 0;
-}
-
-function extractBuildingHeatedForForm(input: unknown): "" | "true" | "false" {
-  if (!input || typeof input !== "object" || Array.isArray(input)) return "";
-  const o = input as Record<string, unknown>;
-  const inner =
-    o.input && typeof o.input === "object" && !Array.isArray(o.input)
-      ? (o.input as Record<string, unknown>)
-      : o;
-  const norm =
-    o.normalizedInput && typeof o.normalizedInput === "object" && !Array.isArray(o.normalizedInput)
-      ? (o.normalizedInput as Record<string, unknown>)
-      : null;
-  const raw = inner.buildingHeated ?? inner.isHeated ?? norm?.isHeated ?? o.buildingHeated ?? o.isHeated;
-  if (raw === "yes" || raw === true) return "true";
-  if (raw === "no" || raw === false) return "false";
-  return "";
 }
 
 export function simulationResultHasData(json: unknown): boolean {
@@ -46,80 +15,9 @@ export function simulationResultHasData(json: unknown): boolean {
   return Object.keys(json as object).length > 0;
 }
 
-/**
- * Complète les champs encore vides du formulaire lead à partir du résultat / entrée
- * de simulation du workflow fiche CEE (parcours agent).
- */
 export function mergeLeadFormDefaultsFromWorkflowSimulation(
   base: LeadFormInput,
-  workflow: WorkflowScopedListRow | null | undefined,
+  _workflow: any,
 ): LeadFormInput {
-  if (!workflow) {
-    return base;
-  }
-  const snap = parseWorkflowSimulationSnapshotJson(workflow.simulation_input_json);
-  const hasResult = simulationResultHasData(workflow.simulation_result_json);
-  const heatingFromWf = leadHeatingTypesFromSimulationPayloads(
-    workflow.simulation_input_json,
-    workflow.simulation_result_json,
-  );
-  if (!hasResult && !snap && !heatingFromWf.length) {
-    return base;
-  }
-  const r = hasResult ? (workflow.simulation_result_json as Record<string, unknown>) : null;
-  const out: LeadFormInput = { ...base };
-
-  const surface = r ? toNum(r.surfaceM2) : null;
-  const surfaceFromSnap = snap?.surfaceM2 ?? null;
-  if (out.surface_m2 == null && surface != null) {
-    out.surface_m2 = surface;
-  }
-  if (out.surface_m2 == null && surfaceFromSnap != null) {
-    out.surface_m2 = surfaceFromSnap;
-  }
-
-  const skipCeilingHeightFromSim = snap != null && isPacPreferredLocalUsage(snap.localUsage);
-  const height = r ? toNum(r.heightM) : null;
-  const heightFromSnap = snap?.heightM ?? null;
-  if (out.ceiling_height_m == null && height != null && !skipCeilingHeightFromSim) {
-    out.ceiling_height_m = height;
-  }
-  if (out.ceiling_height_m == null && heightFromSnap != null && !skipCeilingHeightFromSim) {
-    out.ceiling_height_m = heightFromSnap;
-  }
-
-  if (!out.heating_type?.length && heatingFromWf.length) {
-    out.heating_type = [...heatingFromWf];
-  }
-
-  if (!String(out.building_type ?? "").trim()) {
-    if (snap) {
-      const fromSnap = leadBuildingTypeFromSimulatorCee(snap.buildingType, snap.localUsage);
-      if (fromSnap) {
-        out.building_type = fromSnap;
-      }
-    }
-    if (!String(out.building_type ?? "").trim() && r && typeof r.clientType === "string") {
-      const bt = buildingTypeFromSimulatorClientType(r.clientType);
-      if (bt) {
-        out.building_type = bt;
-      }
-    }
-  }
-
-  const heated = extractBuildingHeatedForForm(workflow.simulation_input_json);
-  if ((!out.heated_building || out.heated_building === "") && heated) {
-    out.heated_building = heated;
-  }
-  if ((!out.heated_building || out.heated_building === "") && snap?.isHeated != null) {
-    out.heated_building = snap.isHeated ? "true" : "false";
-  }
-
-  const score = r ? toNum(r.leadScore) : null;
-  if ((out.ai_lead_score == null || out.ai_lead_score === undefined) && score != null) {
-    out.ai_lead_score = Math.round(score);
-  }
-
-  return out;
+  return base;
 }
-

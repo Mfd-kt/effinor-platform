@@ -1,5 +1,3 @@
-import type { CeeWorkflowStatus } from "@/features/cee-workflows/domain/constants";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type {
   CockpitAlertCta,
   CockpitAlertPriorityLevel,
@@ -11,7 +9,7 @@ const MS_DAY = 86_400_000;
 const MS_HOUR = 3_600_000;
 
 /** Valeur € par défaut si pas de simulation — ordre de grandeur prime + marge opérationnelle. */
-const DEFAULT_IMPACT_EURO_BY_STATUS: Partial<Record<CeeWorkflowStatus, number>> = {
+const DEFAULT_IMPACT_EURO_BY_STATUS: Partial<Record<string, number>> = {
   agreement_sent: 12_000,
   to_close: 9_000,
   docs_prepared: 7_500,
@@ -24,7 +22,7 @@ const DEFAULT_IMPACT_EURO_BY_STATUS: Partial<Record<CeeWorkflowStatus, number>> 
   lost: 0,
 };
 
-const STATUS_BASE_SCORE: Partial<Record<CeeWorkflowStatus, number>> = {
+const STATUS_BASE_SCORE: Partial<Record<string, number>> = {
   agreement_sent: 118,
   to_close: 102,
   docs_prepared: 88,
@@ -53,7 +51,7 @@ function numFromJson(json: unknown, key: string): number | null {
 }
 
 /** Potentiel € : économies 30j sélectionnées ou prime CEE estimée dans le JSON de simulation. */
-export function extractPotentialValueEur(w: WorkflowScopedListRow): number | null {
+export function extractPotentialValueEur(w: any): number | null {
   const fromSim =
     numFromJson(w.simulation_result_json, "savingEur30Selected") ??
     numFromJson(w.simulation_result_json, "ceePrimeEstimated") ??
@@ -62,7 +60,7 @@ export function extractPotentialValueEur(w: WorkflowScopedListRow): number | nul
   return null;
 }
 
-export function lastWorkflowTouchMs(w: WorkflowScopedListRow): number {
+export function lastWorkflowTouchMs(w: any): number {
   const upd = new Date(w.updated_at).getTime();
   const sent = w.agreement_sent_at ? new Date(w.agreement_sent_at).getTime() : 0;
   return Math.max(upd, sent);
@@ -73,10 +71,10 @@ export type WorkflowPriorityContext = {
 };
 
 export function computeWorkflowPriorityScore(
-  w: WorkflowScopedListRow,
+  w: any,
   ctx: WorkflowPriorityContext,
 ): number {
-  const st = w.workflow_status as CeeWorkflowStatus;
+  const st = w.workflow_status;
   let score = STATUS_BASE_SCORE[st] ?? 44;
 
   const pot = extractPotentialValueEur(w);
@@ -108,16 +106,16 @@ export function computeWorkflowPriorityScore(
 }
 
 export function sortWorkflowsByPriority(
-  workflows: WorkflowScopedListRow[],
+  workflows: any[],
   ctx: WorkflowPriorityContext,
-): WorkflowScopedListRow[] {
+): any[] {
   const scored = workflows.map((w) => ({ w, s: computeWorkflowPriorityScore(w, ctx) }));
   scored.sort((a, b) => b.s - a.s);
   return scored.map((x) => x.w);
 }
 
 function workflowToTopItem(
-  w: WorkflowScopedListRow,
+  w: any,
   score: number,
   ctx: WorkflowPriorityContext,
 ): CockpitAlertTopWorkflow {
@@ -138,11 +136,11 @@ function workflowToTopItem(
   };
 }
 
-export function estimateImpactEuro(workflows: WorkflowScopedListRow[]): number {
+export function estimateImpactEuro(workflows: any[]): number {
   let sum = 0;
   for (const w of workflows) {
     const p = extractPotentialValueEur(w);
-    const st = w.workflow_status as CeeWorkflowStatus;
+    const st = w.workflow_status;
     const fallback = DEFAULT_IMPACT_EURO_BY_STATUS[st] ?? 5_500;
     sum += p != null && p > 0 ? p : fallback;
   }
@@ -169,8 +167,8 @@ export function deriveCockpitAlertPriorityLevel(
 const TOP_DEFAULT = 5;
 
 export function buildPeriodAlertExecution(
-  scopedRows: WorkflowScopedListRow[],
-  pick: (w: WorkflowScopedListRow) => boolean,
+  scopedRows: any[],
+  pick: (w: any) => boolean,
   now: Date,
   cta: CockpitAlertCta,
   topLimit: number = TOP_DEFAULT,

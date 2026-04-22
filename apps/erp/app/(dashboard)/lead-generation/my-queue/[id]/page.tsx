@@ -26,12 +26,8 @@ import { isLeadGenerationGptResearchSuccessful } from "@/features/lead-generatio
 import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { getLeadGenerationMyQueueStockPageDetail } from "@/features/lead-generation/queries/get-lead-generation-stock-for-agent";
 import { getFirstMyQueueStockId, getNextMyQueueStockIdAfter } from "@/features/lead-generation/lib/my-queue-next-stock";
-import { getAgentDashboardData } from "@/features/cee-workflows/queries/get-agent-dashboard-data";
-import { getAgentDestratSimulatorProducts } from "@/features/cee-workflows/queries/get-agent-simulator-products";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { hasFullCeeWorkflowAccess } from "@/lib/auth/cee-workflows-scope";
 import {
-  canAccessCeeWorkflowsModule,
   canAccessLeadGenerationMyQueue,
   canBypassLeadGenMyQueueAsImpersonationActor,
 } from "@/lib/auth/module-access";
@@ -143,20 +139,7 @@ export default async function MyLeadGenerationStockPage({ params, searchParams }
     : [];
   const phoneLine = stock.phone ?? stock.normalized_phone ?? null;
 
-  let ceeBundle: ConvertMyLeadAssignmentCeeBundle | null = null;
-  if (canAccessCeeWorkflowsModule(access)) {
-    const [dashboard, destratProducts] = await Promise.all([
-      getAgentDashboardData(access, undefined, {
-        restrictToLeadsCreatedByCurrentUser: !hasFullCeeWorkflowAccess(access),
-      }),
-      getAgentDestratSimulatorProducts(),
-    ]);
-    ceeBundle = {
-      sheets: dashboard.sheets,
-      activity: dashboard.activity,
-      destratProducts,
-    };
-  }
+  const ceeBundle: ConvertMyLeadAssignmentCeeBundle | null = null;
 
   const primaryEmail = stock.email?.trim() || stock.enriched_email?.trim() || null;
   const streetViewModel = buildLeadGenerationStreetViewModel(stock);

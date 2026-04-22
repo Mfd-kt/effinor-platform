@@ -1,16 +1,18 @@
-import type { DestratModel } from "@/features/leads/simulator/domain/types";
+// TODO: simulator retiré — `DestratModel` provenait de features/leads/simulator.
+// Codes catalogue conservés ici en attendant le nouveau module simulation.
 
-const MODEL_PRODUCT_CODE: Record<DestratModel, string> = {
+const MODEL_PRODUCT_CODE: Record<string, string> = {
   teddington_ds3: "teddington_ds3",
   teddington_ds7: "teddington_ds7",
   generfeu: "generfeu",
 };
 
 export function getRecommendedProductCodes(
-  model: DestratModel,
+  _model: any,
 ): { primary: string; alternatives: string[] } {
-  const primary = MODEL_PRODUCT_CODE[model];
-  const alternatives = Object.values(MODEL_PRODUCT_CODE).filter((c) => c !== primary);
+  const all = Object.values(MODEL_PRODUCT_CODE);
+  const primary = all[0] ?? "";
+  const alternatives = all.slice(1);
   return { primary, alternatives };
 }
 

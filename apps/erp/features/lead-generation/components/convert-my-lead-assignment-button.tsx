@@ -8,15 +8,13 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { LeadGenerationStockRow } from "@/features/lead-generation/domain/stock-row";
 import { LeadGenerationCeeSimulatorModal } from "@/features/lead-generation/components/lead-generation-cee-simulator-modal";
-import type { AgentActivityBuckets, AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
-import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export type ConvertMyLeadAssignmentCeeBundle = {
-  sheets: AgentAvailableSheet[];
-  activity: AgentActivityBuckets;
-  destratProducts: SimulatorProductCardViewModel[];
+  sheets: any[];
+  activity: any;
+  destratProducts: any[];
 };
 
 type Props = {

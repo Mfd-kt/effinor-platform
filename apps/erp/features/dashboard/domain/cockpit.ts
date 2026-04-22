@@ -1,5 +1,3 @@
-import type { CeeWorkflowStatus } from "@/features/cee-workflows/domain/constants";
-
 /** Filtres cockpit (URL / formulaire). */
 export type CockpitScopeFilters = {
   ceeSheetId: string | null;
@@ -134,7 +132,7 @@ export type CockpitAlertInput = Omit<
   cta?: CockpitAlertCta;
 };
 
-export type CockpitFunnelCounts = Record<CeeWorkflowStatus, number> & {
+export type CockpitFunnelCounts = Record<string, number> & {
   total: number;
 };
 
@@ -142,7 +140,7 @@ export type CockpitQueueItem = {
   workflowId: string;
   leadId: string;
   companyName: string;
-  status: CeeWorkflowStatus;
+  status: string;
   sheetLabel: string;
   teamId: string | null;
   updatedAt: string;
@@ -154,7 +152,7 @@ export type CockpitSheetRollup = {
   sheetCode: string;
   sheetLabel: string;
   workflowCount: number;
-  byStatus: Partial<Record<CeeWorkflowStatus, number>>;
+  byStatus: Partial<Record<string, number>>;
   signed: number;
   lost: number;
   sent: number;
@@ -165,7 +163,7 @@ export type CockpitTeamRollup = {
   teamName: string;
   sheetId: string;
   workflowCount: number;
-  byStatus: Partial<Record<CeeWorkflowStatus, number>>;
+  byStatus: Partial<Record<string, number>>;
 };
 
 export type CockpitChannelRollup = {

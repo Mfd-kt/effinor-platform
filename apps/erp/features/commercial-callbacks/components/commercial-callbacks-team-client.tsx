@@ -18,8 +18,6 @@ import {
   computeCommercialCallbackKpis,
 } from "@/features/commercial-callbacks/lib/commercial-callback-metrics";
 import type { CommercialCallbackRow } from "@/features/commercial-callbacks/types";
-import type { AgentAvailableSheet } from "@/features/cee-workflows/lib/agent-workflow-activity";
-import type { SimulatorProductCardViewModel } from "@/features/products/domain/types";
 
 const UNASSIGNED_VALUE = "__unassigned__";
 
@@ -29,10 +27,6 @@ type CommercialCallbacksTeamClientProps = {
   /** Utilisateur connecté (pilote / directeur) — défaut d’assignation à la création. */
   currentUserId: string;
   assigneeOptions: { id: string; label: string }[];
-  agentSimulator: {
-    sheets: AgentAvailableSheet[];
-    destratProducts: SimulatorProductCardViewModel[];
-  };
 };
 
 export function CommercialCallbacksTeamClient({
@@ -40,7 +34,6 @@ export function CommercialCallbacksTeamClient({
   agentNameById,
   currentUserId,
   assigneeOptions,
-  agentSimulator,
 }: CommercialCallbacksTeamClientProps) {
   const router = useRouter();
   const [agentFilter, setAgentFilter] = useState<string>("all");
@@ -131,7 +124,6 @@ export function CommercialCallbacksTeamClient({
         }}
         assignedAgentLabels={labelsWithUnassigned}
         directorTeamMode
-        agentSimulator={agentSimulator}
       />
 
       <CommercialCallbackSheet

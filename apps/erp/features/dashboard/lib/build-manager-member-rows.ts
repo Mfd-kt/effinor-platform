@@ -1,10 +1,8 @@
-import type { CeeWorkflowStatus } from "@/features/cee-workflows/domain/constants";
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import type { ManagedTeamMemberRow } from "@/features/dashboard/queries/get-managed-teams-context";
 
 const MS_DAY = 86_400_000;
 
-const POST_SIMULATION: Set<CeeWorkflowStatus> = new Set([
+const POST_SIMULATION: Set<string> = new Set([
   "simulation_done",
   "to_confirm",
   "qualified",
@@ -23,7 +21,7 @@ const POST_SIMULATION: Set<CeeWorkflowStatus> = new Set([
   "paid",
 ]);
 
-const SENT_TO_CONFIRMEUR: Set<CeeWorkflowStatus> = new Set([
+const SENT_TO_CONFIRMEUR: Set<string> = new Set([
   "to_confirm",
   "qualified",
   "docs_prepared",
@@ -41,9 +39,9 @@ const SENT_TO_CONFIRMEUR: Set<CeeWorkflowStatus> = new Set([
   "paid",
 ]);
 
-const CONF_BACKLOG: Set<CeeWorkflowStatus> = new Set(["simulation_done", "to_confirm"]);
+const CONF_BACKLOG: Set<string> = new Set(["simulation_done", "to_confirm"]);
 
-const DOCS_PATH: Set<CeeWorkflowStatus> = new Set([
+const DOCS_PATH: Set<string> = new Set([
   "docs_prepared",
   "to_close",
   "agreement_sent",
@@ -55,7 +53,7 @@ const DOCS_PATH: Set<CeeWorkflowStatus> = new Set([
   "lost",
 ]);
 
-const SIGNED: Set<CeeWorkflowStatus> = new Set(["agreement_signed", "paid", "quote_signed"]);
+const SIGNED: Set<string> = new Set(["agreement_signed", "paid", "quote_signed"]);
 
 function qualString(q: unknown, key: string): string | null {
   if (!q || typeof q !== "object" || Array.isArray(q)) return null;
@@ -63,7 +61,7 @@ function qualString(q: unknown, key: string): string | null {
   return typeof v === "string" && v.trim() ? v : null;
 }
 
-function primaryChannel(rows: WorkflowScopedListRow[]): string {
+function primaryChannel(rows: any[]): string {
   const counts = new Map<string, number>();
   for (const w of rows) {
     const ch = w.lead?.lead_channel?.trim();
@@ -75,7 +73,7 @@ function primaryChannel(rows: WorkflowScopedListRow[]): string {
 }
 
 function countLeadsCreatedInRange(
-  rows: WorkflowScopedListRow[],
+  rows: any[],
   startIso: string,
   endIso: string,
 ): number {
@@ -89,7 +87,7 @@ function countLeadsCreatedInRange(
   return seen.size;
 }
 
-function countCallbacksOverdue(rows: WorkflowScopedListRow[], nowMs: number): number {
+function countCallbacksOverdue(rows: any[], nowMs: number): number {
   let n = 0;
   for (const w of rows) {
     const cb = w.lead?.callback_at;
@@ -100,7 +98,7 @@ function countCallbacksOverdue(rows: WorkflowScopedListRow[], nowMs: number): nu
   return n;
 }
 
-function countFollowUpsOverdue(rows: WorkflowScopedListRow[], nowMs: number): number {
+function countFollowUpsOverdue(rows: any[], nowMs: number): number {
   let n = 0;
   for (const w of rows) {
     if (w.workflow_status !== "agreement_sent") continue;
@@ -112,10 +110,10 @@ function countFollowUpsOverdue(rows: WorkflowScopedListRow[], nowMs: number): nu
   return n;
 }
 
-function avgMsToSignature(rows: WorkflowScopedListRow[]): number | null {
+function avgMsToSignature(rows: any[]): number | null {
   const vals: number[] = [];
   for (const w of rows) {
-    if (!SIGNED.has(w.workflow_status as CeeWorkflowStatus)) continue;
+    if (!SIGNED.has(w.workflow_status)) continue;
     const sent = w.agreement_sent_at ? new Date(w.agreement_sent_at).getTime() : null;
     const signed = w.agreement_signed_at ? new Date(w.agreement_signed_at).getTime() : null;
     if (sent && signed && signed >= sent) vals.push(signed - sent);
@@ -125,10 +123,10 @@ function avgMsToSignature(rows: WorkflowScopedListRow[]): number | null {
   return Math.round(avg / MS_DAY * 10) / 10;
 }
 
-function staleConfirmCount(rows: WorkflowScopedListRow[], nowMs: number, days: number): number {
+function staleConfirmCount(rows: any[], nowMs: number, days: number): number {
   const lim = days * MS_DAY;
   return rows.filter((w) => {
-    if (!CONF_BACKLOG.has(w.workflow_status as CeeWorkflowStatus)) return false;
+    if (!CONF_BACKLOG.has(w.workflow_status)) return false;
     return nowMs - new Date(w.updated_at).getTime() > lim;
   }).length;
 }
@@ -155,11 +153,11 @@ function trendPct(current: number, previous: number): number | null {
 }
 
 function filterRowsForMemberRole(
-  rows: WorkflowScopedListRow[],
+  rows: any[],
   userId: string,
   role: string,
   teamId: string,
-): WorkflowScopedListRow[] {
+): any[] {
   if (role === "agent") return rows.filter((w) => w.assigned_agent_user_id === userId);
   if (role === "confirmateur") return rows.filter((w) => w.assigned_confirmateur_user_id === userId);
   if (role === "closer") return rows.filter((w) => w.assigned_closer_user_id === userId);
@@ -169,24 +167,24 @@ function filterRowsForMemberRole(
 
 function buildKpisForRole(
   role: string,
-  rowsC: WorkflowScopedListRow[],
-  rowsP: WorkflowScopedListRow[],
+  rowsC: any[],
+  rowsP: any[],
   periodStart: string,
   periodEnd: string,
   nowMs: number,
 ): Record<string, number | string | null> {
   if (role === "agent") {
-    const simOk = rowsC.filter((w) => POST_SIMULATION.has(w.workflow_status as CeeWorkflowStatus)).length;
+    const simOk = rowsC.filter((w) => POST_SIMULATION.has(w.workflow_status)).length;
     const sentConf = rowsC.filter((w) =>
-      SENT_TO_CONFIRMEUR.has(w.workflow_status as CeeWorkflowStatus),
+      SENT_TO_CONFIRMEUR.has(w.workflow_status),
     ).length;
     const leadsCreated = countLeadsCreatedInRange(rowsC, periodStart, periodEnd);
     const callbacks = countCallbacksOverdue(rowsC, nowMs);
     const denom = Math.max(1, simOk);
     const transmissionPct = Math.round((sentConf / denom) * 1000) / 10;
-    const simOkP = rowsP.filter((w) => POST_SIMULATION.has(w.workflow_status as CeeWorkflowStatus)).length;
+    const simOkP = rowsP.filter((w) => POST_SIMULATION.has(w.workflow_status)).length;
     const sentConfP = rowsP.filter((w) =>
-      SENT_TO_CONFIRMEUR.has(w.workflow_status as CeeWorkflowStatus),
+      SENT_TO_CONFIRMEUR.has(w.workflow_status),
     ).length;
     const denomP = Math.max(1, simOkP);
     const transmissionPrev = Math.round((sentConfP / denomP) * 1000) / 10;
@@ -201,11 +199,11 @@ function buildKpisForRole(
     };
   }
   if (role === "confirmateur") {
-    const backlog = rowsC.filter((w) => CONF_BACKLOG.has(w.workflow_status as CeeWorkflowStatus)).length;
+    const backlog = rowsC.filter((w) => CONF_BACKLOG.has(w.workflow_status)).length;
     const qualified = rowsC.filter((w) => w.workflow_status === "qualified").length;
-    const docs = rowsC.filter((w) => DOCS_PATH.has(w.workflow_status as CeeWorkflowStatus)).length;
+    const docs = rowsC.filter((w) => DOCS_PATH.has(w.workflow_status)).length;
     const blocked = staleConfirmCount(rowsC, nowMs, 4);
-    const backlogP = rowsP.filter((w) => CONF_BACKLOG.has(w.workflow_status as CeeWorkflowStatus)).length;
+    const backlogP = rowsP.filter((w) => CONF_BACKLOG.has(w.workflow_status)).length;
     return {
       backlog,
       dossiersQualifies: qualified,
@@ -216,13 +214,13 @@ function buildKpisForRole(
   }
   if (role === "closer") {
     const sent = rowsC.filter((w) => w.workflow_status === "agreement_sent").length;
-    const signed = rowsC.filter((w) => SIGNED.has(w.workflow_status as CeeWorkflowStatus)).length;
+    const signed = rowsC.filter((w) => SIGNED.has(w.workflow_status)).length;
     const lost = rowsC.filter((w) => w.workflow_status === "lost").length;
     const relances = countFollowUpsOverdue(rowsC, nowMs);
     const denom = sent + signed;
     const signRate = denom > 0 ? Math.round((signed / denom) * 1000) / 10 : null;
     const sentP = rowsP.filter((w) => w.workflow_status === "agreement_sent").length;
-    const signedP = rowsP.filter((w) => SIGNED.has(w.workflow_status as CeeWorkflowStatus)).length;
+    const signedP = rowsP.filter((w) => SIGNED.has(w.workflow_status)).length;
     const denomP = sentP + signedP;
     const signRateP = denomP > 0 ? Math.round((signedP / denomP) * 1000) / 10 : null;
     const avgDays = avgMsToSignature(rowsC);
@@ -276,8 +274,8 @@ function computeAlertsForRow(
 
 export function buildManagerMemberPerformanceRows(input: {
   members: ManagedTeamMemberRow[];
-  rowsCurrent: WorkflowScopedListRow[];
-  rowsPrevious: WorkflowScopedListRow[];
+  rowsCurrent: any[];
+  rowsPrevious: any[];
   periodStartIso: string;
   periodEndIso: string;
   now: Date;

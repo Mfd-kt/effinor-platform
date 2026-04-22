@@ -1,4 +1,3 @@
-import type { WorkflowScopedListRow } from "@/features/cee-workflows/types";
 import { normalizeProductInterestLabel } from "@/features/leads/lib/normalize-product-interest";
 import { extractWorkflowSimulationMetrics } from "@/features/leads/study-pdf/domain/merge-workflow-simulation-into-lead-for-pdf";
 
@@ -140,13 +139,13 @@ export function leadListFicheCeeSearchHay(lead: {
 
 export function pickPrimaryWorkflowForLead(
   lead: { current_workflow_id: string | null },
-  workflows: WorkflowScopedListRow[],
-): WorkflowScopedListRow | null {
+  workflows: any[],
+): any | null {
   if (workflows.length === 0) return null;
-  const active = workflows.filter((w) => !w.is_archived);
+  const active = workflows.filter((w: any) => !w.is_archived);
   const pool = active.length > 0 ? active : workflows;
   if (lead.current_workflow_id) {
-    const match = pool.find((w) => w.id === lead.current_workflow_id);
+    const match = pool.find((w: any) => w.id === lead.current_workflow_id);
     if (match) return match;
   }
   return pool[0] ?? null;
@@ -158,7 +157,7 @@ export function pickPrimaryWorkflowForLead(
  */
 export function resolveLeadCommercialCategoryForUi(
   lead: { current_workflow_id: string | null; sim_payload_json?: unknown },
-  workflows: WorkflowScopedListRow[],
+  workflows: any[],
   leadRootCeeSheet?: CeeSheetPick | null,
 ): string {
   const fromLeadPayload = simulationRecommendedCategoryLabel(lead.sim_payload_json);

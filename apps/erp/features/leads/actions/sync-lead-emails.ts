@@ -1,6 +1,5 @@
 "use server";
 
-import { markAgreementSigned as markAgreementSignedInService } from "@/features/cee-workflows/services/workflow-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { fetchEmailsForAddress, type FetchedAttachment } from "@/lib/email/gmail-imap";
@@ -199,18 +198,8 @@ export async function syncLeadEmails(
         .eq("id", leadId)
         .in("lead_status", ["dossier_sent"]);
 
-      const { data: leadRow } = await supabase
-        .from("leads")
-        .select("current_workflow_id")
-        .eq("id", leadId)
-        .maybeSingle();
-      if (leadRow?.current_workflow_id) {
-        await markAgreementSignedInService(supabase, {
-          workflowId: leadRow.current_workflow_id,
-          signatureProvider: "email",
-          signatureStatus: hasSignedDocument ? "signed" : "received",
-        });
-      }
+      // TODO: cee-workflows retiré — la mise à jour du workflow CEE (markAgreementSigned)
+      // est désactivée jusqu'au nouveau modèle workflow.
     }
 
     return {

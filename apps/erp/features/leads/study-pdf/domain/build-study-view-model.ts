@@ -1,6 +1,13 @@
 import { formatHeatingModesDisplay } from "../../lib/heating-modes";
 import { stringArrayFromLeadJson } from "../../lib/lead-media-json";
-import { HEATING_MODE_LABELS_FR } from "@/features/leads/simulator/schemas/simulator.schema";
+// TODO: simulator retiré — labels FR inlinés en attendant la nouvelle source.
+const HEATING_MODE_LABELS_FR: Record<string, string> = {
+  gaz: "Gaz",
+  fioul: "Fioul",
+  bois: "Bois",
+  elec: "Électrique",
+  pac: "Pompe à chaleur",
+};
 import { STUDY_INSTALLATION_EXAMPLES } from "../content/installation-examples";
 import { filterParasiteNotes } from "./filter-study-notes";
 import {

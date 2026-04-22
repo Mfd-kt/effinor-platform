@@ -2,10 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  createLeadSheetWorkflow as createLeadSheetWorkflowInService,
-  syncWorkflowCommercialDocumentsFromLeadPdfs,
-} from "@/features/cee-workflows/services/workflow-service";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getLeadInternalNotes } from "@/features/leads/queries/get-lead-internal-notes";
 import { fetchCeeSheetForStudyPdf } from "@/features/leads/study-pdf/queries/fetch-cee-sheet-for-study-pdf";
@@ -347,41 +343,8 @@ export async function generateLeadStudyPdf(
   revalidatePath(`/leads/${lead.id}`);
   revalidatePath("/leads");
 
-  const workflowId =
-    options?.workflowId ??
-    lead.current_workflow_id ??
-    (lead.cee_sheet_id
-      ? (
-          await createLeadSheetWorkflowInService(supabase, {
-            leadId: lead.id,
-            ceeSheetId: lead.cee_sheet_id,
-            actorUserId: access.userId,
-            workflowStatus: "qualified",
-          })
-        ).id
-      : null);
-
-  if (workflowId) {
-    try {
-      await syncWorkflowCommercialDocumentsFromLeadPdfs(supabase, {
-        workflowId,
-        actorUserId: access.userId,
-        presentation: {
-          storageBucket: presUpload.bucket,
-          storagePath: presPath,
-          fileUrl: presUpload.publicUrl,
-        },
-        agreement: {
-          storageBucket: accUpload.bucket,
-          storagePath: accPath,
-          fileUrl: accUpload.publicUrl,
-        },
-      });
-    } catch {
-      // Les enregistrements `lead_documents` sont déjà créés ; l’UI closer s’appuie dessus.
-      // Une erreur de transition RLS sur le workflow ne doit pas masquer des PDF valides.
-    }
-  }
+  // TODO: cee-workflows retiré — création du workflow CEE et synchronisation des
+  // documents commerciaux (présentation/accord) désactivées jusqu'au nouveau modèle workflow.
 
   void notifyLeadStudyPdfsGenerated(lead);
 
