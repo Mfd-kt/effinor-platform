@@ -1,27 +1,11 @@
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 /**
- * Ancienne URL du cockpit : redirige vers la vue fusionnée « Pilotage équipe ».
+ * Cockpit est désormais une sous-vue de Pilotage (?view=cockpit).
+ * Cette URL reste un shim pour préserver les anciens bookmarks.
  */
-export default async function LeadGenerationCockpitRedirectPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const sp = await searchParams;
-  const next = new URLSearchParams();
-
-  next.set("view", "cockpit");
-
-  const period = sp.period;
-  if (typeof period === "string" && (period === "24h" || period === "7d" || period === "30d")) {
-    next.set("period", period);
-  }
-
-  const agent = sp.agent;
-  if (typeof agent === "string" && agent.trim().length > 0) {
-    next.set("agent", agent.trim());
-  }
-
-  redirect(`/lead-generation/management?${next.toString()}`);
+export default function LeadGenerationCockpitRedirectPage() {
+  redirect("/lead-generation/management?view=cockpit");
 }

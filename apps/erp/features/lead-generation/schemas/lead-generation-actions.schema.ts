@@ -94,17 +94,6 @@ export const updateQuantifierLeadGenerationContactFieldsInputSchema = z
     { message: "URL LinkedIn : utilisez http:// ou https://.", path: ["linkedinUrl"] },
   );
 
-export const runManualCsvLeadGenerationImportActionInputSchema = z.object({
-  csvText: z
-    .string()
-    .min(1, "Collez au moins une ligne de CSV.")
-    .max(600_000, "Texte CSV trop volumineux (limite ~600 ko)."),
-  filename: z.string().trim().max(260).optional().nullable(),
-  sourceLabel: z.string().trim().max(200).optional().nullable(),
-  ceeSheetId: uuid,
-  targetTeamId: uuid,
-});
-
 export const enrichLeadGenerationStockBatchActionInputSchema = z.object({
   stockIds: z.array(uuid).min(1, "Au moins une fiche.").max(100, "Maximum 100 fiches."),
 });

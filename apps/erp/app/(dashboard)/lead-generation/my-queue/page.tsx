@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { MyLeadGenerationQueueAgentShell } from "@/features/lead-generation/components/my-lead-generation-queue-agent-shell";
+import { MyQueueCapacityBanner } from "@/features/lead-generation/components/my-queue-capacity-banner";
 import { MyQueueEmptyQueueToast } from "@/features/lead-generation/components/my-queue-empty-queue-toast";
 import {
   type AgentCommercialCapacityViewModel,
@@ -15,7 +16,6 @@ import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
-  canAccessLeadGenerationHub,
   canAccessLeadGenerationMyQueue,
   canAccessLeadsModule,
 } from "@/lib/auth/module-access";
@@ -49,8 +49,6 @@ export default async function MyLeadGenerationQueuePage({ searchParams }: PagePr
     ceeSheetOptions = [];
   }
 
-  const hub = await canAccessLeadGenerationHub(access);
-
   let effectiveStockCap = 15;
   let commercialCapacity: AgentCommercialCapacityViewModel = { ok: false };
   const supabase = await createClient();
@@ -67,31 +65,24 @@ export default async function MyLeadGenerationQueuePage({ searchParams }: PagePr
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8">
+    <div className="space-y-8">
       {showQueueEmptyToast ? <MyQueueEmptyQueueToast /> : null}
       <PageHeader
-        title="Mes fiches à traiter"
+        title="Ma file"
         description="Contacts déjà validés pour le terrain : appels, relances et notes — priorité aux rappels."
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            {hub ? (
-              <Link
-                href="/lead-generation"
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "sm" }),
-                  "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Stock
-              </Link>
-            ) : null}
-            {canAccessLeadsModule(access) ? (
-              <Link href="/leads" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-                CRM
-              </Link>
-            ) : null}
-          </div>
+          canAccessLeadsModule(access) ? (
+            <Link href="/leads" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              CRM
+            </Link>
+          ) : null
         }
+      />
+
+      <MyQueueCapacityBanner
+        commercialCapacity={commercialCapacity}
+        effectiveStockCap={effectiveStockCap}
+        queueLength={items.length}
       />
 
       <MyLeadGenerationQueueAgentShell

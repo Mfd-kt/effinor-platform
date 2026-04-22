@@ -1,8 +1,10 @@
 "use client";
 
+import { Gauge, ListOrdered, Recycle, Target, Timer, Workflow } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
+import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,64 +70,96 @@ export function LeadGenerationSettingsPanel({ initialSettings, invalidKeys }: Pr
         </p>
       ) : null}
 
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Scoring commercial</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Priorité low max" value={commercial.priority_low_max} onChange={(v) => setCommercial((p) => ({ ...p, priority_low_max: asInt(v, p.priority_low_max) }))} />
-          <Field label="Priorité normal min" value={commercial.priority_normal_min} onChange={(v) => setCommercial((p) => ({ ...p, priority_normal_min: asInt(v, p.priority_normal_min) }))} />
-          <Field label="Priorité high min" value={commercial.priority_high_min} onChange={(v) => setCommercial((p) => ({ ...p, priority_high_min: asInt(v, p.priority_high_min) }))} />
-          <Field label="Priorité critical min" value={commercial.priority_critical_min} onChange={(v) => setCommercial((p) => ({ ...p, priority_critical_min: asInt(v, p.priority_critical_min) }))} />
+      <CollapsibleSection
+        title="Scoring commercial"
+        icon={<Target className="size-4" aria-hidden />}
+        defaultOpen
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Seuils de priorité utilisés par le scoring pour classer chaque fiche (low / normal / high / critical).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Priorité low max" value={commercial.priority_low_max} onChange={(v) => setCommercial((p) => ({ ...p, priority_low_max: asInt(v, p.priority_low_max) }))} />
+            <Field label="Priorité normal min" value={commercial.priority_normal_min} onChange={(v) => setCommercial((p) => ({ ...p, priority_normal_min: asInt(v, p.priority_normal_min) }))} />
+            <Field label="Priorité high min" value={commercial.priority_high_min} onChange={(v) => setCommercial((p) => ({ ...p, priority_high_min: asInt(v, p.priority_high_min) }))} />
+            <Field label="Priorité critical min" value={commercial.priority_critical_min} onChange={(v) => setCommercial((p) => ({ ...p, priority_critical_min: asInt(v, p.priority_critical_min) }))} />
+          </div>
+          <Button type="button" size="sm" onClick={() => save("commercial_scoring", commercial)} disabled={pending}>
+            Enregistrer
+          </Button>
         </div>
-        <Button type="button" size="sm" onClick={() => save("commercial_scoring", commercial)} disabled={pending}>
-          Enregistrer
-        </Button>
-      </section>
+      </CollapsibleSection>
 
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-semibold">File de dispatch</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Score ready min" value={dispatch.score_ready_min} onChange={(v) => setDispatch((p) => ({ ...p, score_ready_min: asInt(v, p.score_ready_min) }))} />
-          <Field label="Score ready strong" value={dispatch.score_ready_strong} onChange={(v) => setDispatch((p) => ({ ...p, score_ready_strong: asInt(v, p.score_ready_strong) }))} />
-          <Field label="Score low band" value={dispatch.score_low_band} onChange={(v) => setDispatch((p) => ({ ...p, score_low_band: asInt(v, p.score_low_band) }))} />
-          <Field label="Score enrich floor" value={dispatch.score_enrich_floor} onChange={(v) => setDispatch((p) => ({ ...p, score_enrich_floor: asInt(v, p.score_enrich_floor) }))} />
+      <CollapsibleSection
+        title="File de dispatch"
+        icon={<ListOrdered className="size-4" aria-hidden />}
+        defaultOpen
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Bornes de score qui décident si une fiche est <em>prête à contacter</em>, <em>à enrichir</em> ou écartée.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Score ready min" value={dispatch.score_ready_min} onChange={(v) => setDispatch((p) => ({ ...p, score_ready_min: asInt(v, p.score_ready_min) }))} />
+            <Field label="Score ready strong" value={dispatch.score_ready_strong} onChange={(v) => setDispatch((p) => ({ ...p, score_ready_strong: asInt(v, p.score_ready_strong) }))} />
+            <Field label="Score low band" value={dispatch.score_low_band} onChange={(v) => setDispatch((p) => ({ ...p, score_low_band: asInt(v, p.score_low_band) }))} />
+            <Field label="Score enrich floor" value={dispatch.score_enrich_floor} onChange={(v) => setDispatch((p) => ({ ...p, score_enrich_floor: asInt(v, p.score_enrich_floor) }))} />
+          </div>
+          <Button type="button" size="sm" onClick={() => save("dispatch_queue_rules", dispatch)} disabled={pending}>
+            Enregistrer
+          </Button>
         </div>
-        <Button type="button" size="sm" onClick={() => save("dispatch_queue_rules", dispatch)} disabled={pending}>
-          Enregistrer
-        </Button>
-      </section>
+      </CollapsibleSection>
 
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Recyclage</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Jours sans ouverture" value={recycling.days_assigned_without_open} onChange={(v) => setRecycling((p) => ({ ...p, days_assigned_without_open: asInt(v, p.days_assigned_without_open) }))} />
-          <Field label="Jours de silence" value={recycling.days_silence_after_last_touch} onChange={(v) => setRecycling((p) => ({ ...p, days_silence_after_last_touch: asInt(v, p.days_silence_after_last_touch) }))} />
-          <Field label="Min tentatives recyclage" value={recycling.min_attempts_for_recycle} onChange={(v) => setRecycling((p) => ({ ...p, min_attempts_for_recycle: asInt(v, p.min_attempts_for_recycle) }))} />
+      <CollapsibleSection
+        title="Recyclage"
+        icon={<Recycle className="size-4" aria-hidden />}
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Quand une fiche assignée doit revenir dans le pool : seuils de silence et minimum de tentatives.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Jours sans ouverture" value={recycling.days_assigned_without_open} onChange={(v) => setRecycling((p) => ({ ...p, days_assigned_without_open: asInt(v, p.days_assigned_without_open) }))} />
+            <Field label="Jours de silence" value={recycling.days_silence_after_last_touch} onChange={(v) => setRecycling((p) => ({ ...p, days_silence_after_last_touch: asInt(v, p.days_silence_after_last_touch) }))} />
+            <Field label="Min tentatives recyclage" value={recycling.min_attempts_for_recycle} onChange={(v) => setRecycling((p) => ({ ...p, min_attempts_for_recycle: asInt(v, p.min_attempts_for_recycle) }))} />
+          </div>
+          <Button type="button" size="sm" onClick={() => save("recycling_rules", recycling)} disabled={pending}>
+            Enregistrer
+          </Button>
         </div>
-        <Button type="button" size="sm" onClick={() => save("recycling_rules", recycling)} disabled={pending}>
-          Enregistrer
-        </Button>
-      </section>
+      </CollapsibleSection>
 
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Limites automatisations</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Sync imports limit" value={automation.sync_pending_imports_limit} onChange={(v) => setAutomation((p) => ({ ...p, sync_pending_imports_limit: asInt(v, p.sync_pending_imports_limit) }))} />
-          <Field label="Score recent stock limit" value={automation.score_recent_stock_limit} onChange={(v) => setAutomation((p) => ({ ...p, score_recent_stock_limit: asInt(v, p.score_recent_stock_limit) }))} />
-          <Field label="Evaluate dispatch queue limit" value={automation.evaluate_dispatch_queue_limit} onChange={(v) => setAutomation((p) => ({ ...p, evaluate_dispatch_queue_limit: asInt(v, p.evaluate_dispatch_queue_limit) }))} />
-          <Field label="Evaluate recycling limit" value={automation.evaluate_recycling_limit} onChange={(v) => setAutomation((p) => ({ ...p, evaluate_recycling_limit: asInt(v, p.evaluate_recycling_limit) }))} />
+      <CollapsibleSection
+        title="Limites cron / automatisations"
+        icon={<Timer className="size-4" aria-hidden />}
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Volumes traités à chaque passage du cron pour rester sous la charge cible (sync, scoring, dispatch, recyclage).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Sync imports limit" value={automation.sync_pending_imports_limit} onChange={(v) => setAutomation((p) => ({ ...p, sync_pending_imports_limit: asInt(v, p.sync_pending_imports_limit) }))} />
+            <Field label="Score recent stock limit" value={automation.score_recent_stock_limit} onChange={(v) => setAutomation((p) => ({ ...p, score_recent_stock_limit: asInt(v, p.score_recent_stock_limit) }))} />
+            <Field label="Evaluate dispatch queue limit" value={automation.evaluate_dispatch_queue_limit} onChange={(v) => setAutomation((p) => ({ ...p, evaluate_dispatch_queue_limit: asInt(v, p.evaluate_dispatch_queue_limit) }))} />
+            <Field label="Evaluate recycling limit" value={automation.evaluate_recycling_limit} onChange={(v) => setAutomation((p) => ({ ...p, evaluate_recycling_limit: asInt(v, p.evaluate_recycling_limit) }))} />
+          </div>
+          <Button type="button" size="sm" onClick={() => save("automation_limits", automation)} disabled={pending}>
+            Enregistrer
+          </Button>
         </div>
-        <Button type="button" size="sm" onClick={() => save("automation_limits", automation)} disabled={pending}>
-          Enregistrer
-        </Button>
-      </section>
+      </CollapsibleSection>
 
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Actions principales (générer / préparer / dispatch)</h2>
+      <CollapsibleSection
+        title="Limites de traitement par lot"
+        icon={<Workflow className="size-4" aria-hidden />}
+      >
+        <div className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Le bouton « Générer des leads » du cockpit ouvre désormais une configuration (métier, zone, plafonds) : les
-          recherches ci-dessous ne sont plus utilisées pour ce lancement. Elles restent disponibles pour d’autres usages
-          ou imports manuels. Les limites ci-dessous concernent surtout l’enrichissement post-import et les valeurs par
-          défaut historiques.
+          Volumes max pour les actions en masse (scoring, enrichissement, dispatch). Les recherches Apify historiques
+          ci-dessous restent listées pour compatibilité — elles ne sont plus utilisées par le bouton « Générer des leads »
+          du cockpit (configuration explicite obligatoire).
         </p>
         <div className="space-y-2">
           <Label>Recherches Apify historiques (une par ligne, max 20)</Label>
@@ -219,20 +253,29 @@ export function LeadGenerationSettingsPanel({ initialSettings, invalidKeys }: Pr
         >
           Enregistrer
         </Button>
-      </section>
-
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Limites quick UI</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Quick score limit" value={ui.quick_score_limit} onChange={(v) => setUi((p) => ({ ...p, quick_score_limit: asInt(v, p.quick_score_limit) }))} />
-          <Field label="Quick enrichment limit" value={ui.quick_enrichment_limit} onChange={(v) => setUi((p) => ({ ...p, quick_enrichment_limit: asInt(v, p.quick_enrichment_limit) }))} />
-          <Field label="Quick dispatch queue limit" value={ui.quick_dispatch_queue_limit} onChange={(v) => setUi((p) => ({ ...p, quick_dispatch_queue_limit: asInt(v, p.quick_dispatch_queue_limit) }))} />
-          <Field label="Quick recycling limit" value={ui.quick_recycling_limit} onChange={(v) => setUi((p) => ({ ...p, quick_recycling_limit: asInt(v, p.quick_recycling_limit) }))} />
         </div>
-        <Button type="button" size="sm" onClick={() => save("ui_batch_limits", ui)} disabled={pending}>
-          Enregistrer
-        </Button>
-      </section>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Limites des actions rapides"
+        icon={<Gauge className="size-4" aria-hidden />}
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Volumes max pour les actions lancées depuis l&apos;interface (boutons « rapides » : scoring, enrichissement,
+            dispatch, recyclage à la demande).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Quick score limit" value={ui.quick_score_limit} onChange={(v) => setUi((p) => ({ ...p, quick_score_limit: asInt(v, p.quick_score_limit) }))} />
+            <Field label="Quick enrichment limit" value={ui.quick_enrichment_limit} onChange={(v) => setUi((p) => ({ ...p, quick_enrichment_limit: asInt(v, p.quick_enrichment_limit) }))} />
+            <Field label="Quick dispatch queue limit" value={ui.quick_dispatch_queue_limit} onChange={(v) => setUi((p) => ({ ...p, quick_dispatch_queue_limit: asInt(v, p.quick_dispatch_queue_limit) }))} />
+            <Field label="Quick recycling limit" value={ui.quick_recycling_limit} onChange={(v) => setUi((p) => ({ ...p, quick_recycling_limit: asInt(v, p.quick_recycling_limit) }))} />
+          </div>
+          <Button type="button" size="sm" onClick={() => save("ui_batch_limits", ui)} disabled={pending}>
+            Enregistrer
+          </Button>
+        </div>
+      </CollapsibleSection>
 
       {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
     </div>

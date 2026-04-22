@@ -1,15 +1,20 @@
+import { Filter } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { ImportBatchesFilters } from "@/features/lead-generation/components/import-batches-filters";
+import { ImportBatchesKpis } from "@/features/lead-generation/components/import-batches-kpis";
 import { ImportBatchesTable } from "@/features/lead-generation/components/import-batches-table";
 import { LeadGenerationRecentImports } from "@/features/lead-generation/components/lead-generation-recent-imports";
-import { ManualCsvImportPanel } from "@/features/lead-generation/components/manual-csv-import-panel";
 import { StartLeboncoinImportModal } from "@/features/lead-generation/components/start-leboncoin-import-modal";
-import { buildImportBatchesListUrl, type ImportBatchesListSearchState } from "@/features/lead-generation/lib/build-import-batches-list-url";
-import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
+import {
+  buildImportBatchesListUrl,
+  type ImportBatchesListSearchState,
+} from "@/features/lead-generation/lib/build-import-batches-list-url";
+import { getImportBatchesKpis, type ImportBatchesKpis as ImportBatchesKpisType } from "@/features/lead-generation/queries/get-import-batches-kpis";
 import { getLeadGenerationImportBatches } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
@@ -25,6 +30,13 @@ export const maxDuration = 300;
 
 const PAGE_SIZE = 50;
 const RECENT_IMPORTS = 5;
+
+const FALLBACK_KPIS: ImportBatchesKpisType = {
+  active: 0,
+  monthTotal: 0,
+  monthCompleted: 0,
+  monthFailed: 0,
+};
 
 function spStr(sp: Record<string, string | string[] | undefined>, key: string): string | undefined {
   const v = sp[key];
@@ -48,53 +60,38 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
   const quantifierOnly = !hub && quantifierImports;
 
   const sp = await searchParams;
-  const source = spStr(sp, "source");
   const status = spStr(sp, "status");
-  const external_status = spStr(sp, "external_status");
   const pageRaw = spStr(sp, "page");
   const page = Math.max(1, parseInt(pageRaw ?? "1", 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
   const filters: ImportBatchesListSearchState = {
-    source,
     status,
-    external_status,
     page,
   };
 
   const filterPayload = {
-    ...(source ? { source } : {}),
     ...(status ? { status } : {}),
-    ...(external_status ? { external_status } : {}),
   };
+  const hasActiveFilters = Object.keys(filterPayload).length > 0;
 
   /** Rôle quantificateur seul : listes et prévisualisations limitées aux lots créés par l’utilisateur courant (aligné sur la page détail et les actions sync). */
   const createdByFilter = quantifierOnly ? { created_by_user_id: access.userId } : {};
+  const kpiOwner = quantifierOnly ? access.userId : null;
 
-  let recentForPreview: Awaited<ReturnType<typeof getLeadGenerationImportBatches>> = [];
-  try {
-    recentForPreview = await getLeadGenerationImportBatches({
+  const [recentForPreview, kpis] = await Promise.all([
+    getLeadGenerationImportBatches({
       limit: RECENT_IMPORTS,
       offset: 0,
       filters: quantifierOnly ? createdByFilter : undefined,
-    });
-  } catch {
-    recentForPreview = [];
-  }
-
-  let ceeImportScope: Awaited<ReturnType<typeof getLeadGenerationCeeImportScope>> = { sheets: [], teams: [] };
-  try {
-    ceeImportScope = quantifierOnly ? { sheets: [], teams: [] } : await getLeadGenerationCeeImportScope();
-  } catch {
-    ceeImportScope = { sheets: [], teams: [] };
-  }
+    }).catch(() => [] as Awaited<ReturnType<typeof getLeadGenerationImportBatches>>),
+    getImportBatchesKpis({ createdByUserId: kpiOwner }).catch(() => FALLBACK_KPIS),
+  ]);
 
   const listFilters =
-    Object.keys(filterPayload).length > 0 || quantifierOnly
-      ? { ...filterPayload, ...createdByFilter }
-      : undefined;
+    hasActiveFilters || quantifierOnly ? { ...filterPayload, ...createdByFilter } : undefined;
 
-  let rows;
+  let rows: Awaited<ReturnType<typeof getLeadGenerationImportBatches>>;
   try {
     rows = await getLeadGenerationImportBatches({
       filters: listFilters,
@@ -104,9 +101,9 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur lors du chargement des imports.";
     return (
-      <div className="mx-auto w-full max-w-7xl space-y-6">
+      <div className="space-y-6">
         <PageHeader
-          title="Imports Lead Generation"
+          title="Imports"
           description="Historique des imports depuis le scraping et synchronisation avec Apify."
         />
         <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -123,116 +120,80 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
   const nextHref = hasNext ? buildImportBatchesListUrl({ ...filters, page: page + 1 }) : null;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8">
+    <div className="space-y-8">
       <PageHeader
-        title="Imports Lead Generation"
+        title="Imports"
         description={
           quantifierOnly
             ? "Vos lots lancés depuis la quantification (synchronisation Apify)."
-            : "Importer des fiches, lancer un scraping cartes, synchroniser les lots."
+            : "Importer des fiches, lancer un scraping immobilier, synchroniser les lots."
         }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <StartLeboncoinImportModal />
-            <Link
-              href={quantifierOnly ? "/lead-generation/quantification" : "/lead-generation"}
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            >
-              {quantifierOnly ? "Quantification" : "Vue d’ensemble"}
-            </Link>
-          </div>
-        }
+        actions={<StartLeboncoinImportModal />}
       />
 
-      <nav
-        aria-label="Navigation acquisition"
-        className="flex flex-wrap gap-2 border-b border-border/70 pb-4 text-sm"
-      >
-        {quantifierOnly ? (
-          <Link
-            href="/lead-generation/quantification"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Quantification
-          </Link>
-        ) : (
-          <>
-            <Link
-              href="/lead-generation"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "sm" }),
-                "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Stock
-            </Link>
-            <Link
-              href="/lead-generation/my-queue"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "sm" }),
-                "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Ma file à traiter
-            </Link>
-          </>
-        )}
-      </nav>
-
-      {!quantifierOnly ? (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Importer un fichier CSV</h2>
-          <ManualCsvImportPanel ceeScope={ceeImportScope} />
-        </section>
-      ) : null}
+      <ImportBatchesKpis kpis={kpis} scopedToMe={quantifierOnly} />
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">
-          {quantifierOnly ? "Vos derniers lots" : "Derniers imports"}
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          {quantifierOnly
-            ? `Les ${RECENT_IMPORTS} derniers lots que vous avez lancés. Synchronisez lorsque le scraping est terminé.`
-            : `Les ${RECENT_IMPORTS} derniers lots. Synchronisez lorsque le fournisseur a terminé.`}
-        </p>
+        <header className="flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-semibold text-foreground">
+            {quantifierOnly ? "Vos derniers lots" : "Derniers imports"}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {quantifierOnly
+              ? `Les ${RECENT_IMPORTS} derniers que vous avez lancés.`
+              : `Les ${RECENT_IMPORTS} plus récents — synchronisez quand le fournisseur a terminé.`}
+          </p>
+        </header>
         <LeadGenerationRecentImports rows={recentForPreview} />
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Filtres</h2>
+      <CollapsibleSection
+        title="Filtres"
+        icon={<Filter className="size-4" aria-hidden />}
+        defaultOpen={hasActiveFilters}
+        badge={
+          hasActiveFilters ? (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+              {Object.keys(filterPayload).length} actif{Object.keys(filterPayload).length > 1 ? "s" : ""}
+            </span>
+          ) : null
+        }
+      >
         <ImportBatchesFilters defaults={filters} />
-      </section>
+      </CollapsibleSection>
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">Liste des imports</h2>
           <p className="text-xs text-muted-foreground">
-            Page {page} · {rows.length} ligne(s)
+            Page {page} · {rows.length} ligne{rows.length > 1 ? "s" : ""}
           </p>
         </div>
         {rows.length === 0 ? (
-          <p className="rounded-lg border border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground">
-            Aucun import pour ces filtres.
+          <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+            {hasActiveFilters
+              ? "Aucun import ne correspond à ces filtres. Ajustez les critères ci-dessus."
+              : "Aucun import pour le moment. Lancez un scraping Le Bon Coin avec le bouton ci-dessus."}
           </p>
         ) : (
           <ImportBatchesTable rows={rows} />
         )}
-        <div className="flex flex-wrap gap-2">
-          {hasPrev && prevHref ? (
-            <Link href={prevHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-              Précédent
-            </Link>
-          ) : null}
-          {hasNext && nextHref ? (
-            <Link href={nextHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-              Suivant
-            </Link>
-          ) : null}
-        </div>
+        {(hasPrev || hasNext) && (
+          <div className="flex flex-wrap gap-2">
+            {hasPrev && prevHref ? (
+              <Link href={prevHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                Précédent
+              </Link>
+            ) : null}
+            {hasNext && nextHref ? (
+              <Link href={nextHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                Suivant
+              </Link>
+            ) : null}
+          </div>
+        )}
       </section>
+
     </div>
   );
 }

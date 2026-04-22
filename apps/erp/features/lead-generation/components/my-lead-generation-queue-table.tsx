@@ -54,7 +54,7 @@ export function MyLeadGenerationQueueTable({ items, showCeeColumn = false, retur
             <TableRow className="border-border hover:bg-transparent">
               {showCeeColumn ? (
                 <TableHead className="min-w-[140px] px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Fiche CEE
+                  Périmètre
                 </TableHead>
               ) : null}
               <TableHead className="sticky left-0 z-20 min-w-[200px] bg-muted/90 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-md dark:bg-muted/80">

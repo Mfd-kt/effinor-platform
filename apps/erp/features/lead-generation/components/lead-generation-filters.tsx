@@ -39,13 +39,6 @@ const DISPATCH_OPTIONS: { value: string; label: string }[] = [
   { value: "do_not_dispatch", label: "Ne pas diffuser" },
 ];
 
-const CLOSING_OPTIONS: { value: string; label: string }[] = [
-  { value: "", label: "Tous" },
-  { value: "low", label: "Closing faible" },
-  { value: "medium", label: "Closing moyen" },
-  { value: "high", label: "Closing fort" },
-];
-
 type Props = {
   defaults: LeadGenerationListSearchState;
   /** Cible du formulaire (défaut : page cockpit). */
@@ -110,30 +103,6 @@ export function LeadGenerationFilters({ defaults, action = "/lead-generation" }:
             </option>
           ))}
         </select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="closing_readiness_status">Préparation closing</Label>
-        <select
-          id="closing_readiness_status"
-          name="closing_readiness_status"
-          className={SELECT_CLASS}
-          defaultValue={defaults.closing_readiness_status ?? ""}
-        >
-          {CLOSING_OPTIONS.map((o) => (
-            <option key={o.value || "all-c"} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="source">Code source</Label>
-        <Input
-          id="source"
-          name="source"
-          placeholder="ex. apify_google_maps"
-          defaultValue={defaults.source ?? ""}
-        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="city">Ville</Label>

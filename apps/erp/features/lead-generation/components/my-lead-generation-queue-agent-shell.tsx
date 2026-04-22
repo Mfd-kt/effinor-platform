@@ -286,7 +286,7 @@ export function MyLeadGenerationQueueAgentShell({
   const scopeTitle = useMemo(() => {
     if (!needsCeePick) return null;
     if (!hasValidSelection) return null;
-    if (isNoCeeSelected) return "Sans fiche CEE";
+    if (isNoCeeSelected) return "Sans périmètre";
     if (selectedOption) return formatMyQueueCeeSheetOptionLabel(selectedOption);
     return null;
   }, [needsCeePick, hasValidSelection, isNoCeeSelected, selectedOption]);
@@ -309,13 +309,13 @@ export function MyLeadGenerationQueueAgentShell({
         ) : null}
         <p className="mb-3 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Votre file</span> — liste des contacts qui vous sont attribués.
-          Le filtre produit ci-dessous limite l’affichage par fiche CEE. Seul le statut pipeline{" "}
+          Le filtre ci-dessous limite l’affichage par périmètre. Seul le statut pipeline{" "}
           <span className="font-medium text-foreground">Nouveau</span> compte pour votre stock disponible au sens plafond /
           réinjection ; le reste est du suivi.
         </p>
         {needsCeePick && !hasValidSelection ? (
           <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2.5 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/[0.09] dark:text-amber-100">
-            Choisissez un <span className="font-semibold">produit CEE</span> (ou « sans fiche CEE ») pour afficher votre
+            Choisissez un <span className="font-semibold">périmètre</span> (ou « sans périmètre ») pour afficher votre
             liste et vos indicateurs.
           </p>
         ) : null}

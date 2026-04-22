@@ -1,6 +1,7 @@
+import { CheckCircle2, Clock, Loader2, MinusCircle, XCircle, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import {
   Table,
   TableBody,
@@ -14,6 +15,7 @@ import {
   formatLeadGenerationSourceLabel,
 } from "@/features/lead-generation/lib/lead-generation-display";
 import type { LeadGenerationImportBatchListItem } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
+import { cn } from "@/lib/utils";
 import { ImportBatchSyncButton } from "./import-batch-sync-button";
 import { SyncLeboncoinImportButton } from "./sync-leboncoin-import-button";
 
@@ -21,13 +23,31 @@ function shortRef(id: string): string {
   return id.length <= 10 ? id : `${id.slice(0, 6)}…${id.slice(-4)}`;
 }
 
-function statusBadgeVariant(
-  status: string,
-): "default" | "secondary" | "destructive" | "outline" {
-  if (status === "completed") return "default";
-  if (status === "failed") return "destructive";
-  if (status === "running") return "secondary";
-  return "outline";
+type StatusVisual = {
+  variant: "success" | "warning" | "danger" | "info" | "neutral";
+  Icon: LucideIcon;
+  iconClassName?: string;
+  label: string;
+};
+
+function statusVisual(status: string): StatusVisual {
+  const s = status.toLowerCase();
+  if (s === "completed") {
+    return { variant: "success", Icon: CheckCircle2, label: "Terminé" };
+  }
+  if (s === "failed") {
+    return { variant: "danger", Icon: XCircle, label: "Échec" };
+  }
+  if (s === "running") {
+    return { variant: "info", Icon: Loader2, iconClassName: "animate-spin", label: "En cours" };
+  }
+  if (s === "pending") {
+    return { variant: "warning", Icon: Clock, label: "En attente" };
+  }
+  if (s === "cancelled" || s === "canceled") {
+    return { variant: "neutral", Icon: MinusCircle, label: "Annulé" };
+  }
+  return { variant: "neutral", Icon: MinusCircle, label: status };
 }
 
 type Props = {
@@ -44,7 +64,7 @@ export function LeadGenerationRecentImports({ rows }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-border">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <Table>
         <TableHeader>
           <TableRow>
@@ -59,6 +79,8 @@ export function LeadGenerationRecentImports({ rows }: Props) {
           {rows.map((row) => {
             const label = row.source_label?.trim() || formatLeadGenerationSourceLabel(row.source);
             const ceeHint = formatLeadGenerationBatchCeeHint(row);
+            const visual = statusVisual(row.status);
+            const StatusIcon = visual.Icon;
             return (
               <TableRow key={row.id}>
                 <TableCell>
@@ -75,9 +97,10 @@ export function LeadGenerationRecentImports({ rows }: Props) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={statusBadgeVariant(row.status)} className="text-xs capitalize">
-                    {row.status}
-                  </Badge>
+                  <StatusBadge variant={visual.variant} className="inline-flex items-center gap-1.5">
+                    <StatusIcon className={cn("size-3.5", visual.iconClassName)} aria-hidden />
+                    {visual.label}
+                  </StatusBadge>
                 </TableCell>
                 <TableCell className="hidden max-w-[120px] truncate text-sm text-muted-foreground sm:table-cell">
                   {row.external_status ?? "—"}
@@ -107,7 +130,7 @@ export function LeadGenerationRecentImports({ rows }: Props) {
           })}
         </TableBody>
       </Table>
-      <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+      <p className="border-t border-border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
         Fiches : importées / acceptées / doublons / rejetées — tri du plus récent au plus ancien.
       </p>
     </div>

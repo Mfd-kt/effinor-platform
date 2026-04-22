@@ -1,8 +1,11 @@
+import { Filter, Wrench } from "lucide-react";
 import Link from "next/link";
 
+import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadGenerationDuplicateScanPanel } from "@/features/lead-generation/components/lead-generation-duplicate-scan-panel";
 import { LeadGenerationFilters } from "@/features/lead-generation/components/lead-generation-filters";
+import { LeadGenerationStockKpis } from "@/features/lead-generation/components/lead-generation-stock-kpis";
 import { LeadGenerationStockListView } from "@/features/lead-generation/components/lead-generation-stock-list-view";
 import {
   buildLeadGenerationStockPageUrl,
@@ -135,55 +138,47 @@ export async function LeadGenerationHubStockSection({ searchParams: sp }: Props)
   const prevHref = hasPrev ? buildLeadGenerationStockPageUrl({ ...filters, page: page - 1 }) : null;
   const nextHref = hasNext ? buildLeadGenerationStockPageUrl({ ...filters, page: page + 1 }) : null;
 
+  const activeFilterCount = Object.keys(filterPayload).length;
+  const hasActiveFilters = activeFilterCount > 0;
+
+  const filterNotice =
+    filtre === "pret"
+      ? "Filtre actif : prêts à contacter."
+      : filtre === "enrichir"
+        ? "Filtre actif : à enrichir avant diffusion."
+        : filtre === "rejet"
+          ? "Filtre actif : rejetés."
+          : filtre === "premium"
+            ? "Filtre actif : leads premium."
+            : filtre === "contact_gap"
+              ? `Filtre actif : contact incomplet${import_batch ? ` · lot ${import_batch.slice(0, 8)}…` : ""}.`
+              : closing_readiness_status === "high"
+                ? "Filtre actif : closing fort uniquement."
+                : null;
+
   return (
     <div className="space-y-6">
-      <nav
-        aria-label="Raccourcis carnet"
-        className="flex flex-wrap gap-2 border-b border-border/70 pb-4 text-sm"
-      >
-        <Link
-          href="/lead-generation/my-queue"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Ma file à traiter
-        </Link>
-        <Link
-          href="/lead-generation/imports"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Imports
-        </Link>
-      </nav>
+      <LeadGenerationStockKpis summary={summary} filtered={hasActiveFilters} />
 
-      <LeadGenerationFilters defaults={filters} action={STOCK_FORM_ACTION} />
-
-      <LeadGenerationDuplicateScanPanel />
-
-      {filtre === "pret" ? (
-        <p className="text-xs font-medium text-foreground">Affichage : prêts à contacter</p>
-      ) : filtre === "enrichir" ? (
-        <p className="text-xs font-medium text-foreground">Affichage : file à enrichir avant diffusion</p>
-      ) : filtre === "rejet" ? (
-        <p className="text-xs font-medium text-foreground">Affichage : rejetés</p>
-      ) : filtre === "premium" ? (
-        <p className="text-xs font-medium text-foreground">Affichage : leads premium</p>
-      ) : filtre === "contact_gap" ? (
-        <p className="text-xs font-medium text-foreground">
-          Affichage : contact incomplet (email / site manquants)
-          {import_batch ? (
-            <span className="block text-muted-foreground">
-              Lot : {import_batch.slice(0, 8)}…
+      <CollapsibleSection
+        title="Filtres"
+        icon={<Filter className="size-4" aria-hidden />}
+        defaultOpen={hasActiveFilters}
+        badge={
+          hasActiveFilters ? (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+              {activeFilterCount} actif{activeFilterCount > 1 ? "s" : ""}
             </span>
-          ) : null}
+          ) : null
+        }
+      >
+        <LeadGenerationFilters defaults={filters} action={STOCK_FORM_ACTION} />
+      </CollapsibleSection>
+
+      {filterNotice ? (
+        <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground">
+          {filterNotice}
         </p>
-      ) : closing_readiness_status === "high" ? (
-        <p className="text-xs font-medium text-foreground">Affichage : closing fort uniquement</p>
       ) : null}
 
       <LeadGenerationStockListView
@@ -196,18 +191,33 @@ export async function LeadGenerationHubStockSection({ searchParams: sp }: Props)
         activeDispatchChip={activeDispatchChip}
       />
 
-      <div className="flex flex-wrap gap-2">
-        {hasPrev && prevHref ? (
-          <Link href={prevHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            Précédent
-          </Link>
-        ) : null}
-        {hasNext && nextHref ? (
-          <Link href={nextHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            Suivant
-          </Link>
-        ) : null}
-      </div>
+      {(hasPrev || hasNext) && (
+        <div className="flex flex-wrap gap-2">
+          {hasPrev && prevHref ? (
+            <Link href={prevHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              Précédent
+            </Link>
+          ) : null}
+          {hasNext && nextHref ? (
+            <Link href={nextHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              Suivant
+            </Link>
+          ) : null}
+        </div>
+      )}
+
+      <CollapsibleSection
+        title="Outils avancés"
+        icon={<Wrench className="size-4" aria-hidden />}
+        defaultOpen={false}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Détection de doublons sur le stock — utile en maintenance, rarement au quotidien.
+          </p>
+          <LeadGenerationDuplicateScanPanel />
+        </div>
+      </CollapsibleSection>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { LeadGenerationAnalyticsDashboard } from "@/features/lead-generation/components/lead-generation-analytics-dashboard";
 import { LeadGenerationCockpitDashboard } from "@/features/lead-generation/components/lead-generation-cockpit-dashboard";
 import { LeadGenerationCockpitFilters } from "@/features/lead-generation/components/lead-generation-cockpit-filters";
 import { LeadGenerationManagementDashboardView } from "@/features/lead-generation/components/lead-generation-management-dashboard-view";
@@ -46,7 +47,20 @@ export default async function LeadGenerationManagementPage({
   }
 
   const sp = await searchParams;
-  const { view, suiviHref, cockpitHref } = buildTeamPilotageTabHrefs(sp);
+  const { view, suiviHref, cockpitHref, analyticsHref } = buildTeamPilotageTabHrefs(sp);
+
+  if (view === "analytics") {
+    return (
+      <LeadGenerationTeamPilotageShell
+        activeView="analytics"
+        suiviHref={suiviHref}
+        cockpitHref={cockpitHref}
+        analyticsHref={analyticsHref}
+      >
+        <LeadGenerationAnalyticsDashboard />
+      </LeadGenerationTeamPilotageShell>
+    );
+  }
 
   if (view === "cockpit") {
     const filters = parseCockpitFiltersFromSearch({
@@ -64,6 +78,7 @@ export default async function LeadGenerationManagementPage({
         activeView="cockpit"
         suiviHref={suiviHref}
         cockpitHref={cockpitHref}
+        analyticsHref={analyticsHref}
       >
         <Suspense
           fallback={
@@ -95,7 +110,12 @@ export default async function LeadGenerationManagementPage({
   });
 
   return (
-    <LeadGenerationTeamPilotageShell activeView="suivi" suiviHref={suiviHref} cockpitHref={cockpitHref}>
+    <LeadGenerationTeamPilotageShell
+      activeView="suivi"
+      suiviHref={suiviHref}
+      cockpitHref={cockpitHref}
+      analyticsHref={analyticsHref}
+    >
       <LeadGenerationManagementDashboardView data={data} embedded />
     </LeadGenerationTeamPilotageShell>
   );

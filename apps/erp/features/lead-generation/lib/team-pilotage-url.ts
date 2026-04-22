@@ -1,11 +1,13 @@
-/** Vue fusionnée Suivi quantificateurs + Cockpit manager (`/lead-generation/management`). */
+/** Vue fusionnée Suivi quantificateurs + Cockpit manager + Analytics (`/lead-generation/management`). */
 
-export type TeamPilotageView = "suivi" | "cockpit";
+export type TeamPilotageView = "suivi" | "cockpit" | "analytics";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function parseTeamPilotageView(raw: string | undefined): TeamPilotageView {
-  return raw === "cockpit" ? "cockpit" : "suivi";
+  if (raw === "cockpit") return "cockpit";
+  if (raw === "analytics") return "analytics";
+  return "suivi";
 }
 
 function firstString(
@@ -16,13 +18,14 @@ function firstString(
   return typeof v === "string" ? v : undefined;
 }
 
-/** Préserve filtres des deux onglets dans l’URL pour pouvoir basculer sans perdre les réglages. */
+/** Préserve filtres des trois onglets dans l’URL pour pouvoir basculer sans perdre les réglages. */
 export function buildTeamPilotageTabHrefs(
   sp: Record<string, string | string[] | undefined>,
 ): {
   view: TeamPilotageView;
   suiviHref: string;
   cockpitHref: string;
+  analyticsHref: string;
 } {
   const view = parseTeamPilotageView(firstString(sp, "view"));
 
@@ -66,9 +69,24 @@ export function buildTeamPilotageTabHrefs(
     baseCockpit.set("cee", cee);
   }
 
+  const baseAnalytics = new URLSearchParams();
+  baseAnalytics.set("view", "analytics");
+  baseAnalytics.set("p", p);
+  if (q) {
+    baseAnalytics.set("q", q);
+  }
+  if (cee) {
+    baseAnalytics.set("cee", cee);
+  }
+  baseAnalytics.set("period", period);
+  if (agent) {
+    baseAnalytics.set("agent", agent);
+  }
+
   return {
     view,
     suiviHref: `/lead-generation/management?${baseSuivi.toString()}`,
     cockpitHref: `/lead-generation/management?${baseCockpit.toString()}`,
+    analyticsHref: `/lead-generation/management?${baseAnalytics.toString()}`,
   };
 }

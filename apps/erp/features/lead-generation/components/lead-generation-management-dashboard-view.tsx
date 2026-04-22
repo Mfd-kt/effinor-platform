@@ -1,5 +1,7 @@
+import { BookOpen } from "lucide-react";
 import Link from "next/link";
 
+import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +62,12 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
   } = data;
   const pl = periodLabel(filters.period);
 
+  const lotsLeaderboardInsufficient = businessLotLeaderboard.kind === "insufficient";
+  const quantifierLeaderboardEmpty =
+    quantifierLeaderboard.kind === "insufficient" || quantifierLeaderboard.kind === "hidden";
+  const noTabularData =
+    lotsLeaderboardInsufficient && quantifierLeaderboardEmpty && quantifiers.length === 0 && batches.length === 0;
+
   return (
     <div className="space-y-8">
       {embedded ? null : (
@@ -72,28 +80,27 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
       <LeadGenerationManagementDashboardFilters
         period={filters.period}
         quantifierUserId={filters.quantifierUserId}
-        ceeSheetId={filters.ceeSheetId}
         quantifiers={filterOptions.quantifiers}
-        ceeSheets={filterOptions.ceeSheets}
       />
 
-      {/* A — Vue d'ensemble */}
+      {/* A — Vue d'ensemble (5 KPIs essentiels) */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-tight text-foreground">Vue d&apos;ensemble</h2>
         <p className="text-xs text-muted-foreground">
-          Période sélectionnée : <span className="font-medium text-foreground">{pl}</span> — volumes et taux basés sur
-          les événements enregistrés (sauf mention).
+          Période sélectionnée : <span className="font-medium text-foreground">{pl}</span> — indicateurs essentiels pour
+          piloter la qualification. Plus de détails dans <span className="font-medium text-foreground">Analytics</span>.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <KpiCard label="À traiter (file actuelle)" value={overview.toQualifyNow} hint="Fiches encore à qualifier" />
           <KpiCard label="Qualifiés (période)" value={overview.qualifiedInPeriod} hint="Décisions « Qualifier »" />
           <KpiCard label="Hors cible (période)" value={overview.outOfTargetInPeriod} hint="Quantif. + pilotage" />
-          <KpiCard label="Retours commerciaux (période)" value={overview.commercialReturnsInPeriod} />
-          <KpiCard label="Doublons auto hors cible (période)" value={overview.autoDuplicateOotInPeriod} />
+          <KpiCard
+            label="Taux de qualification"
+            value={pct(overview.qualifyRatePercent)}
+            hint="Qualif. / (qualif. + hors cible)"
+            isText
+          />
           <KpiCard label="Lots créés (période)" value={overview.batchesCreatedInPeriod} />
-          <KpiCard label="Lots créés (7 jours)" value={overview.batchesCreatedLast7Days} hint="Fenêtre fixe 7 j" />
-          <KpiCard label="Taux de qualification" value={pct(overview.qualifyRatePercent)} hint="Qualif. / (qualif. + hors cible)" isText />
-          <KpiCard label="Taux de retour" value={pct(overview.returnRatePercent)} hint="Retours / qualifications" isText />
         </div>
       </section>
 
@@ -101,43 +108,42 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-tight text-foreground">Rendement business</h2>
         <p className="text-xs text-muted-foreground">
-          Périmètre : lots filtrés (quantificateur, fiche CEE). Comptage des fiches commerciales créées depuis le stock
-          avec <span className="font-medium text-foreground">date de création du lead dans la période</span> — les RDV,
-          accords, VT et installations sont attribués au lot d&apos;origine via{" "}
-          <span className="font-mono text-[10px]">lead_generation_stock → converted_lead_id</span>.
+          Comptage des fiches commerciales créées depuis le stock avec{" "}
+          <span className="font-medium text-foreground">date de création du lead dans la période</span> — RDV, accords,
+          VT et installations attribués au lot d&apos;origine.
         </p>
-        <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-          <p className="font-medium text-foreground/90">Définitions (même logique que le tableau)</p>
-          <ul className="mt-1.5 list-inside list-disc space-y-0.5">
+        <CollapsibleSection
+          title="Définitions métier"
+          icon={<BookOpen className="size-4" aria-hidden />}
+          defaultOpen={false}
+        >
+          <ul className="list-inside list-disc space-y-1 text-xs leading-relaxed text-muted-foreground">
             <li>
               <span className="text-foreground/80">Lead converti</span> : ligne stock avec{" "}
               <span className="font-mono text-[10px]">converted_lead_id</span> ; lead actif, créé dans la période.
             </li>
             <li>
-              <span className="text-foreground/80">RDV</span> : <span className="font-mono text-[10px]">callback_at</span>{" "}
-              renseigné sur le lead.
+              <span className="text-foreground/80">RDV</span> :{" "}
+              <span className="font-mono text-[10px]">callback_at</span> renseigné sur le lead.
             </li>
             <li>
               <span className="text-foreground/80">Accord</span> : statut lead{" "}
               <span className="font-mono text-[10px]">accord_received</span> ou{" "}
-              <span className="font-mono text-[10px]">converted</span> (les ventes portées uniquement par une opération ne
-              sont pas comptées ici sans table opérations).
+              <span className="font-mono text-[10px]">converted</span>.
             </li>
             <li>
               <span className="text-foreground/80">VT</span> : au moins une{" "}
-              <span className="font-mono text-[10px]">technical_visits</span> non supprimée, statut autre que{" "}
-              <span className="font-mono text-[10px]">cancelled</span> / <span className="font-mono text-[10px]">refused</span>.
+              <span className="font-mono text-[10px]">technical_visits</span> non annulée / refusée.
             </li>
             <li>
-              <span className="text-foreground/80">Installation</span> : non calculé dans ce tableau (schéma sans lien
-              opération / installation exploitable pour l&apos;agrégat pilotage).
+              <span className="text-foreground/80">Installation</span> : non calculé ici (schéma sans lien opération
+              exploitable pour l&apos;agrégat pilotage).
             </li>
           </ul>
           <p className="mt-2 text-[10px] text-muted-foreground/90">
-            Les pourcentages du bloc ci-dessous sont calculés sur le nombre de leads convertis (dénominateur fiable,
-            aligné sur la traçabilité stock).
+            Les pourcentages sont calculés sur le nombre de leads convertis (dénominateur fiable, aligné stock).
           </p>
-        </div>
+        </CollapsibleSection>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <KpiCard
             label="Fiches commerciales (stock → lead)"
@@ -177,18 +183,24 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
         </div>
       </section>
 
+      {noTabularData ? (
+        <Card className="border-border/80 border-dashed bg-card/40 shadow-sm">
+          <CardContent className="space-y-2 py-12 text-center">
+            <p className="text-sm font-medium text-foreground">Pas assez de données sur la période</p>
+            <p className="mx-auto max-w-md text-xs text-muted-foreground">
+              Les classements et tableaux apparaissent à partir de{" "}
+              <span className="font-medium text-foreground">{LEADERBOARD_MIN_QUALIFICATION_EVENTS} qualifications</span>{" "}
+              minimum par profil. Élargissez la période ou attendez l&apos;activité de quantification.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Top / Bottom lots business (mêmes agrégats que le tableau lots) */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">Top / Bottom lots business</h2>
-        {businessLotLeaderboard.kind === "insufficient" ? (
-          <Card className="border-border/80 bg-card/50 shadow-sm">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              {businessLotLeaderboard.message}
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground">
+      {!noTabularData && !lotsLeaderboardInsufficient ? (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">Top / Bottom lots business</h2>
+          <p className="text-xs text-muted-foreground">
               Classement sur le périmètre et la période sélectionnés. Score ={" "}
               <span className="font-mono text-[10px]">1000×inst. + 100×VT + 10×accord + 1×RDV</span> ; ex-aequo : plus
               de fiches converties dans la période, puis plus de brut importé (haut) — pour le bas, mêmes critères en
@@ -284,21 +296,12 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
                 </CardContent>
               </Card>
             </div>
-          </>
-        )}
-      </section>
+        </section>
+      ) : null}
 
-      {quantifierLeaderboard.kind !== "hidden" ? (
+      {!noTabularData && quantifierLeaderboard.kind === "ok" ? (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold tracking-tight text-foreground">Top / Bottom quantificateurs</h2>
-          {quantifierLeaderboard.kind === "insufficient" ? (
-            <Card className="border-border/80 bg-card/50 shadow-sm">
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                {quantifierLeaderboard.message}
-              </CardContent>
-            </Card>
-          ) : (
-            <>
               <p className="text-xs text-muted-foreground">
                 Classement sur le périmètre et la période sélectionnés. Score = taux de qualification − taux de retour
                 commercial. Éligibles : au moins {LEADERBOARD_MIN_QUALIFICATION_EVENTS} qualifications chacun et taux de
@@ -378,8 +381,6 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
                   </CardContent>
                 </Card>
               </div>
-            </>
-          )}
         </section>
       ) : null}
 
@@ -423,6 +424,7 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
       </section>
 
       {/* B — Quantificateurs */}
+      {!noTabularData && quantifiers.length > 0 ? (
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-tight text-foreground">Quantificateurs</h2>
         <Card className="border-border/80 bg-card/50 shadow-sm">
@@ -511,8 +513,10 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
           </CardContent>
         </Card>
       </section>
+      ) : null}
 
       {/* C — Lots */}
+      {!noTabularData && batches.length > 0 ? (
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-tight text-foreground">Lots</h2>
         <p className="text-xs text-muted-foreground">
@@ -612,6 +616,7 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
           </CardContent>
         </Card>
       </section>
+      ) : null}
 
       {/* D — Qualité après commercial */}
       <section className="space-y-3">

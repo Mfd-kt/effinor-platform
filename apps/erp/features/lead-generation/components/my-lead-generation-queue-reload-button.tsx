@@ -104,7 +104,7 @@ export function MyLeadQueueCeeSheetPicker({
       {ceeSheetOptions.length > 0 ? (
         <div className="space-y-1.5">
           <Label htmlFor="my-queue-cee-sheet" className="text-xs font-medium">
-            Filtrer le carnet par fiche CEE
+            Filtrer le carnet par périmètre
           </Label>
           <Select
             value={valueForSelect}
@@ -141,22 +141,22 @@ export function MyLeadQueueCeeSheetPicker({
           </Select>
           {mustPick && !selectionOk ? (
             <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-              Choisissez une fiche CEE ou « {MY_QUEUE_NO_CEE_SHEET_LABEL} » pour afficher vos prospections et en récupérer.
+              Choisissez un périmètre ou « {MY_QUEUE_NO_CEE_SHEET_LABEL} » pour afficher vos prospections et en récupérer.
             </p>
           ) : isNoCeeSelected ? (
             <p className="text-[11px] text-muted-foreground">
-              Contacts disponibles sans fiche CEE liée. Objectif de nouveaux simultanés (dispatch)&nbsp;: {maxCap} (distinct du
+              Contacts disponibles sans périmètre lié. Objectif de nouveaux simultanés (dispatch)&nbsp;: {maxCap} (distinct du
               plafond capacité {COMMERCIAL_CAPACITY_BLOCK_THRESHOLD}).
             </p>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              Liste filtrée sur ce produit CEE (fiches disponibles et attribuées à vous).
+              Liste filtrée sur ce périmètre (fiches disponibles et attribuées à vous).
             </p>
           )}
         </div>
       ) : (
         <p className="text-[11px] text-muted-foreground">
-          Aucune fiche CEE associée : vous pouvez récupérer des contacts disponibles pour votre équipe.
+          Aucun périmètre actif — tous les contacts disponibles apparaîtront ici.
         </p>
       )}
     </div>
@@ -235,7 +235,7 @@ export function MyLeadQueueReadyPoolFetchButton({
           type: "ok",
           text: capReached
             ? perCeeRetrieve
-              ? "Stock maximum atteint pour cette fiche CEE. Traitez ou libérez des fiches avant d’en ajouter."
+              ? "Stock maximum atteint pour ce périmètre. Traitez ou libérez des fiches avant d’en ajouter."
               : `Vous avez atteint la limite de ${maxCap} prospections actives au total. Traitez ou libérez des fiches avant d’en récupérer d’autres.`
             : "Aucune fiche disponible pour l’instant (file vide ou déjà attribuée).",
         });
@@ -298,11 +298,11 @@ export function MyLeadQueueReadyPoolFetchButton({
                 ? "Choisir un périmètre d’abord"
                 : chunkSize <= 0
                   ? `Limite de ${maxCap} prospections atteinte`
-                  : globalScope
+                    : globalScope
                     ? "Récupérer des fiches prêtes à appeler"
                     : isNoCeeSelected
-                      ? "Récupérer des fiches sans fiche CEE"
-                      : "Récupérer d’autres fiches pour ce produit"}
+                      ? "Récupérer des fiches sans périmètre"
+                      : "Récupérer d’autres fiches pour ce périmètre"}
         </Button>
         <p className="text-[11px] text-muted-foreground sm:max-w-[320px]">
           Ajoute des contacts validés et encore disponibles (téléphone renseigné, non attribué). Les fiches déjà dans le

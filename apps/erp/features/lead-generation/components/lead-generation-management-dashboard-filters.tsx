@@ -13,9 +13,7 @@ import type {
 type Props = {
   period: ManagementDashboardPeriod;
   quantifierUserId: string | null;
-  ceeSheetId: string | null;
   quantifiers: ManagementFilterOption[];
-  ceeSheets: ManagementFilterOption[];
 };
 
 function buildQuery(
@@ -23,7 +21,6 @@ function buildQuery(
   next: {
     period?: ManagementDashboardPeriod;
     quantifierUserId?: string | null;
-    ceeSheetId?: string | null;
   },
 ): string {
   const p = new URLSearchParams(current.toString());
@@ -35,21 +32,14 @@ function buildQuery(
   } else {
     p.delete("q");
   }
-  const cee = next.ceeSheetId;
-  if (cee) {
-    p.set("cee", cee);
-  } else {
-    p.delete("cee");
-  }
+  p.delete("cee");
   return `?${p.toString()}`;
 }
 
 export function LeadGenerationManagementDashboardFilters({
   period,
   quantifierUserId,
-  ceeSheetId,
   quantifiers,
-  ceeSheets,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -76,7 +66,6 @@ export function LeadGenerationManagementDashboardFilters({
                   `/lead-generation/management${buildQuery(searchParams, {
                     period: x.id,
                     quantifierUserId,
-                    ceeSheetId,
                   })}`,
                 );
               });
@@ -106,7 +95,6 @@ export function LeadGenerationManagementDashboardFilters({
                   `/lead-generation/management${buildQuery(searchParams, {
                     period,
                     quantifierUserId: v,
-                    ceeSheetId,
                   })}`,
                 );
               });
@@ -114,33 +102,6 @@ export function LeadGenerationManagementDashboardFilters({
           >
             <option value="">Tous</option>
             {quantifiers.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-[200px] flex-col gap-1 text-xs">
-          <span className="font-medium text-muted-foreground">Fiche CEE</span>
-          <select
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            disabled={pending}
-            value={ceeSheetId ?? ""}
-            onChange={(e) => {
-              const v = e.target.value || null;
-              startTransition(() => {
-                router.push(
-                  `/lead-generation/management${buildQuery(searchParams, {
-                    period,
-                    quantifierUserId,
-                    ceeSheetId: v,
-                  })}`,
-                );
-              });
-            }}
-          >
-            <option value="">Toutes</option>
-            {ceeSheets.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.label}
               </option>

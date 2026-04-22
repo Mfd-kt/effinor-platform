@@ -1,12 +1,8 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { PageHeader } from "@/components/shared/page-header";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadGenerationHubStockSection } from "@/features/lead-generation/components/lead-generation-hub-stock-section";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub, canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
-import { cn } from "@/lib/utils";
+import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
 
 export const dynamic = "force-dynamic";
 
@@ -35,39 +31,11 @@ export default async function LeadGenerationPage({
     redirect(qs ? `/lead-generation?${qs}` : "/lead-generation");
   }
 
-  const headerActions = (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
-      {canAccessLeadGenerationMyQueue(access) ? (
-        <Link
-          href="/lead-generation/my-queue"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Ma file
-        </Link>
-      ) : null}
-      <Link
-        href="/lead-generation/settings"
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "border-border/80 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground",
-        )}
-      >
-        Réglages
-      </Link>
-    </div>
-  );
-
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 pb-10">
-      <PageHeader
-        title="Stock leads"
-        description="Liste et filtres sur le carnet — qualification et dispatch via le circuit qualificateur."
-        actions={headerActions}
-      />
-
+    <div className="space-y-6 pb-10">
+      <p className="text-sm text-muted-foreground">
+        Fiches récupérées, prêtes à qualifier et à dispatcher.
+      </p>
       <LeadGenerationHubStockSection searchParams={sp} />
     </div>
   );

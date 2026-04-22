@@ -10,7 +10,7 @@ export type LeadGenerationMyQueueCeeSheetOption = {
  */
 export const MY_QUEUE_NO_CEE_SHEET_SENTINEL = "__lg_my_queue_no_cee_sheet__";
 
-export const MY_QUEUE_NO_CEE_SHEET_LABEL = "Sans fiche CEE";
+export const MY_QUEUE_NO_CEE_SHEET_LABEL = "Sans périmètre";
 
 /** Libellé lisible (nom métier en premier, code entre parenthèses si utile). */
 export function formatMyQueueCeeSheetOptionLabel(o: LeadGenerationMyQueueCeeSheetOption): string {
@@ -25,5 +25,5 @@ export function formatMyQueueCeeSheetOptionLabel(o: LeadGenerationMyQueueCeeShee
   if (code) {
     return code;
   }
-  return "Fiche CEE";
+  return "Périmètre";
 }
