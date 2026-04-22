@@ -8,7 +8,7 @@ export function canReassignLeadCreator(roleCodes: readonly string[]): boolean {
   return roleCodes.includes("super_admin");
 }
 
-/** Réattribuer agent / confirmateur / closer sur un workflow fiche CEE : réservé au super administrateur. */
+/** Réattribuer agent / closer sur un workflow fiche CEE : réservé au super administrateur. */
 export function canReassignWorkflowRoles(roleCodes: readonly string[]): boolean {
   return roleCodes.includes("super_admin");
 }
@@ -18,10 +18,5 @@ export function canReassignWorkflowRoles(roleCodes: readonly string[]): boolean 
  * (`userIsActiveCeeTeamManager` côté serveur).
  */
 export function canSwitchLeadCeeSheetByAppRole(roleCodes: readonly string[]): boolean {
-  return (
-    roleCodes.includes("super_admin") ||
-    roleCodes.includes("confirmer") ||
-    roleCodes.includes("confirmateur") ||
-    roleCodes.includes("closer")
-  );
+  return roleCodes.includes("super_admin") || roleCodes.includes("closer");
 }

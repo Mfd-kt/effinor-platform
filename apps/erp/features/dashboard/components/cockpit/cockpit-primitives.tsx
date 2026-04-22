@@ -506,8 +506,9 @@ export function CockpitKpiBusinessRow({
   leadsCreatedPeriod: number;
 }) {
   const f = snap.funnel;
-  const signed = f.agreement_signed + f.paid;
-  const sent = f.agreement_sent + signed + f.lost;
+  const fn = (k: string) => f[k] ?? 0;
+  const signed = fn("agreement_signed") + fn("paid");
+  const sent = fn("agreement_sent") + signed + fn("lost");
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
@@ -518,12 +519,12 @@ export function CockpitKpiBusinessRow({
       />
       <StatCard
         title="Simulations validées"
-        value={(f.simulation_done + f.to_confirm + f.qualified).toLocaleString("fr-FR")}
+        value={(fn("simulation_done") + fn("to_confirm") + fn("qualified")).toLocaleString("fr-FR")}
         hint="Pipeline post-simulation"
       />
       <StatCard
         title="Accords envoyés"
-        value={f.agreement_sent.toLocaleString("fr-FR")}
+        value={fn("agreement_sent").toLocaleString("fr-FR")}
         hint="En attente signature client"
       />
       <StatCard

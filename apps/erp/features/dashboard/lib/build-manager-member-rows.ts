@@ -159,7 +159,6 @@ function filterRowsForMemberRole(
   teamId: string,
 ): any[] {
   if (role === "agent") return rows.filter((w) => w.assigned_agent_user_id === userId);
-  if (role === "confirmateur") return rows.filter((w) => w.assigned_confirmateur_user_id === userId);
   if (role === "closer") return rows.filter((w) => w.assigned_closer_user_id === userId);
   if (role === "manager") return rows.filter((w) => w.cee_sheet_team_id === teamId);
   return [];
@@ -196,20 +195,6 @@ function buildKpisForRole(
       rappelsEnRetard: callbacks,
       tauxTransmissionPct: transmissionPct,
       tauxTransmissionPrevPct: simOkP > 0 ? transmissionPrev : null,
-    };
-  }
-  if (role === "confirmateur") {
-    const backlog = rowsC.filter((w) => CONF_BACKLOG.has(w.workflow_status)).length;
-    const qualified = rowsC.filter((w) => w.workflow_status === "qualified").length;
-    const docs = rowsC.filter((w) => DOCS_PATH.has(w.workflow_status)).length;
-    const blocked = staleConfirmCount(rowsC, nowMs, 4);
-    const backlogP = rowsP.filter((w) => CONF_BACKLOG.has(w.workflow_status)).length;
-    return {
-      backlog,
-      dossiersQualifies: qualified,
-      docsOuPostDocs: docs,
-      dossiersBloquesAnciens: blocked,
-      backlogPeriodePrec: backlogP,
     };
   }
   if (role === "closer") {
@@ -253,12 +238,6 @@ function computeAlertsForRow(
   if (trendWorkloadPct != null && trendWorkloadPct <= -25) {
     out.push("Activité en baisse vs période précédente");
   }
-  if (role === "confirmateur") {
-    const b = kpi.backlog as number | undefined;
-    if (b != null && b >= 12) out.push("Backlog confirmateur élevé");
-    const blk = kpi.dossiersBloquesAnciens as number | undefined;
-    if (blk != null && blk >= 3) out.push("Dossiers à confirmer anciens");
-  }
   if (role === "closer") {
     const r = kpi.relancesDues as number | undefined;
     if (r != null && r >= 4) out.push("Relances en retard");
@@ -279,7 +258,7 @@ export function buildManagerMemberPerformanceRows(input: {
   periodStartIso: string;
   periodEndIso: string;
   now: Date;
-  roleTab: "all" | "agent" | "confirmateur" | "closer";
+  roleTab: "all" | "agent" | "closer";
   membersActiveOnly: boolean;
   memberUserId: string | null;
 }): ManagerMemberPerformanceRow[] {

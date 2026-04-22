@@ -5,7 +5,7 @@ import type { Database } from "@/types/database.types";
 import type { AccessContext } from "./access-context";
 
 /**
- * Agent « pur » : pas de rôle direction / confirmateur / closer qui doit pouvoir continuer à enrichir la fiche.
+ * Agent « pur » : pas de rôle direction / closer qui doit pouvoir continuer à enrichir la fiche.
  */
 export function isRestrictedFieldAgent(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {
@@ -15,7 +15,7 @@ export function isRestrictedFieldAgent(access: AccessContext): boolean {
   if (!rc.includes("sales_agent")) {
     return false;
   }
-  const bypass = ["super_admin", "admin", "sales_director", "closer", "confirmer"] as const;
+  const bypass = ["super_admin", "admin", "sales_director", "closer"] as const;
   return !bypass.some((r) => rc.includes(r));
 }
 

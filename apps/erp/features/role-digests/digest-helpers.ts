@@ -5,7 +5,6 @@ import type { AccessContext } from "@/lib/auth/access-context";
 import {
   canAccessCloserWorkspace,
   canAccessCommandCockpit,
-  canAccessConfirmateurWorkspace,
 } from "@/lib/auth/module-access";
 
 import type { RoleDigest, RoleDigestPriority, RoleDigestTarget } from "./digest-types";
@@ -64,9 +63,7 @@ export function resolvePrimaryDigestRole(access: AccessContext, isManager: boole
   if (canAccessCommandCockpit(access)) return "direction";
   if (isManager) return "manager";
   if (rc.includes("closer") && canAccessCloserWorkspace(access)) return "closer";
-  if (rc.includes("confirmer") && canAccessConfirmateurWorkspace(access)) return "confirmateur";
   if (rc.includes("sales_agent")) return "agent";
-  if (canAccessConfirmateurWorkspace(access)) return "confirmateur";
   if (canAccessCloserWorkspace(access)) return "closer";
   return "agent";
 }

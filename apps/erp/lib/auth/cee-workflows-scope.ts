@@ -1,27 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { AccessContext } from "@/lib/auth/access-context";
-import {
-  PERM_ACCESS_CEE_WORKFLOWS,
-  PERM_CEE_WORKFLOWS_SCOPE_ALL,
-  PERM_CEE_WORKFLOWS_SCOPE_TEAM,
-} from "@/lib/auth/permission-codes";
 import type { Database } from "@/types/database.types";
 
 type Supabase = SupabaseClient<Database>;
 
+/**
+ * Refonte des rôles : les permissions `perm.*.cee_workflows.*` ont été retirées en base.
+ * Tant que le nouveau modèle workflow n'est pas posé, on conserve les signatures publiques
+ * mais l'accès est dérivé exclusivement des rôles applicatifs.
+ */
 export function hasFullCeeWorkflowAccess(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {
     return false;
   }
-  if (
+  return (
     access.roleCodes.includes("super_admin") ||
     access.roleCodes.includes("admin") ||
     access.roleCodes.includes("sales_director")
-  ) {
-    return true;
-  }
-  return access.permissionCodes.includes(PERM_CEE_WORKFLOWS_SCOPE_ALL);
+  );
 }
 
 export function canAccessCeeWorkflowsModule(access: AccessContext): boolean {
@@ -31,17 +28,7 @@ export function canAccessCeeWorkflowsModule(access: AccessContext): boolean {
   if (hasFullCeeWorkflowAccess(access)) {
     return true;
   }
-  if (access.permissionCodes.length === 0) {
-    return (
-      access.roleCodes.includes("sales_agent") ||
-      access.roleCodes.includes("confirmer") ||
-      access.roleCodes.includes("closer")
-    );
-  }
-  return (
-    access.permissionCodes.includes(PERM_ACCESS_CEE_WORKFLOWS) &&
-    access.permissionCodes.includes(PERM_CEE_WORKFLOWS_SCOPE_TEAM)
-  );
+  return access.roleCodes.includes("sales_agent") || access.roleCodes.includes("closer");
 }
 
 export async function resolveAllowedCeeSheetIdsForAccess(

@@ -358,14 +358,12 @@ const AUD_LOSS: CockpitAlertAudienceRole[] = [
   "sales_director",
   "manager",
   "closer",
-  "confirmer",
 ];
 const AUD_CONF: CockpitAlertAudienceRole[] = [
   "super_admin",
   "admin",
   "sales_director",
   "manager",
-  "confirmer",
 ];
 const AUD_CLOSER: CockpitAlertAudienceRole[] = [
   "super_admin",
@@ -379,7 +377,6 @@ const AUD_OPS: CockpitAlertAudienceRole[] = [
   "admin",
   "sales_director",
   "manager",
-  "confirmer",
   "closer",
 ];
 const AUD_ALL_BUSINESS: CockpitAlertAudienceRole[] = [
@@ -387,7 +384,6 @@ const AUD_ALL_BUSINESS: CockpitAlertAudienceRole[] = [
   "admin",
   "sales_director",
   "manager",
-  "confirmer",
   "closer",
   "sales_agent",
 ];
@@ -1544,29 +1540,6 @@ export function buildStructuralBusinessAlerts(input: StructuralNetworkInput): Co
           title: `Équipe sans agent — ${team.name}`,
           message: `Pas d’agent terrain actif sur l’équipe « ${team.name} ».`,
           suggestedAction: "Compléter le staffing pour absorber les leads.",
-          targetType: "team",
-          targetId: team.id,
-          targetLabel: team.name,
-          metricValue: null,
-          thresholdValue: null,
-          comparisonValue: null,
-          period: null,
-          roleAudience: AUD_ADMIN,
-          href: structCta,
-          ...structExec,
-        }),
-      );
-    }
-    if (!roles.has("confirmateur")) {
-      alerts.push(
-        finalizeCockpitAlert({
-          id: `struct-team-no-conf-${team.id}`,
-          scope: "structural",
-          severity: "warning",
-          category: "staffing",
-          title: `Équipe sans confirmateur — ${team.name}`,
-          message: `Pas de confirmateur actif — risque de goulot sur la validation.`,
-          suggestedAction: "Affecter un confirmateur dédié.",
           targetType: "team",
           targetId: team.id,
           targetLabel: team.name,

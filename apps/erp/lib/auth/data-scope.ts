@@ -201,8 +201,9 @@ export async function getLeadIdsForAccess(
 }
 
 /**
- * Confirmateur sans rôle commercial : accès à tous les leads, mais uniquement aux visites techniques
- * dont il est l'auteur (`created_by_user_id`).
+ * Restriction « visites techniques créateur uniquement » : pilotée exclusivement par les
+ * permissions DB depuis le retrait du rôle « confirmer ». Les utilisateurs sans permission
+ * VT explicite n'ont plus de restriction historique à honorer ici.
  */
 export function shouldRestrictTechnicalVisitsToCreator(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {
@@ -212,22 +213,11 @@ export function shouldRestrictTechnicalVisitsToCreator(access: AccessContext): b
   if (rc.includes("sales_agent")) {
     return false;
   }
-  if (access.permissionCodes.length > 0) {
-    const pc = new Set(access.permissionCodes);
-    if (pc.has(PERM_TECH_VISITS_SCOPE_ALL)) {
-      return false;
-    }
-    if (rc.includes("super_admin")) {
-      return false;
-    }
-    if (hasFullCommercialDataAccess(rc)) {
-      return false;
-    }
-    const creatorOnlyTv =
-      pc.has(PERM_TECH_VISITS_CREATOR_ONLY) || pc.has(PERM_TECH_VISITS_SCOPE_CREATOR);
-    if (creatorOnlyTv) {
-      return rc.includes("confirmer");
-    }
+  if (access.permissionCodes.length === 0) {
+    return false;
+  }
+  const pc = new Set(access.permissionCodes);
+  if (pc.has(PERM_TECH_VISITS_SCOPE_ALL)) {
     return false;
   }
   if (rc.includes("super_admin")) {
@@ -236,7 +226,7 @@ export function shouldRestrictTechnicalVisitsToCreator(access: AccessContext): b
   if (hasFullCommercialDataAccess(rc)) {
     return false;
   }
-  return rc.includes("confirmer");
+  return pc.has(PERM_TECH_VISITS_CREATOR_ONLY) || pc.has(PERM_TECH_VISITS_SCOPE_CREATOR);
 }
 
 /**

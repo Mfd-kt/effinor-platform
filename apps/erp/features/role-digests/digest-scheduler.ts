@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 
 import { buildAgentDigest } from "./build-agent-digest";
 import { buildCloserDigest } from "./build-closer-digest";
-import { buildConfirmateurDigest } from "./build-confirmateur-digest";
 import { buildDirectionDigest } from "./build-direction-digest";
 import { buildManagerDigest } from "./build-manager-digest";
 import { buildDigestDedupeKey, shouldGenerateDigest, shouldSuppressDigestAsDuplicate } from "./digest-delivery-rules";
@@ -37,9 +36,6 @@ export async function computeRoleDigestForAccess(
   switch (role) {
     case "agent":
       digest = buildAgentDigest(snapshot);
-      break;
-    case "confirmateur":
-      digest = buildConfirmateurDigest(snapshot);
       break;
     case "closer":
       digest = buildCloserDigest(snapshot);

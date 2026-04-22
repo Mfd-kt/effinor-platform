@@ -15,8 +15,29 @@ import { COCKPIT_ALERT_THRESHOLDS as COCKPIT_THRESHOLDS } from "@/features/dashb
 export { getCockpitPeriodStartIso } from "@/features/dashboard/lib/cockpit-period";
 export type { CockpitIsoRange } from "@/features/dashboard/lib/cockpit-period";
 
+// TODO: cee-workflows retiré — la liste de statuts venait de CEE_WORKFLOW_STATUS_VALUES.
+// On pré-remplit ici les statuts encore consommés par l'UI/alertes pour éviter `undefined`.
+const FUNNEL_STATUS_KEYS = [
+  "draft",
+  "to_qualify",
+  "to_confirm",
+  "qualified",
+  "documents_in_preparation",
+  "documents_prepared",
+  "agreement_sent",
+  "agreement_received",
+  "agreement_signed",
+  "quote_signed",
+  "paid",
+  "lost",
+  "simulation_done",
+] as const;
+
 function emptyFunnel(): CockpitFunnelCounts {
   const base = { total: 0 } as CockpitFunnelCounts;
+  for (const k of FUNNEL_STATUS_KEYS) {
+    base[k] = 0;
+  }
   return base;
 }
 

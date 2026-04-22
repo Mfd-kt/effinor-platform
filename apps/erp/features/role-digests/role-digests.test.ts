@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { buildAgentDigest } from "./build-agent-digest";
-import { buildConfirmateurDigest } from "./build-confirmateur-digest";
 import { buildDirectionDigest } from "./build-direction-digest";
 import { buildDigestDedupeKey, shouldGenerateDigest } from "./digest-delivery-rules";
 import { parisYmd } from "./digest-helpers";
@@ -113,41 +112,6 @@ describe("buildAgentDigest", () => {
     expect(shouldGenerateDigest(d)).toBe(true);
     expect(d!.actionItems.length).toBeGreaterThan(0);
     expect(d!.actionItems.some((a) => a.actionHref)).toBe(true);
-  });
-});
-
-describe("buildConfirmateurDigest", () => {
-  it("mentionne backlog et SLA", () => {
-    const s = baseSnapshot({
-      roleTarget: "confirmateur",
-      confirmateurBacklog: [
-        {
-          id: "w1",
-          lead_id: "l9",
-          workflow_status: "to_confirm",
-          updated_at: "2026-04-01T10:00:00Z",
-          agreement_sent_at: null,
-          assigned_confirmateur_user_id: "u1",
-          assigned_closer_user_id: null,
-        },
-      ],
-      confirmateurSla: [
-        {
-          id: "sla1",
-          rule_code: "wf_confirmateur_24h",
-          entity_type: "workflow",
-          entity_id: "w1",
-          status: "breached",
-          target_due_at: "2026-04-10T10:00:00Z",
-          assigned_user_id: "u1",
-          manager_user_id: null,
-        },
-      ],
-    });
-    const d = buildConfirmateurDigest(s);
-    expect(d).not.toBeNull();
-    expect(d!.summary).toMatch(/backlog|SLA|dépassement/i);
-    expect(d!.sections.some((x) => x.key === "sla")).toBe(true);
   });
 });
 

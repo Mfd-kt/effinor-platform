@@ -19,10 +19,7 @@ function legacyInternalFullPipeline(access: Extract<AccessContext, { kind: "auth
   if (rc.includes("super_admin")) {
     return true;
   }
-  if (hasFullCommercialDataAccess(rc)) {
-    return true;
-  }
-  return rc.includes("confirmer");
+  return hasFullCommercialDataAccess(rc);
 }
 
 function legacyTechnicalVisitsModule(_access: Extract<AccessContext, { kind: "authenticated" }>): boolean {
@@ -109,8 +106,7 @@ export function shouldHideTerrainSuiviSidebar(access: AccessContext): boolean {
     rc.includes("admin") ||
     rc.includes("sales_director") ||
     rc.includes("technician") ||
-    rc.includes("closer") ||
-    rc.includes("confirmer")
+    rc.includes("closer")
   ) {
     return false;
   }
@@ -176,6 +172,11 @@ export function canAccessCeeWorkflowsModule(access: AccessContext): boolean {
   return canAccessCeeWorkflowsModuleByScope(access);
 }
 
+/**
+ * @deprecated Le rôle « confirmer » a été retiré (refonte workflow). L'export est conservé
+ * pour ne pas casser navigation / dashboard / role-digests qui s'y réfèrent encore — il sera
+ * supprimé dans un prochain passage de nettoyage.
+ */
 export function canAccessConfirmateurWorkspace(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {
     return false;
@@ -186,8 +187,7 @@ export function canAccessConfirmateurWorkspace(access: AccessContext): boolean {
   return (
     access.roleCodes.includes("super_admin") ||
     access.roleCodes.includes("admin") ||
-    access.roleCodes.includes("sales_director") ||
-    access.roleCodes.includes("confirmer")
+    access.roleCodes.includes("sales_director")
   );
 }
 

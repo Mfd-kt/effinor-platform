@@ -29,16 +29,8 @@ function getLeadScopeLegacy(access: Extract<AccessContext, { kind: "authenticate
   if (hasFullCommercialDataAccess(rc)) {
     return { mode: "all" };
   }
-  const isAgent = rc.includes("sales_agent");
-  const isConf = rc.includes("confirmer");
-  if (isAgent && isConf) {
-    return { mode: "created_or_confirmed", userId: access.userId };
-  }
-  if (isAgent) {
+  if (rc.includes("sales_agent")) {
     return { mode: "created_by", userId: access.userId };
-  }
-  if (isConf) {
-    return { mode: "all" };
   }
   return { mode: "none" };
 }
@@ -61,17 +53,11 @@ function getLeadScopeFromPermissions(
     return { mode: "all" };
   }
 
-  const isAgent = rc.includes("sales_agent");
-  const isConf = rc.includes("confirmer");
-
-  if (isAgent && isConf) {
-    return { mode: "created_or_confirmed", userId: access.userId };
-  }
-
   if (perm.has(PERM_LEADS_SCOPE_ALL) || hasFullCommercialDataAccess(rc)) {
     return { mode: "all" };
   }
 
+  const isAgent = rc.includes("sales_agent");
   if ((perm.has(PERM_LEADS_SCOPE_CREATOR_AGENT) || perm.has(PERM_LEADS_SCOPE_CREATOR)) && isAgent) {
     return { mode: "created_by", userId: access.userId };
   }

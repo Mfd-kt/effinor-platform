@@ -61,9 +61,11 @@ export { canDeleteLead, canReassignLeadCreator } from "./lead-permissions";
 export {
   APP_ROLE_CODES,
   hasRole,
+  isAdminAgent,
   isAppRoleCode,
   isCloser,
-  isConfirmer,
+  isDaf,
+  isInstaller,
   isLeadGenerationQuantifier,
   isSalesAgent,
   isSalesDirector,

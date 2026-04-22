@@ -48,7 +48,6 @@ export type CockpitAlertAudienceRole =
   | "sales_director"
   | "manager"
   | "closer"
-  | "confirmer"
   | "sales_agent";
 
 export type CockpitPriorityQueueKey =

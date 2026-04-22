@@ -42,7 +42,6 @@ function roleCodeFromRolesJoin(roles: unknown): string | null {
 
 const CEE_MANAGER_CREATABLE_ROLE_CODES = new Set([
   "sales_agent",
-  "confirmer",
   "closer",
   "lead_generation_quantifier",
 ]);
@@ -74,7 +73,6 @@ async function resolveUsersSettingsActor(
 
 function appRoleCodeToCeeTeamMemberRole(roleCode: string): "agent" | "confirmateur" | "closer" {
   if (roleCode === "sales_agent") return "agent";
-  if (roleCode === "confirmer") return "confirmateur";
   if (roleCode === "closer") return "closer";
   return "agent";
 }
