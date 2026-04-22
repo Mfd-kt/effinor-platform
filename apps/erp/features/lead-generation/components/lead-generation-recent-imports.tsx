@@ -15,6 +15,7 @@ import {
 } from "@/features/lead-generation/lib/lead-generation-display";
 import type { LeadGenerationImportBatchListItem } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { ImportBatchSyncButton } from "./import-batch-sync-button";
+import { SyncLeboncoinImportButton } from "./sync-leboncoin-import-button";
 
 function shortRef(id: string): string {
   return id.length <= 10 ? id : `${id.slice(0, 6)}…${id.slice(-4)}`;
@@ -92,7 +93,13 @@ export function LeadGenerationRecentImports({ rows }: Props) {
                     >
                       Détail
                     </Link>
-                    <ImportBatchSyncButton batchId={row.id} compact />
+                    {row.source === "leboncoin_immobilier" &&
+                    row.status !== "completed" &&
+                    row.status !== "failed" ? (
+                      <SyncLeboncoinImportButton batchId={row.id} />
+                    ) : (
+                      <ImportBatchSyncButton batchId={row.id} compact />
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

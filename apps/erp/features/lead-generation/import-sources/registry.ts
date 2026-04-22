@@ -3,6 +3,7 @@ import type { LeadGenerationImportSourceCode, LeadGenerationImportSourceDefiniti
 const DEFINITIONS: readonly LeadGenerationImportSourceDefinition[] = [
   { code: "apify_google_maps", label: "Google Maps (Apify)" },
   { code: "csv_manual", label: "CSV manuel" },
+  { code: "leboncoin_immobilier", label: "Le Bon Coin — Immobilier" },
 ] as const;
 
 const byCode = new Map<string, LeadGenerationImportSourceDefinition>(

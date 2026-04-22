@@ -5,6 +5,7 @@
 export type LeadGenerationImportSourceCode =
   | "apify_google_maps"
   | "csv_manual"
+  | "leboncoin_immobilier"
   | (string & {});
 
 export type LeadGenerationImportSourceDefinition = {

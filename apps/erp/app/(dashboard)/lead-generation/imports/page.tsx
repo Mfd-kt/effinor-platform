@@ -7,6 +7,7 @@ import { ImportBatchesFilters } from "@/features/lead-generation/components/impo
 import { ImportBatchesTable } from "@/features/lead-generation/components/import-batches-table";
 import { LeadGenerationRecentImports } from "@/features/lead-generation/components/lead-generation-recent-imports";
 import { ManualCsvImportPanel } from "@/features/lead-generation/components/manual-csv-import-panel";
+import { StartLeboncoinImportModal } from "@/features/lead-generation/components/start-leboncoin-import-modal";
 import { buildImportBatchesListUrl, type ImportBatchesListSearchState } from "@/features/lead-generation/lib/build-import-batches-list-url";
 import { getLeadGenerationCeeImportScope } from "@/features/lead-generation/queries/get-lead-generation-cee-import-scope";
 import { getLeadGenerationImportBatches } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
@@ -131,12 +132,15 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
             : "Importer des fiches, lancer un scraping cartes, synchroniser les lots."
         }
         actions={
-          <Link
-            href={quantifierOnly ? "/lead-generation/quantification" : "/lead-generation"}
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-          >
-            {quantifierOnly ? "Quantification" : "Vue d’ensemble"}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <StartLeboncoinImportModal />
+            <Link
+              href={quantifierOnly ? "/lead-generation/quantification" : "/lead-generation"}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              {quantifierOnly ? "Quantification" : "Vue d’ensemble"}
+            </Link>
+          </div>
         }
       />
 
