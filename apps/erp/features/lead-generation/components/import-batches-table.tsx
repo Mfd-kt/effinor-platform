@@ -13,7 +13,6 @@ import {
   formatLeadGenerationBatchCeeHint,
   formatLeadGenerationSourceLabel,
 } from "@/features/lead-generation/lib/lead-generation-display";
-import { getLeadGenerationImportSyncHint } from "@/features/lead-generation/lib/import-batch-sync-hint";
 import type { LeadGenerationImportBatchListItem } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { formatDateTimeFr } from "@/lib/format";
 
@@ -46,7 +45,6 @@ export function ImportBatchesTable({ rows }: ImportBatchesTableProps) {
             <TableHead>État</TableHead>
             <TableHead className="hidden sm:table-cell">Côté Apify</TableHead>
             <TableHead className="text-right">Fiches</TableHead>
-            <TableHead className="hidden lg:table-cell">Indication</TableHead>
             <TableHead className="hidden md:table-cell">Créé le</TableHead>
             <TableHead className="w-[200px]">Actions</TableHead>
           </TableRow>
@@ -54,7 +52,6 @@ export function ImportBatchesTable({ rows }: ImportBatchesTableProps) {
         <TableBody>
           {rows.map((row) => {
             const title = row.source_label?.trim() || formatLeadGenerationSourceLabel(row.source);
-            const hint = getLeadGenerationImportSyncHint(row);
             const ceeHint = formatLeadGenerationBatchCeeHint(row);
             return (
               <TableRow key={row.id}>
@@ -82,7 +79,6 @@ export function ImportBatchesTable({ rows }: ImportBatchesTableProps) {
                 <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
                   {row.imported_count} / {row.accepted_count} / {row.duplicate_count} / {row.rejected_count}
                 </TableCell>
-                <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">{hint}</TableCell>
                 <TableCell className="hidden whitespace-nowrap text-xs text-muted-foreground md:table-cell">
                   {formatDateTimeFr(row.created_at)}
                 </TableCell>

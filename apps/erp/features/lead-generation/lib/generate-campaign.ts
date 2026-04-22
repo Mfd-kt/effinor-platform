@@ -1,11 +1,7 @@
-import {
-  DEFAULT_GOOGLE_MAPS_COUNTRY,
-  LEAD_GEN_GOOGLE_MAPS_GEO_OPTIONS,
-  injectGeoTargetInSearchStrings,
-} from "./google-maps-region-options";
-export { DEFAULT_GOOGLE_MAPS_COUNTRY };
+// TODO: Reimplement zone-aware query generation when a new lead-gen source replaces Apify Google Maps.
+export const DEFAULT_GOOGLE_MAPS_COUNTRY = "France";
 
-/** Limite alignée sur l’import Apify (lots cockpit). */
+/** Limite historique alignée sur l’ancien import Apify. */
 export const MAX_GENERATE_QUERIES = 20;
 
 /**
@@ -105,12 +101,9 @@ export const LEAD_GENERATION_SECTOR_OPTIONS = [
 export type LeadGenerationSectorValue = (typeof LEAD_GENERATION_SECTOR_OPTIONS)[number];
 
 /**
- * Ciblage géographique Google Maps : France par défaut + départements / territoires dédiés.
+ * TODO: Reimplement geo zone presets when a new lead-gen source replaces Apify Google Maps.
  */
-export const LEAD_GENERATION_ZONE_OPTIONS = [
-  DEFAULT_GOOGLE_MAPS_COUNTRY,
-  ...LEAD_GEN_GOOGLE_MAPS_GEO_OPTIONS.map((o) => o.value),
-] as const;
+export const LEAD_GENERATION_ZONE_OPTIONS = [DEFAULT_GOOGLE_MAPS_COUNTRY] as const;
 
 export type LeadGenerationZonePreset = (typeof LEAD_GENERATION_ZONE_OPTIONS)[number];
 
@@ -151,21 +144,11 @@ export function parseCustomQueries(text: string): string[] {
     .slice(0, MAX_GENERATE_QUERIES);
 }
 
-export function buildAutoQueriesFromSectorAndZone(sector: string, zone: string): string[] {
+export function buildAutoQueriesFromSectorAndZone(sector: string, _zone: string): string[] {
   const s = sector.trim();
-  const z = zone.trim();
   if (sectorNeedsCustomQueries(s)) return [];
   if (!s) return [];
-  const base = [`${s}`, `${s} professionnel`, `${s} entreprise`];
-  if (!z) return base.slice(0, MAX_GENERATE_QUERIES);
-  return injectGeoTargetInSearchStrings(base, z).slice(0, MAX_GENERATE_QUERIES);
-}
-
-function applyGeoToCustomQueries(customQueries: string[], zone: string): string[] {
-  if (customQueries.length === 0) return customQueries;
-  const z = zone.trim();
-  if (!z) return customQueries;
-  return injectGeoTargetInSearchStrings(customQueries, z).slice(0, MAX_GENERATE_QUERIES);
+  return [`${s}`, `${s} professionnel`, `${s} entreprise`].slice(0, MAX_GENERATE_QUERIES);
 }
 
 export function resolveRawSearchStrings(params: {
@@ -174,7 +157,7 @@ export function resolveRawSearchStrings(params: {
   customQueriesText: string;
 }): string[] {
   const custom = parseCustomQueries(params.customQueriesText);
-  if (custom.length > 0) return applyGeoToCustomQueries(custom, params.zone);
+  if (custom.length > 0) return custom.slice(0, MAX_GENERATE_QUERIES);
   return buildAutoQueriesFromSectorAndZone(params.sector, params.zone);
 }
 

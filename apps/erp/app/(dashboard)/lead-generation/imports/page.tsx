@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { ApifyGoogleMapsImportPanel } from "@/features/lead-generation/components/apify-google-maps-import-panel";
 import { ImportBatchesFilters } from "@/features/lead-generation/components/import-batches-filters";
 import { ImportBatchesTable } from "@/features/lead-generation/components/import-batches-table";
 import { LeadGenerationRecentImports } from "@/features/lead-generation/components/lead-generation-recent-imports";
@@ -183,13 +182,6 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Importer un fichier CSV</h2>
           <ManualCsvImportPanel ceeScope={ceeImportScope} />
-        </section>
-      ) : null}
-
-      {!quantifierOnly ? (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Scraping Google Maps</h2>
-          <ApifyGoogleMapsImportPanel ceeScope={ceeImportScope} />
         </section>
       ) : null}
 

@@ -4,17 +4,11 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LeadGenerationDropcontactPanel } from "@/features/lead-generation/components/lead-generation-dropcontact-panel";
-import { LeadGenerationGptResearchPanel } from "@/features/lead-generation/components/lead-generation-gpt-research-panel";
 import { LeadGenerationQuantificationActions } from "@/features/lead-generation/components/lead-generation-quantification-actions";
 import { LeadGenerationQuantificationGptPrefillProvider } from "@/features/lead-generation/components/lead-generation-quantification-gpt-prefill-context";
 import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
-import { LeadGenerationStreetViewSection } from "@/features/lead-generation/components/lead-generation-street-view-section";
-import { isEligibleForDropcontactEnrichment } from "@/features/lead-generation/dropcontact/build-dropcontact-request";
-import { canInitiateLeadGenerationGptResearch } from "@/features/lead-generation/lib/lead-generation-gpt-research-access";
 import { isStockVisibleOnQuantificationPage } from "@/features/lead-generation/lib/quantification-batch-ownership";
 import { resolveQuantificationImportBatchScope } from "@/features/lead-generation/lib/quantification-viewer-scope";
-import { buildLeadGenerationStreetViewModel } from "@/features/lead-generation/lib/lead-generation-street-view";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
 import { getLeadGenerationStockById } from "@/features/lead-generation/queries/get-lead-generation-stock-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
@@ -61,13 +55,10 @@ export default async function LeadGenerationQuantificationDetailPage({ params }:
     notFound();
   }
 
-  const maps = buildLeadGenerationStreetViewModel(stock);
   const ceeCode = import_batch?.cee_sheet_code?.trim() || null;
   const sourceLabel = import_batch?.source ? formatLeadGenerationSourceLabel(import_batch.source) : "—";
-  const dropcontactElig = isEligibleForDropcontactEnrichment(stock);
   const primaryEmail = stock.email?.trim() || stock.enriched_email?.trim() || null;
   const primarySite = stock.website?.trim() || stock.enriched_website?.trim() || null;
-  const canGptResearch = await canInitiateLeadGenerationGptResearch(access);
 
   return (
     <LeadGenerationQuantificationGptPrefillProvider>
@@ -127,25 +118,12 @@ export default async function LeadGenerationQuantificationDetailPage({ params }:
 
         <LeadGenerationQuickValidationPanel
           stockId={stock.id}
-          mapsUrl={maps.openMapsUrl}
-          showMapsLink={maps.canShowSection}
+          mapsUrl={null}
+          showMapsLink={false}
           disabled={false}
           variant="quantifier"
         />
       </div>
-
-      <LeadGenerationStreetViewSection stock={stock} />
-
-      <LeadGenerationGptResearchPanel
-        stockId={stock.id}
-        canRun={canGptResearch}
-        researchGptStatus={stock.research_gpt_status ?? "idle"}
-        researchGptRequestedAt={stock.research_gpt_requested_at ?? null}
-        researchGptCompletedAt={stock.research_gpt_completed_at ?? null}
-        researchGptLastError={stock.research_gpt_last_error ?? null}
-        researchGptSummary={stock.research_gpt_summary ?? null}
-        researchGptPayload={stock.research_gpt_payload ?? null}
-      />
 
       <Card className="border-border/80 bg-card/50 shadow-sm">
         <CardHeader className="pb-2">
@@ -199,23 +177,6 @@ export default async function LeadGenerationQuantificationDetailPage({ params }:
         </CardHeader>
         <CardContent className="space-y-6">
           <LeadGenerationQuantificationActions stockId={stock.id} />
-          <LeadGenerationDropcontactPanel
-            stockId={stock.id}
-            canResetDropcontact
-            context="quantification"
-            eligible={dropcontactElig.ok}
-            disabled={false}
-            dropcontactStatus={stock.dropcontact_status ?? "idle"}
-            dropcontactRequestId={stock.dropcontact_request_id ?? null}
-            dropcontactRequestedAt={stock.dropcontact_requested_at ?? null}
-            dropcontactCompletedAt={stock.dropcontact_completed_at ?? null}
-            dropcontactLastError={stock.dropcontact_last_error ?? null}
-            email={stock.email?.trim() || stock.enriched_email?.trim() || null}
-            phone={stock.phone?.trim() || stock.normalized_phone?.trim() || null}
-            decisionMakerName={stock.decision_maker_name ?? null}
-            decisionMakerRole={stock.decision_maker_role ?? null}
-            linkedinUrl={stock.linkedin_url ?? null}
-          />
         </CardContent>
       </Card>
 

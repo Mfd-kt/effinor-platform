@@ -1,8 +1,8 @@
-import type { RunGoogleMapsApifyImportInput } from "../apify/types";
 import { countLeadGenerationStockNeedingContactImprovementForBatch } from "../queries/get-lead-generation-stock-ids-needing-contact-improvement-for-batch";
 import { executeUnifiedMapsPhase } from "./unified-pipeline-ingest-phases";
 
-export type UnifiedLeadGenerationIngestInput = RunGoogleMapsApifyImportInput;
+// TODO: Replace with the new external scraping integration input type.
+export type UnifiedLeadGenerationIngestInput = Record<string, unknown>;
 
 export type RunUnifiedIngestThroughLinkedInOutcome =
   | { ok: false; error: string }
