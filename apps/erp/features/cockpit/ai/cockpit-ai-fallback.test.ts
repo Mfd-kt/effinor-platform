@@ -7,14 +7,13 @@ import { computeCockpitRecommendationPriority, sortAiRecommendations } from "./c
 import type { CockpitAiRecommendation } from "../types";
 
 function emptyPerformance() {
-  return { agents: [], confirmateurs: [], closers: [] };
+  return { agents: [], closers: [] };
 }
 
 function baseData(overrides: Partial<CockpitDataForAi> = {}): CockpitDataForAi {
   return {
     humanAnomalies: [],
     workflowLogMetrics: {
-      confirmateurMedianHours: null,
       closerMedianHours: null,
       conversionRateFromLogsPct: null,
       conversionNumerator: 0,
@@ -46,7 +45,6 @@ function baseData(overrides: Partial<CockpitDataForAi> = {}): CockpitDataForAi {
       highValue: [],
     },
     pipeline: {
-      awaitConfirmateur: 0,
       awaitCloser: 0,
       unassignedAgent: 0,
       staleDrafts: 0,
@@ -55,7 +53,6 @@ function baseData(overrides: Partial<CockpitDataForAi> = {}): CockpitDataForAi {
       blockedCount: 0,
       sampleBlocked: [],
       stageLatency: {
-        awaitConfirmateurAvgDays: null,
         awaitCloserAvgDays: null,
         unassignedAvgDays: null,
         blockedAvgDays: null,
@@ -177,32 +174,6 @@ describe("buildCockpitAiRecommendationsFallback", () => {
     const auto = recs.find((r) => r.id === "ai:automation-cron-health");
     expect(auto).toBeDefined();
     expect(auto?.category).toBe("automation");
-  });
-
-  it("produit une reco backlog confirmateur critique", () => {
-    const data = baseData({
-      performance: {
-        agents: [],
-        confirmateurs: [
-          {
-            userId: "u1",
-            displayName: "Laurian",
-            backlog: 14,
-            treatedApproxWeek: 0,
-            avgBacklogAgeDays: 10,
-            medianHoursConfirmStageFromLogs: null,
-            highlight: null,
-          },
-        ],
-        closers: [],
-      },
-    });
-    const ctx = buildCockpitAiContext(data);
-    const recs = buildCockpitAiRecommendationsFallback(ctx, data);
-    const hit = recs.find((r) => r.id === "ai:staffing:conf-backlog:u1");
-    expect(hit).toBeDefined();
-    expect(hit?.category).toBe("staffing");
-    expect(hit?.impactEuro).toBeNull();
   });
 
   it("produit une reco fiche mal configurée", () => {

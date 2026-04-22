@@ -20,7 +20,7 @@ type LeadDetailVtActionsProps = {
   activeVisit: TechnicalVisitRef | null;
   /** Toutes les VT du lead (affichage). */
   allVisits: TechnicalVisitRef[];
-  /** Agent en lecture seule après envoi au confirmateur. */
+  /** Agent en lecture seule après envoi au closer. */
   consultationReadOnly?: boolean;
 };
 
@@ -78,13 +78,12 @@ export function LeadDetailVtActions({
         <div className="space-y-2">
           <p className="max-w-xl text-muted-foreground text-sm leading-relaxed">
             Une seule visite « en cours » à la fois sur ce dossier (avant validation). Après une visite
-            validée, un refus ou une annulation, vous pourrez en ouvrir une nouvelle. Si aucun
-            confirmateur n’est encore indiqué sur le lead, votre compte sera utilisé lors de la création.
+            validée, un refus ou une annulation, vous pourrez en ouvrir une nouvelle.
           </p>
 
           {consultationReadOnly ? (
             <p className="text-sm text-muted-foreground">
-              En consultation agent (dossier transmis au confirmateur), la création de visite technique n’est pas
+              En consultation agent (dossier transmis au closer), la création de visite technique n’est pas
               disponible depuis cette fiche.
             </p>
           ) : null}

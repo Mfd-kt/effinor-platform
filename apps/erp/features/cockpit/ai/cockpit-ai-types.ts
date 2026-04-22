@@ -6,7 +6,6 @@ export type CockpitAiContext = {
     criticalBandCallbacks: number;
     hotSimulatedLeads24h: number;
     unassignedWorkflows: number;
-    totalBacklogConfirmateur: number;
     pipelineCloserOpen: number;
     automationFailed48h: number;
     cronHealthy: boolean;
@@ -44,7 +43,6 @@ export type CockpitAiContext = {
     problem: string;
     userId: string;
   }[];
-  confirmateurBacklogs: { userId: string; name: string; backlog: number }[];
   closerLoads: {
     userId: string;
     name: string;
@@ -53,7 +51,6 @@ export type CockpitAiContext = {
     signatureRatePct: number | null;
   }[];
   workflowLog: {
-    confirmateurMedianH: number | null;
     closerMedianH: number | null;
     conversionPct: number | null;
   };

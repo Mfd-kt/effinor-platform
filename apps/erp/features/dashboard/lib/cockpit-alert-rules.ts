@@ -3,10 +3,6 @@ import type { CockpitVariant } from "@/lib/auth/cockpit-variant";
 function buildCloserQueuePath(_sheetId: string | null, _opts?: { tab?: string }): string {
   return "/leads";
 }
-
-function buildConfirmateurQueuePath(_sheetId: string | null, _opts?: { tab?: string }): string {
-  return "/leads";
-}
 import type {
   CockpitAlert,
   CockpitAlertAudienceRole,
@@ -398,178 +394,6 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
   const fPrev = ctx.snapshotPrevious.funnel;
   const channelPrev = new Map(ctx.snapshotPrevious.byChannel.map((c) => [c.channel, c.workflowCount] as const));
 
-  const backlog = groupCountConfirmBacklog(ctx.scopedPeriodRows);
-  const sevGlobal = isBacklogCritical(
-    backlog.global,
-    T.backlog.pendingGlobalWarning,
-    T.backlog.pendingGlobalCritical,
-  );
-  if (sevGlobal !== "ok") {
-    alerts.push(
-      finalizeCockpitAlert({
-        id: "period-backlog-confirm-global",
-        scope: "period",
-        severity: sevGlobal === "critical" ? "critical" : "warning",
-        category: "backlog",
-        title: "Stock confirmateur élevé",
-        message: `${backlog.global} dossier(s) simulé(s) ou à confirmer sur la période — risque de saturation file confirmateur.`,
-        suggestedAction: "Prioriser la qualification / confirmation, réaffecter si besoin.",
-        targetType: "global",
-        targetId: null,
-        targetLabel: null,
-        metricValue: backlog.global,
-        thresholdValue: T.backlog.pendingGlobalWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count: backlog.global,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) => CONFIRM_BACKLOG_STATUSES.has(w.workflow_status),
-          "Analyser le backlog confirmateur",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
-
-  for (const [sheetId, { label, count }] of backlog.bySheet) {
-    const sev = isBacklogCritical(count, T.backlog.pendingPerSheetWarning, T.backlog.pendingPerSheetCritical);
-    if (sev === "ok") continue;
-    alerts.push(
-      finalizeCockpitAlert({
-        id: `period-backlog-confirm-sheet-${sheetId}`,
-        scope: "period",
-        severity: sev === "critical" ? "critical" : "warning",
-        category: "backlog",
-        title: `Backlog confirmateur — ${label}`,
-        message: `${count} dossier(s) en attente côté confirmateur sur cette fiche.`,
-        suggestedAction: "Délester la file confirmateur pour cette fiche (créneaux, renfort, reprise des brouillons).",
-        targetType: "sheet",
-        targetId: sheetId,
-        targetLabel: label,
-        metricValue: count,
-        thresholdValue: T.backlog.pendingPerSheetWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(sheetId, { tab: "pending" })}`,
-        count,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) =>
-            CONFIRM_BACKLOG_STATUSES.has(w.workflow_status) &&
-            w.cee_sheet_id === sheetId,
-          "Traiter les dossiers de cette fiche",
-          `${base}${buildConfirmateurQueuePath(sheetId, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
-
-  for (const [teamId, count] of backlog.byTeam) {
-    const sev = isBacklogCritical(count, T.backlog.pendingPerTeamWarning, T.backlog.pendingPerTeamCritical);
-    if (sev === "ok") continue;
-    const tr = byTeam.find((t) => t.teamId === teamId);
-    const tlabel = tr?.teamName ?? teamId;
-    alerts.push(
-      finalizeCockpitAlert({
-        id: `period-backlog-confirm-team-${teamId}`,
-        scope: "period",
-        severity: sev === "critical" ? "critical" : "warning",
-        category: "backlog",
-        title: `Backlog confirmateur — équipe`,
-        message: `${count} dossier(s) à traiter pour l’équipe « ${tlabel} ».`,
-        suggestedAction: "Coordonner confirmateur / manager d’équipe pour absorber le stock.",
-        targetType: "team",
-        targetId: teamId,
-        targetLabel: tlabel,
-        metricValue: count,
-        thresholdValue: T.backlog.pendingPerTeamWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) =>
-            CONFIRM_BACKLOG_STATUSES.has(w.workflow_status) &&
-            w.cee_sheet_team_id === teamId,
-          "Voir le stock de l’équipe",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
-
-  const staleConfirmW = countStaleConfirm(ctx.scopedPeriodRows, nowMs, T.backlog.confirmStaleDaysWarning);
-  const staleConfirmC = countStaleConfirm(ctx.scopedPeriodRows, nowMs, T.backlog.confirmStaleDaysCritical);
-  if (staleConfirmC > 0) {
-    alerts.push(
-      finalizeCockpitAlert({
-        id: "period-confirm-stale-critical",
-        scope: "period",
-        severity: "critical",
-        category: "backlog",
-        title: "Dossiers confirmateur trop anciens",
-        message: `${staleConfirmC} dossier(s) simulés ou à confirmer sans mise à jour depuis plus de ${T.backlog.confirmStaleDaysCritical} jours.`,
-        suggestedAction: "Traiter ou requalifier en priorité — risque de perte commerciale.",
-        targetType: "global",
-        targetId: null,
-        targetLabel: null,
-        metricValue: staleConfirmC,
-        thresholdValue: T.backlog.confirmStaleDaysCritical,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count: staleConfirmC,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) => {
-            if (!CONFIRM_BACKLOG_STATUSES.has(w.workflow_status)) return false;
-            return nowMs - new Date(w.updated_at).getTime() > T.backlog.confirmStaleDaysCritical * MS_DAY;
-          },
-          "Traiter les dossiers les plus anciens",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  } else if (staleConfirmW > 0) {
-    alerts.push(
-      finalizeCockpitAlert({
-        id: "period-confirm-stale-warning",
-        scope: "period",
-        severity: "warning",
-        category: "backlog",
-        title: "Confirmations qui traînent",
-        message: `${staleConfirmW} dossier(s) sans activité depuis plus de ${T.backlog.confirmStaleDaysWarning} jours.`,
-        suggestedAction: "Accélérer la reprise confirmateur.",
-        targetType: "global",
-        targetId: null,
-        targetLabel: null,
-        metricValue: staleConfirmW,
-        thresholdValue: T.backlog.confirmStaleDaysWarning,
-        comparisonValue: null,
-        period: ctx.periodLabel,
-        roleAudience: AUD_CONF,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        count: staleConfirmW,
-        relatedQueueKey: "blockedConfirm",
-        ...xp(
-          (w) => {
-            if (!CONFIRM_BACKLOG_STATUSES.has(w.workflow_status)) return false;
-            return nowMs - new Date(w.updated_at).getTime() > T.backlog.confirmStaleDaysWarning * MS_DAY;
-          },
-          "Reprendre la file confirmateur",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "pending" })}`,
-        ),
-      }),
-    );
-  }
-
   const docsN = countDocsPrepared(ctx.scopedPeriodRows);
   const docsStaleW = countStaleDocsPrepared(ctx.scopedPeriodRows, nowMs, T.docs.docsPreparedStaleDaysWarning);
   const docsStaleC = countStaleDocsPrepared(ctx.scopedPeriodRows, nowMs, T.docs.docsPreparedStaleDaysCritical);
@@ -592,13 +416,13 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         comparisonValue: null,
         period: ctx.periodLabel,
         roleAudience: AUD_OPS,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+        href: `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         count: docsN,
         relatedQueueKey: "docsPreparedStale",
         ...xp(
           (w) => w.workflow_status === "docs_prepared",
           "Transmettre au closer",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+          `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         ),
       }),
     );
@@ -621,7 +445,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         comparisonValue: null,
         period: ctx.periodLabel,
         roleAudience: AUD_OPS,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+        href: `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         count: docsStaleC,
         relatedQueueKey: "docsPreparedStale",
         ...xp(
@@ -629,7 +453,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
             w.workflow_status === "docs_prepared" &&
             nowMs - new Date(w.updated_at).getTime() > T.docs.docsPreparedStaleDaysCritical * MS_DAY,
           "Débloquer les docs en retard",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+          `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         ),
       }),
     );
@@ -642,7 +466,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         category: "documentation",
         title: "Docs prêts qui attendent",
         message: `${docsStaleW} dossier(s) sans transmission depuis plus de ${T.docs.docsPreparedStaleDaysWarning} jours.`,
-        suggestedAction: "Contrôler la file confirmateur → closer.",
+        suggestedAction: "Contrôler la file closer.",
         targetType: "global",
         targetId: null,
         targetLabel: null,
@@ -651,7 +475,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         comparisonValue: null,
         period: ctx.periodLabel,
         roleAudience: AUD_OPS,
-        href: `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+        href: `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         count: docsStaleW,
         relatedQueueKey: "docsPreparedStale",
         ...xp(
@@ -659,7 +483,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
             w.workflow_status === "docs_prepared" &&
             nowMs - new Date(w.updated_at).getTime() > T.docs.docsPreparedStaleDaysWarning * MS_DAY,
           "Accélérer la transmission",
-          `${base}${buildConfirmateurQueuePath(null, { tab: "docsReady" })}`,
+          `${base}${buildCloserQueuePath(null, { tab: "docsReady" })}`,
         ),
       }),
     );
@@ -1099,7 +923,7 @@ export function buildPeriodBusinessAlerts(ctx: PeriodAlertBuildContext): Cockpit
         category: "activity",
         title: "Pipeline post-brouillon en baisse",
         message: `Moins de dossiers actifs (hors brouillon) créés sur la période vs la précédente.`,
-        suggestedAction: "Accélérer validation simulations et passages confirmateur.",
+        suggestedAction: "Accélérer validation simulations et passages closer.",
         targetType: "global",
         targetId: null,
         targetLabel: null,
@@ -1491,7 +1315,7 @@ export function buildStructuralBusinessAlerts(input: StructuralNetworkInput): Co
           category: "staffing",
           title: `Équipe sans membre actif — ${team.name}`,
           message: `L’équipe sur « ${sheetL} » n’a aucun membre actif.`,
-          suggestedAction: "Réactiver ou affecter des membres (agent, confirmateur, closer).",
+          suggestedAction: "Réactiver ou affecter des membres (agent, closer).",
           targetType: "team",
           targetId: team.id,
           targetLabel: team.name,

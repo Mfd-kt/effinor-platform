@@ -52,7 +52,6 @@ export type CockpitAlertAudienceRole =
 
 export type CockpitPriorityQueueKey =
   | "staleDrafts"
-  | "blockedConfirm"
   | "docsPreparedStale"
   | "agreementsAwaitingSign"
   | "oldAgreementSent";
@@ -180,7 +179,6 @@ export type CockpitWorkflowSnapshot = {
   /** Files prioritaires (extraits, triées). */
   priorityQueues: {
     staleDrafts: CockpitQueueItem[];
-    blockedConfirm: CockpitQueueItem[];
     docsPreparedStale: CockpitQueueItem[];
     agreementsAwaitingSign: CockpitQueueItem[];
     oldAgreementSent: CockpitQueueItem[];

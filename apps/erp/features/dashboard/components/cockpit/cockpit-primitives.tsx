@@ -131,7 +131,6 @@ function formatImpactEur(value: number | null): string | null {
 
 const PRIORITY_QUEUE_LABELS: Record<CockpitPriorityQueueKey, string> = {
   staleDrafts: "File « brouillons inactifs »",
-  blockedConfirm: "File « stock confirmateur »",
   docsPreparedStale: "File « docs prêts (stale) »",
   agreementsAwaitingSign: "File « accords en signature »",
   oldAgreementSent: "File « accords à relancer »",
@@ -430,11 +429,6 @@ export function CockpitPriorityGrid({
         title="Brouillons inactifs"
         items={snap.priorityQueues.staleDrafts}
         emptyLabel="Aucun brouillon ancien."
-      />
-      <CockpitQueueTable
-        title="Stock confirmateur"
-        items={snap.priorityQueues.blockedConfirm}
-        emptyLabel="Rien en attente de confirmation."
       />
       <CockpitQueueTable
         title="Docs prêts (délai)"

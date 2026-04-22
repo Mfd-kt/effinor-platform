@@ -54,7 +54,7 @@ const convertCallbackPayload = z.object({
 const assignWorkflowPayload = z.object({
   workflow_id: z.string().uuid(),
   assignee_user_id: z.string().uuid(),
-  role: z.enum(["agent", "confirmateur", "closer"]),
+  role: z.enum(["agent", "closer"]),
 });
 
 const notifyUserPayload = z.object({

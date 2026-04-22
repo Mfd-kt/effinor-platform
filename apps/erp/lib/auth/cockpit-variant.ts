@@ -27,7 +27,7 @@ export async function userIsActiveCeeTeamManager(userId: string): Promise<boolea
 }
 
 /**
- * Priorité cockpit : direction → rôles spécialisés (closer / confirmateur) → manager d’équipe CEE → agent.
+ * Priorité cockpit : direction → rôles spécialisés (closer) → manager d’équipe CEE → agent.
  */
 export async function resolveCockpitVariant(access: AccessContext): Promise<CockpitVariant> {
   if (access.kind !== "authenticated") {

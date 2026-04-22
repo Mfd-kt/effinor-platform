@@ -23,7 +23,6 @@ export async function loadCockpitDataForOrchestrator(admin: Admin): Promise<Busi
     { data: cbRows, error: cbErr },
     { data: wfRows, error: wfErr },
     { data: leadRows, error: leadErr },
-    { data: backlogRows, error: backlogErr },
   ] = await Promise.all([
     admin
       .from("commercial_callbacks")
@@ -40,18 +39,11 @@ export async function loadCockpitDataForOrchestrator(admin: Admin): Promise<Busi
       .neq("workflow_status", "lost")
       .limit(80),
     admin.from("leads").select("id, created_at").is("deleted_at", null).gte("created_at", since48h).limit(3_000),
-    admin
-      .from("lead_sheet_workflows")
-      .select("assigned_confirmateur_user_id")
-      .eq("workflow_status", "to_confirm")
-      .not("assigned_confirmateur_user_id", "is", null)
-      .limit(8_000),
   ]);
 
   if (cbErr) throw new Error(cbErr.message);
   if (wfErr) throw new Error(wfErr.message);
   if (leadErr) throw new Error(leadErr.message);
-  if (backlogErr) throw new Error(backlogErr.message);
 
   const cashCallbacks: BusinessStateAnalysis["cashCallbacks"] = [];
   let overdueCallbacksCount = 0;
@@ -101,19 +93,6 @@ export async function loadCockpitDataForOrchestrator(admin: Admin): Promise<Busi
     }
   }
 
-  const backlogMap = new Map<string, number>();
-  for (const r of backlogRows ?? []) {
-    const uid = r.assigned_confirmateur_user_id;
-    if (!uid) continue;
-    backlogMap.set(uid, (backlogMap.get(uid) ?? 0) + 1);
-  }
-  let worstConfirmateurBacklog: BusinessStateAnalysis["worstConfirmateurBacklog"] = null;
-  for (const [userId, backlog] of backlogMap) {
-    if (!worstConfirmateurBacklog || backlog > worstConfirmateurBacklog.backlog) {
-      worstConfirmateurBacklog = { userId, backlog };
-    }
-  }
-
   const leadsCreatedToday = (leadRows ?? []).filter((L) => {
     const d = new Date(L.created_at);
     return calendarDateInParis(d) === todayParis;
@@ -122,7 +101,6 @@ export async function loadCockpitDataForOrchestrator(admin: Admin): Promise<Busi
   return {
     cashCallbacks,
     autoAssign,
-    worstConfirmateurBacklog,
     leadsCreatedToday,
     overdueCallbacksCount,
   };

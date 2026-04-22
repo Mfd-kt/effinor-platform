@@ -28,7 +28,6 @@ function byWorkflowChrono(logs: WorkflowEventLogRow[]): Map<string, WorkflowEven
 }
 
 export type WorkflowLogMetricsComputed = {
-  confirmateurMedianHours: number | null;
   closerMedianHours: number | null;
   transitionsByUserWeek: Record<string, number>;
   /** Workflows créés (log) sur la fenêtre ayant au moins un « converted » après. */
@@ -51,20 +50,11 @@ export function computeWorkflowLogMetrics(
   }
 
   const byWf = byWorkflowChrono(logs);
-  const confirmDeltas: number[] = [];
   const closerDeltas: number[] = [];
 
   for (const events of byWf.values()) {
-    let sentConfirmAt: string | null = null;
     let sentCloserAt: string | null = null;
     for (const e of events) {
-      if (e.event_type === "sent_to_confirmateur") {
-        sentConfirmAt = e.created_at;
-      }
-      if (e.event_type === "qualified" && sentConfirmAt) {
-        confirmDeltas.push(hoursBetween(sentConfirmAt, e.created_at));
-        sentConfirmAt = null;
-      }
       if (e.event_type === "sent_to_closer") {
         sentCloserAt = e.created_at;
       }
@@ -94,7 +84,6 @@ export function computeWorkflowLogMetrics(
     denom > 0 ? Math.round((num / denom) * 1000) / 10 : null;
 
   return {
-    confirmateurMedianHours: medianHours(confirmDeltas),
     closerMedianHours: medianHours(closerDeltas),
     transitionsByUserWeek,
     conversionNumerator: num,

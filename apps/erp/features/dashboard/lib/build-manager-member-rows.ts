@@ -191,7 +191,6 @@ function buildKpisForRole(
       leadsCrees: leadsCreated,
       workflowsPeriode: rowsC.length,
       simulationsValidees: simOk,
-      envoisConfirmateur: sentConf,
       rappelsEnRetard: callbacks,
       tauxTransmissionPct: transmissionPct,
       tauxTransmissionPrevPct: simOkP > 0 ? transmissionPrev : null,

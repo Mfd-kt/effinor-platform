@@ -10,7 +10,6 @@ describe("resolveSlackWebhookForEvent", () => {
     resetSlackEnvCache();
     process.env.SLACK_ENABLED = "true";
     process.env.SLACK_COMMERCIAL_WEBHOOK_URL = "https://hooks.slack.com/services/COMM/01/xxx";
-    process.env.SLACK_CONFIRIMATEUR_WEBHOOK_URL = "https://hooks.slack.com/services/CONF/02/yyy";
     process.env.SLACK_ADMIN_WEBHOOK_URL = "https://hooks.slack.com/services/ADM/03/zzz";
     process.env.SLACK_DEFAULT_WEBHOOK_URL = "https://hooks.slack.com/services/DEF/99/fallback";
   });
@@ -30,13 +29,12 @@ describe("resolveSlackWebhookForEvent", () => {
     }
   });
 
-  it("docs_missing → confirmateur + administratif (2 webhooks)", () => {
+  it("docs_missing → administratif", () => {
     const r = resolveSlackWebhookForEvent("docs_missing");
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.targets.length).toBeGreaterThanOrEqual(2);
-      const keys = r.targets.map((t) => t.channelKey).sort();
-      expect(keys).toContain("confirmateur");
+      expect(r.targets.length).toBeGreaterThanOrEqual(1);
+      const keys = r.targets.map((t) => t.channelKey);
       expect(keys).toContain("administratif");
     }
   });

@@ -7,7 +7,6 @@ export type SlackWebhookEnvMap = {
   direction: string | undefined;
   alerts: string | undefined;
   closer: string | undefined;
-  confirmateur: string | undefined;
 };
 
 export type SlackEnv = {
@@ -47,7 +46,6 @@ export function getSlackEnv(): SlackEnv {
       direction: readEnv("SLACK_DIRECTION_WEBHOOK_URL"),
       alerts: readEnv("SLACK_ALERTS_WEBHOOK_URL"),
       closer: readEnv("SLACK_CLOSER_WEBHOOK_URL"),
-      confirmateur: readEnv("SLACK_CONFIRIMATEUR_WEBHOOK_URL"),
     },
     botToken: readEnv("SLACK_BOT_TOKEN"),
     defaultChannel: readEnv("SLACK_DEFAULT_CHANNEL"),

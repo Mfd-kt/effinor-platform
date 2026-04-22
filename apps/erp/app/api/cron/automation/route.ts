@@ -319,7 +319,6 @@ async function runAutomationCronHandler(request: Request): Promise<NextResponse<
       aiDraftsGenerated: result.aiDraftsGenerated,
       configSnapshot: {
         slackSmartEnabled: result.configSnapshot.slackSmartEnabled,
-        autoAssignConfirmateur: result.configSnapshot.autoAssignConfirmateur,
         autoAssignCloser: result.configSnapshot.autoAssignCloser,
         aiFollowUpDraftOnly: result.configSnapshot.aiFollowUpDraftOnly,
         aiFollowUpAutoSend: result.configSnapshot.aiFollowUpAutoSend,

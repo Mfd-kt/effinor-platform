@@ -132,11 +132,7 @@ export function buildCockpitAiRecommendationsFallback(
       impactEuro: null,
       relatedEntityType: "system",
       relatedEntityId: null,
-      actionLabel: a.href.includes("commercial-callbacks")
-        ? "Ouvrir"
-        : a.href.includes("confirmateur")
-          ? "Voir le backlog"
-          : "Ouvrir",
+      actionLabel: a.href.includes("commercial-callbacks") ? "Ouvrir" : "Ouvrir",
       actionHref: a.href,
       phone: null,
       _signals: { alertCritical: true },
@@ -298,27 +294,6 @@ export function buildCockpitAiRecommendationsFallback(
     });
   }
 
-  const worstConf = ctx.confirmateurBacklogs.find((c) => c.backlog >= 10);
-  if (worstConf) {
-    pushRec(drafts, {
-      id: `ai:staffing:conf-backlog:${worstConf.userId}`,
-      title: `Réallouer / débloquer le backlog confirmateur — ${worstConf.name}`,
-      description: `${worstConf.backlog} dossiers en attente de confirmation.`,
-      category: "staffing",
-      impactEuro: null,
-      relatedEntityType: "user",
-      relatedEntityId: worstConf.userId,
-      actionLabel: "Voir le backlog",
-      actionHref: "/leads",
-      phone: null,
-      _signals: {
-        staffingCritical: worstConf.backlog >= 14,
-        batchCount: worstConf.backlog,
-        pipelineBlocked: true,
-      },
-    });
-  }
-
   const stuckCloser = ctx.closerLoads.find((c) => c.pipelineOpen >= 6 && c.signedWeek === 0);
   if (stuckCloser) {
     pushRec(drafts, {
@@ -431,23 +406,6 @@ export function buildCockpitAiRecommendationsFallback(
       _signals: {
         configBlocksWorkflows: 12,
       },
-    });
-  }
-
-  const medC = ctx.workflowLog.confirmateurMedianH;
-  if (medC != null && medC >= 120) {
-    pushRec(drafts, {
-      id: "ai:sla-confirmateur",
-      title: "Temps confirmateur trop long (logs workflow)",
-      description: `Médiane ~${medC} h entre envoi confirmateur et qualification — audit file et charge.`,
-      category: "workflow",
-      impactEuro: null,
-      relatedEntityType: "system",
-      relatedEntityId: null,
-      actionLabel: "Voir confirmateur",
-      actionHref: "/leads",
-      phone: null,
-      _signals: { slaHoursExcess: true },
     });
   }
 

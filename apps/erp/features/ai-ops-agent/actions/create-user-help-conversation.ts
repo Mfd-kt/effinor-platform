@@ -17,7 +17,6 @@ export type CreateUserHelpConversationResult =
 
 function roleTargetForAccess(roleCodes: readonly string[]): string {
   if (hasRole(roleCodes, "sales_agent")) return "agent";
-  if (hasRole(roleCodes, "confirmer")) return "confirmateur";
   if (hasRole(roleCodes, "closer")) return "closer";
   if (hasRole(roleCodes, "sales_director")) return "direction";
   if (hasRole(roleCodes, "technician")) return "commercial";

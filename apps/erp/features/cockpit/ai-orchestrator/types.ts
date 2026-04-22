@@ -17,16 +17,10 @@ export type OrchestratorAutoAssignHint = {
   teamId: string;
 } | null;
 
-export type OrchestratorConfirmateurBacklog = {
-  userId: string;
-  backlog: number;
-} | null;
-
 export type BusinessStateAnalysis = {
   /** Rappels éligibles aux actions auto (today / overdue, non terminaux). */
   cashCallbacks: OrchestratorCallbackSnapshot[];
   autoAssign: OrchestratorAutoAssignHint;
-  worstConfirmateurBacklog: OrchestratorConfirmateurBacklog;
   leadsCreatedToday: number;
   /** Rappels en retard (estimation volume). */
   overdueCallbacksCount: number;

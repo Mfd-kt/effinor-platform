@@ -349,7 +349,6 @@ export async function createTechnicalVisitFromLead(
     snapshot_present: vtLegacyRow?.visit_schema_snapshot_json != null,
   });
 
-  /** Confirmateur : l’utilisateur qui crée la VT est enregistré sur le lead (si encore vide). */
   if (user.id) {
     await supabase
       .from("leads")

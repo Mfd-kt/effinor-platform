@@ -2,7 +2,7 @@ import type { Json } from "@/types/database.types";
 
 export type SlaEntityType = "callback" | "lead" | "workflow" | "team" | "user";
 
-export type SlaRoleTarget = "agent" | "confirmateur" | "closer" | "manager" | "direction" | "system" | "commercial";
+export type SlaRoleTarget = "agent" | "closer" | "manager" | "direction" | "system" | "commercial";
 
 export type SlaActionPolicy =
   | "notify"

@@ -54,7 +54,7 @@ export function canAccessLeadsModule(access: AccessContext): boolean {
 
 /**
  * Lien « liste globale des leads » dans la barre latérale : direction / admin uniquement.
- * Les autres rôles accèdent aux fiches via leurs postes (agent, confirmateur, closer) ou URL directe autorisée par la matrice.
+ * Les autres rôles accèdent aux fiches via leurs postes (agent, closer) ou URL directe autorisée par la matrice.
  */
 export function canAccessLeadsDirectoryNav(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {
@@ -170,25 +170,6 @@ export function canAccessCeeWorkflowsModule(access: AccessContext): boolean {
     return false;
   }
   return canAccessCeeWorkflowsModuleByScope(access);
-}
-
-/**
- * @deprecated Le rôle « confirmer » a été retiré (refonte workflow). L'export est conservé
- * pour ne pas casser navigation / dashboard / role-digests qui s'y réfèrent encore — il sera
- * supprimé dans un prochain passage de nettoyage.
- */
-export function canAccessConfirmateurWorkspace(access: AccessContext): boolean {
-  if (access.kind !== "authenticated") {
-    return false;
-  }
-  if (!canAccessCeeWorkflowsModuleByScope(access)) {
-    return false;
-  }
-  return (
-    access.roleCodes.includes("super_admin") ||
-    access.roleCodes.includes("admin") ||
-    access.roleCodes.includes("sales_director")
-  );
 }
 
 export function canAccessCloserWorkspace(access: AccessContext): boolean {

@@ -13,7 +13,6 @@ export async function resolveRoleTargetForUser(admin: Admin, userId: string): Pr
   const codes = new Set((roles ?? []).map((r) => r.code));
 
   if (codes.has("super_admin") || codes.has("sales_director")) return "direction";
-  if (codes.has("confirmateur")) return "confirmateur";
   if (codes.has("closer")) return "closer";
   if (codes.has("agent")) return "agent";
   return "commercial";

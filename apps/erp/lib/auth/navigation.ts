@@ -14,7 +14,6 @@ import {
   canAccessLeadGenerationQuantifierImports,
   canAccessCloserWorkspace,
   canAccessCockpitRoute,
-  canAccessConfirmateurWorkspace,
   canAccessLeadsDirectoryNav,
   canAccessLostLeadsInbox,
   canAccessTechnicalVisitsDirectoryNav,

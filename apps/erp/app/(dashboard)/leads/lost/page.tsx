@@ -41,7 +41,7 @@ export default async function LostLeadsPage() {
     <div>
       <PageHeader
         title="Prospects perdus"
-        description="Hors des listes opérationnelles (agent, confirmateur, closer, fiches actives). Les indicateurs du cockpit incluent toujours ces dossiers dans le funnel."
+        description="Hors des listes opérationnelles (agent, closer, fiches actives). Les indicateurs du cockpit incluent toujours ces dossiers dans le funnel."
         actions={
           showActiveLeadsLink ? (
             <Link href="/leads" className={cn(buttonVariants({ variant: "outline" }))}>

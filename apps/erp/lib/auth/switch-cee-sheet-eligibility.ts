@@ -9,7 +9,7 @@ import type { Database } from "@/types/database.types";
 
 type Supabase = SupabaseClient<Database>;
 
-/** Confirmateur, closer, super admin, ou manager d’équipe CEE actif. */
+/** Closer, super admin, ou manager d’équipe CEE actif. */
 export async function canUserSwitchLeadCeeSheet(access: AccessContext): Promise<boolean> {
   if (access.kind !== "authenticated") {
     return false;
@@ -60,7 +60,7 @@ export async function canAccessLeadForCeeTeamManager(
 }
 
 /**
- * Accès ponctuel au lead via assignation workflow active (agent / confirmateur / closer).
+ * Accès ponctuel au lead via assignation workflow active (agent / closer).
  * Utile pour ouvrir la fiche depuis les postes CEE quand la matrice leads est plus restrictive.
  */
 export async function canAccessLeadForAssignedWorkflowRole(
@@ -77,7 +77,7 @@ export async function canAccessLeadForAssignedWorkflowRole(
     .eq("lead_id", leadId)
     .eq("is_archived", false)
     .or(
-      `assigned_agent_user_id.eq.${access.userId},assigned_confirmateur_user_id.eq.${access.userId},assigned_closer_user_id.eq.${access.userId}`,
+      `assigned_agent_user_id.eq.${access.userId},assigned_closer_user_id.eq.${access.userId}`,
     )
     .limit(1)
     .maybeSingle();
@@ -89,7 +89,7 @@ export async function canAccessLeadForAssignedWorkflowRole(
 
 /**
  * Peut exécuter un changement de fiche CEE sur ce lead : rôle éligible + périmètre lead
- * (créateur/confirmateur ou fiche CEE du dossier couverte par l’équipe du manager).
+ * (créateur ou fiche CEE du dossier couverte par l’équipe du manager).
  */
 export async function canUserSwitchLeadCeeSheetOnLead(
   supabase: Supabase,

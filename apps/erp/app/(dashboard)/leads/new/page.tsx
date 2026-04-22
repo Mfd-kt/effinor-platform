@@ -10,7 +10,7 @@ export default async function NewLeadPage() {
     <div>
       <PageHeader
         title="Nouveau lead"
-        description="Saisie rapide (appel froid). Complétez la qualification sur la fiche lead après création ; le confirmateur est attribué à la création de la visite technique."
+        description="Saisie rapide (appel froid). Complétez la qualification sur la fiche lead après création."
         actions={
           <Link href="/leads" className={cn(buttonVariants({ variant: "outline" }))}>
             Retour à la liste

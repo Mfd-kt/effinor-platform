@@ -71,7 +71,7 @@ async function resolveUsersSettingsActor(
   return { kind: "none" };
 }
 
-function appRoleCodeToCeeTeamMemberRole(roleCode: string): "agent" | "confirmateur" | "closer" {
+function appRoleCodeToCeeTeamMemberRole(roleCode: string): "agent" | "closer" {
   if (roleCode === "sales_agent") return "agent";
   if (roleCode === "closer") return "closer";
   return "agent";

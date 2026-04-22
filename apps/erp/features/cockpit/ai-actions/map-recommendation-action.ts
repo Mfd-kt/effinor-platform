@@ -108,10 +108,6 @@ export function resolveRecommendationAction(id: string, rec: RecSlice | null): R
     return { actionType: "fix_sheet", payload: { sheet_id: sheetId } };
   }
 
-  if (id === "ai:sla-confirmateur") {
-    return viewAutomation("/leads");
-  }
-
   if (id.startsWith("ai:leads-hot-24h:")) {
     const leadId = id.slice("ai:leads-hot-24h:".length);
     if (uuid.safeParse(leadId).success) {

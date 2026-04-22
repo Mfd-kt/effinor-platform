@@ -203,41 +203,6 @@ export async function CockpitAgentView({
   );
 }
 
-export async function CockpitConfirmateurView({
-  access,
-  metrics,
-  bundle,
-}: {
-  access: AccessContext;
-  metrics: DashboardMetrics;
-  bundle: CockpitBundle;
-}) {
-  if (access.kind !== "authenticated") return null;
-  const snap = bundle.snapshot;
-  return (
-    <CockpitRealtimeBoundary>
-      <div className="mx-auto max-w-7xl space-y-10 px-4 py-8 lg:px-8">
-        <CockpitPageHeader
-          eyebrow="Confirmateur"
-          title="Production & rigueur"
-          subtitle="Stocks et funnel limités aux dossiers créés dans la période sélectionnée."
-        />
-        <Suspense fallback={<ToolbarFallback />}>
-          <CockpitScopeToolbar filters={bundle.filters} options={bundle.filterOptions} />
-        </Suspense>
-        <CockpitAlertSections
-          periodAlerts={bundle.periodAlerts}
-          structuralAlerts={bundle.structuralAlerts}
-          periodLabel={periodLabel(bundle)}
-        />
-        <CockpitFunnelStrip funnel={snap.funnel} />
-        <CockpitPriorityGrid snap={snap} />
-        <DashboardPeriodOverview metrics={metrics} />
-      </div>
-    </CockpitRealtimeBoundary>
-  );
-}
-
 export async function CockpitCloserView({
   access,
   metrics,

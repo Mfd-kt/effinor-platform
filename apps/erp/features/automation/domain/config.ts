@@ -29,7 +29,6 @@ export type AutomationConfig = {
   slackDedupeWindowMs: number;
   /** Impact € estimé minimum pour déclencher Slack sur alerte warning (hors critical). */
   slackMinImpactEuroForWarning: number;
-  autoAssignConfirmateur: boolean;
   autoAssignCloser: boolean;
   /** Relance IA : brouillon uniquement (recommandé). */
   aiFollowUpDraftOnly: boolean;
@@ -44,7 +43,6 @@ export function getAutomationConfig(): AutomationConfig {
     slackSmartEnabled: envBool("AUTOMATION_SLACK_SMART_ENABLED", false),
     slackDedupeWindowMs: envInt("AUTOMATION_SLACK_DEDUPE_WINDOW_MS", 4 * 60 * 60 * 1000),
     slackMinImpactEuroForWarning: envEuro("AUTOMATION_SLACK_MIN_IMPACT_EUR", 5_000),
-    autoAssignConfirmateur: envBool("AUTOMATION_AUTO_ASSIGN_CONFIRMATEUR", true),
     autoAssignCloser: envBool("AUTOMATION_AUTO_ASSIGN_CLOSER", true),
     aiFollowUpDraftOnly: envBool("AUTOMATION_AI_FOLLOWUP_DRAFT_ONLY", true),
     aiFollowUpAutoSend: envBool("AUTOMATION_AI_FOLLOWUP_AUTO_SEND", false),

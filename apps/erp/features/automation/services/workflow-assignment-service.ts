@@ -10,14 +10,10 @@ export type UserLoad = { userId: string; load: number };
 export async function computeAssignmentLoad(
   supabase: Supabase,
   userId: string,
-  role: "confirmateur" | "closer",
+  role: "closer",
 ): Promise<number> {
-  const col =
-    role === "confirmateur" ? "assigned_confirmateur_user_id" : "assigned_closer_user_id";
-  const statuses =
-    role === "confirmateur"
-      ? ["to_confirm", "simulation_done"]
-      : ["to_close", "agreement_sent", "quote_pending"];
+  const col = "assigned_closer_user_id";
+  const statuses = ["to_close", "agreement_sent", "quote_pending"];
 
   const { count, error } = await supabase
     .from("lead_sheet_workflows")
@@ -36,7 +32,7 @@ export async function computeAssignmentLoad(
 export async function computeAssignmentLoadsForUsers(
   supabase: Supabase,
   userIds: string[],
-  role: "confirmateur" | "closer",
+  role: "closer",
 ): Promise<UserLoad[]> {
   const loads = await Promise.all(
     userIds.map(async (userId) => ({

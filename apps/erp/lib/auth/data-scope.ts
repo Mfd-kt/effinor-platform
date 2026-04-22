@@ -230,7 +230,7 @@ export function shouldRestrictTechnicalVisitsToCreator(access: AccessContext): b
 }
 
 /**
- * Liste VT : filtrer sur l'auteur uniquement (permissions DB ou confirmateur historique).
+ * Liste VT : filtrer sur l'auteur uniquement (permissions DB).
  */
 export function shouldRestrictTechnicalVisitsToCreatorOnly(access: AccessContext): boolean {
   if (access.kind !== "authenticated") {

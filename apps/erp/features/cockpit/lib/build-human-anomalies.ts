@@ -13,13 +13,6 @@ export function buildHumanAnomalies(input: {
     treatedWeek: number;
     leadsWeek: number;
   }[];
-  confirmateurs: {
-    userId: string;
-    displayName: string;
-    email: string | null;
-    backlog: number;
-    avgBacklogAgeDays: number | null;
-  }[];
   closers: {
     userId: string;
     displayName: string;
@@ -30,8 +23,6 @@ export function buildHumanAnomalies(input: {
   }[];
   /** Paris calendar date YYYY-MM-DD */
   todayParis: string;
- /** Logs: confirmateur a qualifié au moins un dossier aujourd'hui */
-  confirmateurQualifiedToday: Set<string>;
 }): CockpitHumanAnomaly[] {
   const out: CockpitHumanAnomaly[] = [];
 
@@ -69,51 +60,6 @@ export function buildHumanAnomalies(input: {
         level: "warning",
         dossiersHref: "/leads",
         priorityScore: ps,
-      });
-    }
-  }
-
-  for (const c of input.confirmateurs) {
-    if (c.backlog >= 10) {
-      const ps = computeCockpitPriority({ valueCents: 0, backlogCount: c.backlog });
-      out.push({
-        id: `hum:conf-backlog-${c.userId}`,
-        userId: c.userId,
-        displayName: c.displayName,
-        email: c.email,
-        role: "confirmateur",
-        problem: `Backlog élevé : ${c.backlog} dossiers en attente.`,
-        level: c.backlog >= 16 ? "critique" : "warning",
-        dossiersHref: "/leads",
-        priorityScore: ps,
-      });
-    }
-    if (!input.confirmateurQualifiedToday.has(c.userId) && c.backlog >= 3) {
-      const ps = computeCockpitPriority({ valueCents: 0, backlogCount: c.backlog });
-      out.push({
-        id: `hum:conf-noday-${c.userId}`,
-        userId: c.userId,
-        displayName: c.displayName,
-        email: c.email,
-        role: "confirmateur",
-        problem: "Aucun dossier qualifié aujourd’hui malgré du stock.",
-        level: "warning",
-        dossiersHref: "/leads",
-        priorityScore: ps - 100,
-      });
-    }
-    if (c.avgBacklogAgeDays != null && c.avgBacklogAgeDays >= 9) {
-      const ps = computeCockpitPriority({ valueCents: 0, backlogCount: c.backlog });
-      out.push({
-        id: `hum:conf-slow-${c.userId}`,
-        userId: c.userId,
-        displayName: c.displayName,
-        email: c.email,
-        role: "confirmateur",
-        problem: `Temps moyen en file confirmateur trop élevé (~${c.avgBacklogAgeDays} j).`,
-        level: "critique",
-        dossiersHref: "/leads",
-        priorityScore: ps + 500,
       });
     }
   }

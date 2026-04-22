@@ -20,7 +20,7 @@ export function allDestratProductCodes(): string[] {
   return Object.values(MODEL_PRODUCT_CODE);
 }
 
-/** Produit catalogue PAC affiché poste agent / confirmateur (aligné sur les seeds SQL). */
+/** Produit catalogue PAC affiché poste agent (aligné sur les seeds SQL). */
 export const AGENT_PAC_CATALOG_PRODUCT_CODE = "bosch_pac_air_eau";
 
 /** Catalogue chargé pour le quick simulateur agent (déstrat + PAC). */

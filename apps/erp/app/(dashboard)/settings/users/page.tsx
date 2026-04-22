@@ -15,7 +15,7 @@ export default async function SettingsUsersPage() {
         title="Réglages — Utilisateurs"
         description={
           teamManagerOnly
-            ? "Créer des comptes pour votre équipe (rôles agent, confirmateur ou closer) et consulter les membres rattachés à vos équipes. Les actions sensibles restent réservées au super administrateur."
+            ? "Créer des comptes pour votre équipe (rôles agent ou closer) et consulter les membres rattachés à vos équipes. Les actions sensibles restent réservées au super administrateur."
             : "Créer des comptes, ouvrir un profil pour modifier nom/e-mail/coordonnées et piloter le cycle de vie (pause, désactivation définitive, suppression opérationnelle)."
         }
       />
