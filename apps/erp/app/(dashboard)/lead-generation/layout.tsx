@@ -29,11 +29,5 @@ export default async function LeadGenerationLayout({ children }: { children: Rea
     settings: hub,
   };
 
-  return (
-    <div className="lead-gen-premium -m-6 min-h-full bg-background text-foreground antialiased lg:-m-8">
-      <div className="px-6 py-6 lg:px-8 lg:py-8">
-        <LeadGenShell access={tabsAccess}>{children}</LeadGenShell>
-      </div>
-    </div>
-  );
+  return <LeadGenShell access={tabsAccess}>{children}</LeadGenShell>;
 }

@@ -120,8 +120,8 @@ type LeadGenShellProps = {
  * - Barre d'onglets style « underline » (Linear / Vercel)
  * - Visibilité par onglet pilotée par les permissions calculées côté serveur
  *
- * Le thème anthracite premium (`.lead-gen-premium`) reste appliqué par
- * `app/(dashboard)/lead-generation/layout.tsx`.
+ * Le thème ERP global (light + dark toggle) s'applique partout — plus de
+ * thème anthracite scopé.
  */
 export function LeadGenShell({ access, children }: LeadGenShellProps) {
   const pathname = usePathname() ?? "/lead-generation";

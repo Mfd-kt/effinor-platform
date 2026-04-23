@@ -33,6 +33,11 @@ import { ROLE_LABEL_FR, type AppRoleCode } from "@/lib/auth/role-codes";
 
 type ImpersonationPickerProps = {
   roleOptions: { code: string; label: string }[];
+  /** Mode contrôlé : ouverture pilotée depuis l'extérieur (ex. dropdown profil). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Si vrai, masque le bouton trigger interne (utile en mode contrôlé). */
+  hideTrigger?: boolean;
 };
 
 function roleLabel(code: string): string {
@@ -42,9 +47,19 @@ function roleLabel(code: string): string {
   return code;
 }
 
-export function ImpersonationPicker({ roleOptions }: ImpersonationPickerProps) {
+export function ImpersonationPicker({
+  roleOptions,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+}: ImpersonationPickerProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (onOpenChange) onOpenChange(next);
+    if (controlledOpen === undefined) setUncontrolledOpen(next);
+  };
   const [q, setQ] = useState("");
   const [roleCode, setRoleCode] = useState<string>("");
   const [rows, setRows] = useState<ImpersonationSearchRow[]>([]);
@@ -95,13 +110,15 @@ export function ImpersonationPicker({ roleOptions }: ImpersonationPickerProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5">
-          <UserRoundSearch className="size-4 shrink-0" />
-          <span className="hidden sm:inline">Se connecter en tant que</span>
-          <span className="sm:hidden">Impersonation</span>
-        </Button>
-      </DialogTrigger>
+      {hideTrigger ? null : (
+        <DialogTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5">
+            <UserRoundSearch className="size-4 shrink-0" />
+            <span className="hidden sm:inline">Se connecter en tant que</span>
+            <span className="sm:hidden">Impersonation</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Impersonation (super administrateur)</DialogTitle>

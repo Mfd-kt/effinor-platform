@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Poppins, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 
 import { RuntimeSupabaseScript } from "@/components/runtime-supabase-script";
+import { THEME_COOKIE } from "@/components/layout/theme-toggle";
 
 import "./globals.css";
 
@@ -39,15 +41,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
+
   return (
     <html
       lang="fr"
-      className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${poppins.variable} ${geistMono.variable} h-full antialiased ${theme === "dark" ? "dark" : ""}`}
+      data-theme={theme}
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
         <RuntimeSupabaseScript />

@@ -1,16 +1,18 @@
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AiOpsAgentFloatingButton } from "@/components/layout/ai-ops-agent-floating-button";
-import { AppHeader } from "@/components/layout/app-header";
-import { AppProfileDock } from "@/components/layout/app-profile-dock";
-import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
+import { AppCommandPalette } from "@/components/layout/app-command-palette";
+import { AppFooter } from "@/components/layout/app-footer";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { AppShell } from "@/components/shared/app-shell";
+import { AppTopbar } from "@/components/layout/app-topbar";
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
+import { SidebarProvider, SIDEBAR_COOKIE_NAME } from "@/components/layout/sidebar-context";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { buildAllowedNavHrefs } from "@/lib/auth/navigation";
 import { canAccessCloserWorkspace } from "@/lib/auth/module-access";
-import { isSuperAdmin } from "@/lib/auth/role-codes";
+import { isSuperAdmin, ROLE_LABEL_FR, isAppRoleCode } from "@/lib/auth/role-codes";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
@@ -63,32 +65,47 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     access.kind === "authenticated" && canAccessCloserWorkspace(access);
 
   const userEmail = profileRow?.email ?? user.email ?? "";
+  const roleCodes = access.kind === "authenticated" ? access.roleCodes : [];
+
+  /** Premier rôle « visible » comme libellé sous l'avatar (fallback : email). */
+  const primaryRoleCode = roleCodes.find((c) => isAppRoleCode(c) && c !== "super_admin");
+  const roleLabel = primaryRoleCode && isAppRoleCode(primaryRoleCode)
+    ? ROLE_LABEL_FR[primaryRoleCode]
+    : null;
+
+  const cookieStore = await cookies();
+  const initialCollapsed = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value === "1";
 
   return (
-    <>
-      <AppShell
-        topBanner={topBanner}
-        sidebar={<AppSidebar allowedNavHrefs={allowedNavHrefs} />}
-        header={
-          <AppHeader
+    <SidebarProvider initialCollapsed={initialCollapsed}>
+      <div className="flex h-screen min-h-screen w-full bg-background text-foreground">
+        <AppSidebar
+          roleCodes={roleCodes}
+          allowedNavHrefs={allowedNavHrefs}
+          user={{
+            userEmail,
+            displayName: profileRow?.full_name ?? null,
+            avatarUrl: profileRow?.avatar_url ?? null,
+            roleLabel,
+            isImpersonating,
+            canImpersonate: actorIsSuperAdmin,
+            impersonationRoleOptions,
+          }}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {topBanner}
+          <AppTopbar
             userId={effectiveId}
-            allowedNavHrefs={allowedNavHrefs}
-            actorIsSuperAdmin={actorIsSuperAdmin}
-            isImpersonating={isImpersonating}
-            impersonationRoleOptions={impersonationRoleOptions}
             includeCloserLeadReminders={includeCloserLeadReminders}
           />
-        }
-      >
-        {children}
-      </AppShell>
-      <AppProfileDock
-        userEmail={userEmail}
-        displayName={profileRow?.full_name ?? null}
-        avatarUrl={profileRow?.avatar_url ?? null}
-        isImpersonating={isImpersonating}
-      />
+          <main className="flex-1 overflow-auto px-4 py-6 md:px-6 md:py-6 lg:px-8 lg:py-8">
+            {children}
+          </main>
+          <AppFooter />
+        </div>
+      </div>
+      <AppCommandPalette roleCodes={roleCodes} allowedNavHrefs={allowedNavHrefs} />
       <AiOpsAgentFloatingButton userId={effectiveId} />
-    </>
+    </SidebarProvider>
   );
 }

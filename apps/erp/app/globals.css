@@ -49,28 +49,27 @@
 }
 
 /*
- * Thème aligné sur apps/website (global-design-system.css) :
- * primaire = bleu marine slate, CTA / marque = vert émeraude #10B981, accent = ambre #F59E0B.
- * PDF étude / présentation / accord : `features/leads/study-pdf/study-pdf-theme.ts` (hex + Inter/Poppins).
+ * Thème SaaS pro (Linear / Attio / Vercel) — light par défaut, fond #FAFAFA.
+ * Marque émeraude conservée. Le toggle topbar applique `.dark` sur <html>.
  */
 :root {
-  --background: oklch(0.985 0.002 247.86);
-  --foreground: oklch(0.278 0.018 258.4);
+  --background: oklch(0.985 0.001 286);
+  --foreground: oklch(0.21 0.018 264);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.278 0.018 258.4);
+  --card-foreground: oklch(0.21 0.018 264);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.278 0.018 258.4);
+  --popover-foreground: oklch(0.21 0.018 264);
   --primary: oklch(0.696 0.149 162.48);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.967 0.003 264.5);
-  --secondary-foreground: oklch(0.278 0.018 258.4);
-  --muted: oklch(0.967 0.003 264.5);
-  --muted-foreground: oklch(0.551 0.027 264.4);
+  --secondary: oklch(0.972 0.004 264);
+  --secondary-foreground: oklch(0.21 0.018 264);
+  --muted: oklch(0.967 0.003 264);
+  --muted-foreground: oklch(0.51 0.024 264);
   --accent: oklch(0.962 0.044 156.74);
   --accent-foreground: oklch(0.393 0.095 152.54);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.925 0.005 264.5);
-  --input: oklch(0.925 0.005 264.5);
+  --border: oklch(0.918 0.005 264);
+  --input: oklch(0.918 0.005 264);
   --ring: oklch(0.696 0.149 162.48);
   --chart-1: oklch(0.696 0.149 162.48);
   --chart-2: oklch(0.427 0.084 240);
@@ -78,44 +77,14 @@
   --chart-4: oklch(0.35 0.05 265);
   --chart-5: oklch(0.55 0.08 175);
   --radius: 0.5rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.278 0.018 258.4);
+  --sidebar: oklch(0.99 0.001 286);
+  --sidebar-foreground: oklch(0.21 0.018 264);
   --sidebar-primary: oklch(0.696 0.149 162.48);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.962 0.044 156.74);
   --sidebar-accent-foreground: oklch(0.393 0.095 152.54);
-  --sidebar-border: oklch(0.925 0.005 264.5);
+  --sidebar-border: oklch(0.918 0.005 264);
   --sidebar-ring: oklch(0.696 0.149 162.48);
-}
-
-/*
- * Zone Lead Generation : anthracite premium (Linear / Vercel),
- * accent marque = primaire émeraude inchangé en teinte, neutres resserrés.
- */
-.lead-gen-premium {
-  --background: oklch(0.2 0.018 260);
-  --foreground: oklch(0.96 0.012 260);
-  --card: oklch(0.245 0.02 260);
-  --card-foreground: oklch(0.96 0.012 260);
-  --popover: oklch(0.265 0.022 260);
-  --popover-foreground: oklch(0.96 0.012 260);
-  --primary: oklch(0.72 0.132 162.48);
-  --primary-foreground: oklch(0.16 0.028 260);
-  --secondary: oklch(0.3 0.022 260);
-  --secondary-foreground: oklch(0.93 0.01 260);
-  --muted: oklch(0.3 0.02 260);
-  --muted-foreground: oklch(0.62 0.022 260);
-  --accent: oklch(0.34 0.045 160);
-  --accent-foreground: oklch(0.9 0.05 156);
-  --destructive: oklch(0.66 0.19 22);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 11%);
-  --ring: oklch(0.72 0.132 162.48);
-  --chart-1: oklch(0.72 0.132 162.48);
-  --chart-2: oklch(0.62 0.08 240);
-  --chart-3: oklch(0.78 0.12 70);
-  --chart-4: oklch(0.52 0.04 265);
-  --chart-5: oklch(0.58 0.09 175);
 }
 
 .dark {
@@ -161,6 +130,10 @@
   }
   html {
     @apply font-sans;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   h1,
   h2,
