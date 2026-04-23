@@ -268,9 +268,15 @@ export function StartLeboncoinImportModal() {
             >
               Annuler
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="size-4 animate-spin" />}
-              Lancer l&apos;import
+            <Button type="submit" disabled={isPending} className="gap-2">
+              {isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Lancement…
+                </>
+              ) : (
+                "Lancer l'import"
+              )}
             </Button>
           </DialogFooter>
         </form>

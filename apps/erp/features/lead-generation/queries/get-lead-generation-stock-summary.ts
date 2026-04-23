@@ -1,9 +1,11 @@
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 
 import { lgTable } from "../lib/lg-db";
 
 import { applyLeadGenerationStockFilters } from "./apply-lead-generation-stock-filters";
-import type { GetLeadGenerationStockFilters } from "./get-lead-generation-stock";
+import { stableStockFiltersKey, type GetLeadGenerationStockFilters } from "./get-lead-generation-stock";
 
 const STOCK_STATUS_KEYS = [
   "new",
@@ -24,12 +26,11 @@ export type LeadGenerationStockSummary = {
   byDispatchQueue: Partial<Record<(typeof DISPATCH_QUEUE_KEYS)[number], number>>;
 };
 
-/**
- * Compte total et répartition par statuts (mêmes filtres que la liste).
- */
-export async function getLeadGenerationStockSummary(
-  filters: GetLeadGenerationStockFilters | undefined,
+async function getLeadGenerationStockSummaryImpl(
+  filterKey: string,
 ): Promise<LeadGenerationStockSummary> {
+  const filters: GetLeadGenerationStockFilters | undefined =
+    filterKey === "null" ? undefined : (JSON.parse(filterKey) as GetLeadGenerationStockFilters);
   const supabase = await createClient();
   const stock = lgTable(supabase, "lead_generation_stock");
 
@@ -68,4 +69,17 @@ export async function getLeadGenerationStockSummary(
     byStockStatus,
     byDispatchQueue,
   };
+}
+
+const getLeadGenerationStockSummaryCached = cache((filterKey: string) =>
+  getLeadGenerationStockSummaryImpl(filterKey),
+);
+
+/**
+ * Compte total et répartition par statuts (mêmes filtres que la liste).
+ */
+export async function getLeadGenerationStockSummary(
+  filters: GetLeadGenerationStockFilters | undefined,
+): Promise<LeadGenerationStockSummary> {
+  return getLeadGenerationStockSummaryCached(stableStockFiltersKey(filters));
 }

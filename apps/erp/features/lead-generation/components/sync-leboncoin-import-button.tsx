@@ -68,13 +68,18 @@ export function SyncLeboncoinImportButton({ batchId, size = "sm", variant = "out
   }
 
   return (
-    <Button size={size} variant={variant} onClick={handleClick} disabled={isPending}>
+    <Button size={size} variant={variant} onClick={handleClick} disabled={isPending} className="gap-2">
       {isPending ? (
-        <Loader2 className="size-4 animate-spin" />
+        <>
+          <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          Synchronisation…
+        </>
       ) : (
-        <RefreshCw className="size-4" />
+        <>
+          <RefreshCw className="size-4 shrink-0" aria-hidden />
+          Actualiser
+        </>
       )}
-      Actualiser
     </Button>
   );
 }

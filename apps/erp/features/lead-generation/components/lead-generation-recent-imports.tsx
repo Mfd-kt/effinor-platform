@@ -1,6 +1,7 @@
-import { CheckCircle2, Clock, Loader2, MinusCircle, XCircle, type LucideIcon } from "lucide-react";
+import { CheckCircle2, Clock, Inbox, Loader2, MinusCircle, XCircle, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import {
   Table,
@@ -57,9 +58,19 @@ type Props = {
 export function LeadGenerationRecentImports({ rows }: Props) {
   if (rows.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-        Aucun import récent. Lancez un scraping ci-dessus pour alimenter le stock.
-      </p>
+      <EmptyState
+        title="Aucun import pour le moment"
+        description="Utilisez le bouton de lancement en haut de page pour lancer un scraping Le Bon Coin. Les lots apparaîtront ici dès la création."
+        icon={<Inbox className="size-10" aria-hidden />}
+        action={
+          <p className="text-center text-xs text-muted-foreground">
+            Raccourci :{" "}
+            <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/lead-generation/imports" prefetch>
+              page Imports
+            </Link>
+          </p>
+        }
+      />
     );
   }
 

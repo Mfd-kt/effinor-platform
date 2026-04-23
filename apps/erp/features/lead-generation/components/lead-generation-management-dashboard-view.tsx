@@ -20,6 +20,7 @@ import { LEADERBOARD_MIN_QUALIFICATION_EVENTS } from "../lib/rank-lead-generatio
 import type { LeadGenerationManagementDashboard } from "../queries/get-lead-generation-management-dashboard";
 
 import { LeadGenerationManagementDashboardFilters } from "./lead-generation-management-dashboard-filters";
+import { LeadGenerationPilotageKpiCard } from "./lead-generation-pilotage-kpi-card";
 
 function pct(v: number | null | undefined): string {
   if (v == null || Number.isNaN(v)) {
@@ -91,16 +92,36 @@ export function LeadGenerationManagementDashboardView({ data, embedded = false }
           piloter la qualification. Plus de détails dans <span className="font-medium text-foreground">Analytics</span>.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <KpiCard label="À traiter (file actuelle)" value={overview.toQualifyNow} hint="Fiches encore à qualifier" />
-          <KpiCard label="Qualifiés (période)" value={overview.qualifiedInPeriod} hint="Décisions « Qualifier »" />
-          <KpiCard label="Hors cible (période)" value={overview.outOfTargetInPeriod} hint="Quantif. + pilotage" />
-          <KpiCard
+          <LeadGenerationPilotageKpiCard
+            label="À traiter (file actuelle)"
+            value={overview.toQualifyNow}
+            hint="Fiches encore à qualifier"
+            tooltip="Fiches en attente de qualification (statuts requis) dans le périmètre : à traiter maintenant, hors doublon et conversion."
+          />
+          <LeadGenerationPilotageKpiCard
+            label="Qualifiés (période)"
+            value={overview.qualifiedInPeriod}
+            hint="Décisions « Qualifier »"
+            tooltip="Retours requalificateur : décisions explicites « Qualifier » sur la période, dans le filtre période et quantificateur."
+          />
+          <LeadGenerationPilotageKpiCard
+            label="Hors cible (période)"
+            value={overview.outOfTargetInPeriod}
+            hint="Quantif. + pilotage"
+            tooltip="Décisions « hors cible » côté quantification ou pilotage (hors cible) sur la période."
+          />
+          <LeadGenerationPilotageKpiCard
             label="Taux de qualification"
             value={pct(overview.qualifyRatePercent)}
             hint="Qualif. / (qualif. + hors cible)"
             isText
+            tooltip="Part des fiches classées « Qualifier » sur le total des décisions binaires (qualif + hors cible) sur la période."
           />
-          <KpiCard label="Lots créés (période)" value={overview.batchesCreatedInPeriod} />
+          <LeadGenerationPilotageKpiCard
+            label="Lots créés (période)"
+            value={overview.batchesCreatedInPeriod}
+            tooltip="Nombre de lots d’import (batch) créés dans l’intervalle, selon le filtre période."
+          />
         </div>
       </section>
 

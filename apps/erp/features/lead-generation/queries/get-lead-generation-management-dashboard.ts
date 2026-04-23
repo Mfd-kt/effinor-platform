@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 
 import type { Json } from "../domain/json";
@@ -438,7 +440,7 @@ function accumulateStock(
   }
 }
 
-export async function getLeadGenerationManagementDashboard(
+async function getLeadGenerationManagementDashboardImpl(
   filters: ManagementDashboardFilters,
 ): Promise<LeadGenerationManagementDashboard> {
   const supabase = await createClient();
@@ -840,4 +842,19 @@ export async function getLeadGenerationManagementDashboard(
       ceeSheets: ceeOpts,
     },
   };
+}
+
+const getLeadGenerationManagementDashboardCached = cache(
+  (period: ManagementDashboardPeriod, quantifierUserId: string | null, ceeSheetId: string | null) =>
+    getLeadGenerationManagementDashboardImpl({ period, quantifierUserId, ceeSheetId }),
+);
+
+export async function getLeadGenerationManagementDashboard(
+  filters: ManagementDashboardFilters,
+): Promise<LeadGenerationManagementDashboard> {
+  return getLeadGenerationManagementDashboardCached(
+    filters.period,
+    filters.quantifierUserId ?? null,
+    filters.ceeSheetId ?? null,
+  );
 }

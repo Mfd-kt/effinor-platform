@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 
 import { lgTable } from "../lib/lg-db";
@@ -26,9 +28,7 @@ export type GetImportBatchesKpisParams = {
  * et on dérive le 1er du mois côté serveur (UTC) — suffisant pour un KPI
  * indicatif. La précision « Europe/Paris » sera affinée si besoin métier.
  */
-export async function getImportBatchesKpis(
-  params?: GetImportBatchesKpisParams,
-): Promise<ImportBatchesKpis> {
+async function getImportBatchesKpisImpl(params?: { createdByUserId?: string | null }): Promise<ImportBatchesKpis> {
   const supabase = await createClient();
   const batches = () => lgTable(supabase, "lead_generation_import_batches");
 
@@ -79,4 +79,22 @@ export async function getImportBatchesKpis(
     monthCompleted: monthCompleted.count ?? 0,
     monthFailed: monthFailed.count ?? 0,
   };
+}
+
+const getImportBatchesKpisCached = cache(
+  (ownerKey: string) =>
+    getImportBatchesKpisImpl({
+      createdByUserId: ownerKey === "all" ? null : ownerKey,
+    }),
+);
+
+/**
+ * Même requêtes que l’ancienne export — wrapper `cache` pour requêtes RSC en parallèle
+ * (ex. bannière KPI + page imports).
+ */
+export async function getImportBatchesKpis(
+  params?: GetImportBatchesKpisParams,
+): Promise<ImportBatchesKpis> {
+  const createdBy = params?.createdByUserId?.trim();
+  return getImportBatchesKpisCached(createdBy ? createdBy : "all");
 }

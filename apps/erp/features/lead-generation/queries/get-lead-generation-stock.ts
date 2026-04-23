@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 
 import type { LeadGenerationStockRow } from "../domain/stock-row";
@@ -82,11 +84,22 @@ export type LeadGenerationStockListItem = Pick<
 const LIST_SELECT = `id, import_batch_id, source, company_name, email, website, city, stock_status, qualification_status, normalized_phone, target_score, created_at, enrichment_status, enrichment_confidence, commercial_score, commercial_priority, dispatch_queue_status, dispatch_queue_reason, dispatch_queue_rank, lead_tier, premium_score, decision_maker_name, decision_maker_confidence, has_linkedin, linkedin_url, closing_readiness_status, closing_readiness_score, current_assignment:lead_generation_assignments!lead_generation_stock_current_assignment_id_fkey(recycle_status,agent_id,agent:profiles!lead_generation_assignments_agent_id_fkey(full_name,email))`;
 
 /**
- * Liste le stock avec filtres optionnels et pagination.
+ * Clé stable pour le cache React (dédoublonnage requêtes RSC en parallèle).
  */
-export async function getLeadGenerationStock(
-  params?: GetLeadGenerationStockParams,
+export function stableStockFiltersKey(f: GetLeadGenerationStockFilters | undefined): string {
+  if (f == null) {
+    return "null";
+  }
+  return JSON.stringify(f);
+}
+
+async function getLeadGenerationStockImpl(
+  filterKey: string,
+  limit: number,
+  offset: number,
 ): Promise<LeadGenerationStockListItem[]> {
+  const f: GetLeadGenerationStockFilters | undefined =
+    filterKey === "null" ? undefined : (JSON.parse(filterKey) as GetLeadGenerationStockFilters);
   const supabase = await createClient();
   try {
     await repairOrphanLeadGenerationAssignments({ limit: 200 });
@@ -97,10 +110,6 @@ export async function getLeadGenerationStock(
     );
   }
   const stock = lgTable(supabase, "lead_generation_stock");
-
-  const limit = params?.limit ?? 50;
-  const offset = params?.offset ?? 0;
-  const f = params?.filters;
 
   let q = stock
     .select(LIST_SELECT)
@@ -136,4 +145,19 @@ export async function getLeadGenerationStock(
       assigned_agent_display_name: agentName,
     } as LeadGenerationStockListItem;
   });
+}
+
+const getLeadGenerationStockCached = cache(
+  (filterKey: string, limit: number, offset: number) => getLeadGenerationStockImpl(filterKey, limit, offset),
+);
+
+/**
+ * Liste le stock avec filtres optionnels et pagination.
+ */
+export async function getLeadGenerationStock(
+  params?: GetLeadGenerationStockParams,
+): Promise<LeadGenerationStockListItem[]> {
+  const limit = params?.limit ?? 50;
+  const offset = params?.offset ?? 0;
+  return getLeadGenerationStockCached(stableStockFiltersKey(params?.filters), limit, offset);
 }

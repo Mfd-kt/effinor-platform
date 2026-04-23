@@ -1,5 +1,10 @@
 "use client";
 
+import { Building2 } from "lucide-react";
+import Link from "next/link";
+
+import { EmptyState } from "@/components/shared/empty-state";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadGenerationStockSummaryStrip } from "@/features/lead-generation/components/lead-generation-stock-summary-strip";
 import { LeadGenerationStockTable } from "@/features/lead-generation/components/lead-generation-stock-table";
 import type { LeadGenerationListSearchState } from "@/features/lead-generation/lib/build-lead-generation-list-url";
@@ -44,9 +49,26 @@ export function LeadGenerationStockListView({
       />
 
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
-          {emptyHint ?? "Aucune fiche pour ces critères."}
-        </p>
+        emptyHint ? (
+          <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
+            {emptyHint}
+          </p>
+        ) : (
+          <EmptyState
+            title="Aucune fiche dans le stock"
+            description="Lancez un import Le Bon Coin pour alimenter votre carnet de prospection, puis revenez ici pour qualifier et dispatcher."
+            icon={<Building2 className="size-10" aria-hidden />}
+            action={
+              <Link
+                href="/lead-generation/imports"
+                className={buttonVariants({ size: "default" })}
+                prefetch
+              >
+                Lancer / suivre un import
+              </Link>
+            }
+          />
+        )
       ) : (
         <div className="overflow-x-auto">
           <LeadGenerationStockTable rows={rows} />

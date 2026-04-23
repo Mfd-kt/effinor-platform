@@ -1,27 +1,16 @@
 import { Filter, Wrench } from "lucide-react";
-import Link from "next/link";
+import { Suspense } from "react";
 
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { KpiCardSkeletonGrid } from "@/components/shared/kpi-card-skeleton";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { LeadGenerationDuplicateScanPanel } from "@/features/lead-generation/components/lead-generation-duplicate-scan-panel";
 import { LeadGenerationFilters } from "@/features/lead-generation/components/lead-generation-filters";
-import { LeadGenerationStockKpis } from "@/features/lead-generation/components/lead-generation-stock-kpis";
-import { LeadGenerationStockListView } from "@/features/lead-generation/components/lead-generation-stock-list-view";
-import {
-  buildLeadGenerationStockPageUrl,
-  type LeadGenerationListSearchState,
-} from "@/features/lead-generation/lib/build-lead-generation-list-url";
-import {
-  getLeadGenerationStock,
-  type GetLeadGenerationStockFilters,
-} from "@/features/lead-generation/queries/get-lead-generation-stock";
-import {
-  getLeadGenerationStockSummary,
-  type LeadGenerationStockSummary,
-} from "@/features/lead-generation/queries/get-lead-generation-stock-summary";
-import { cn } from "@/lib/utils";
+import { LeadGenerationStockListBlockAsync } from "@/features/lead-generation/components/lead-generation-stock-list-block-async";
+import { LeadGenerationStockKpisSectionAsync } from "@/features/lead-generation/components/lead-generation-stock-kpis-section-async";
+import { type LeadGenerationListSearchState } from "@/features/lead-generation/lib/build-lead-generation-list-url";
+import { type GetLeadGenerationStockFilters } from "@/features/lead-generation/queries/get-lead-generation-stock";
 
-const PAGE_SIZE = 50;
 const STOCK_FORM_ACTION = "/lead-generation";
 
 function spStr(sp: Record<string, string | string[] | undefined>, key: string): string | undefined {
@@ -33,7 +22,7 @@ type Props = {
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-export async function LeadGenerationHubStockSection({ searchParams: sp }: Props) {
+export function LeadGenerationHubStockSection({ searchParams: sp }: Props) {
   const company_search = spStr(sp, "company_search");
   const stock_status = spStr(sp, "stock_status");
   const qualification_status = spStr(sp, "qualification_status");
@@ -57,7 +46,6 @@ export async function LeadGenerationHubStockSection({ searchParams: sp }: Props)
       ? filtreRaw
       : undefined;
   const page = Math.max(1, parseInt(pageRaw ?? "1", 10) || 1);
-  const offset = (page - 1) * PAGE_SIZE;
 
   const filters: LeadGenerationListSearchState = {
     company_search,
@@ -113,31 +101,6 @@ export async function LeadGenerationHubStockSection({ searchParams: sp }: Props)
   const activeDispatchChip =
     filtre === "pret" ? "ready_now" : filtre === "enrichir" ? "enrich_first" : filterPayload.dispatch_queue_status;
 
-  let rows: Awaited<ReturnType<typeof getLeadGenerationStock>>;
-  let summary: LeadGenerationStockSummary;
-  try {
-    ;[rows, summary] = await Promise.all([
-      getLeadGenerationStock({
-        filters: filtersForQuery,
-        limit: PAGE_SIZE,
-        offset,
-      }),
-      getLeadGenerationStockSummary(filtersForQuery),
-    ]);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Erreur lors du chargement du stock.";
-    return (
-      <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-        {message}
-      </p>
-    );
-  }
-
-  const hasPrev = page > 1;
-  const hasNext = rows.length === PAGE_SIZE;
-  const prevHref = hasPrev ? buildLeadGenerationStockPageUrl({ ...filters, page: page - 1 }) : null;
-  const nextHref = hasNext ? buildLeadGenerationStockPageUrl({ ...filters, page: page + 1 }) : null;
-
   const activeFilterCount = Object.keys(filterPayload).length;
   const hasActiveFilters = activeFilterCount > 0;
 
@@ -158,7 +121,12 @@ export async function LeadGenerationHubStockSection({ searchParams: sp }: Props)
 
   return (
     <div className="space-y-6">
-      <LeadGenerationStockKpis summary={summary} filtered={hasActiveFilters} />
+      <Suspense fallback={<KpiCardSkeletonGrid count={4} />}>
+        <LeadGenerationStockKpisSectionAsync
+          filtersForQuery={filtersForQuery}
+          hasActiveFilters={hasActiveFilters}
+        />
+      </Suspense>
 
       <CollapsibleSection
         title="Filtres"
@@ -181,30 +149,21 @@ export async function LeadGenerationHubStockSection({ searchParams: sp }: Props)
         </p>
       ) : null}
 
-      <LeadGenerationStockListView
-        rows={rows}
-        summary={summary}
-        page={page}
-        pageSize={PAGE_SIZE}
-        linkBase={linkBase}
-        activeStockChip={activeStockChip}
-        activeDispatchChip={activeDispatchChip}
-      />
-
-      {(hasPrev || hasNext) && (
-        <div className="flex flex-wrap gap-2">
-          {hasPrev && prevHref ? (
-            <Link href={prevHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-              Précédent
-            </Link>
-          ) : null}
-          {hasNext && nextHref ? (
-            <Link href={nextHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-              Suivant
-            </Link>
-          ) : null}
-        </div>
-      )}
+      <Suspense fallback={<TableSkeleton rows={5} cols={6} />}>
+        <LeadGenerationStockListBlockAsync
+          filters={filters}
+          filtersForQuery={filtersForQuery}
+          page={page}
+          linkBase={linkBase}
+          activeStockChip={activeStockChip}
+          activeDispatchChip={activeDispatchChip}
+          listEmptyHint={
+            hasActiveFilters
+              ? "Aucune fiche ne correspond à ces critères. Ajustez les filtres ou le lot."
+              : undefined
+          }
+        />
+      </Suspense>
 
       <CollapsibleSection
         title="Outils avancés"

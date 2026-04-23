@@ -1,12 +1,15 @@
-import { Filter } from "lucide-react";
+import { Filter, History } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { ImportBatchesFilters } from "@/features/lead-generation/components/import-batches-filters";
-import { ImportBatchesKpis } from "@/features/lead-generation/components/import-batches-kpis";
+import { KpiCardSkeletonGrid } from "@/components/shared/kpi-card-skeleton";
+import { ImportBatchesKpisSectionAsync } from "@/features/lead-generation/components/import-batches-kpis-section-async";
 import { ImportBatchesTable } from "@/features/lead-generation/components/import-batches-table";
 import { LeadGenerationRecentImports } from "@/features/lead-generation/components/lead-generation-recent-imports";
 import { StartLeboncoinImportModal } from "@/features/lead-generation/components/start-leboncoin-import-modal";
@@ -14,7 +17,6 @@ import {
   buildImportBatchesListUrl,
   type ImportBatchesListSearchState,
 } from "@/features/lead-generation/lib/build-import-batches-list-url";
-import { getImportBatchesKpis, type ImportBatchesKpis as ImportBatchesKpisType } from "@/features/lead-generation/queries/get-import-batches-kpis";
 import { getLeadGenerationImportBatches } from "@/features/lead-generation/queries/get-lead-generation-import-batches";
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
@@ -30,13 +32,6 @@ export const maxDuration = 300;
 
 const PAGE_SIZE = 50;
 const RECENT_IMPORTS = 5;
-
-const FALLBACK_KPIS: ImportBatchesKpisType = {
-  active: 0,
-  monthTotal: 0,
-  monthCompleted: 0,
-  monthFailed: 0,
-};
 
 function spStr(sp: Record<string, string | string[] | undefined>, key: string): string | undefined {
   const v = sp[key];
@@ -79,14 +74,11 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
   const createdByFilter = quantifierOnly ? { created_by_user_id: access.userId } : {};
   const kpiOwner = quantifierOnly ? access.userId : null;
 
-  const [recentForPreview, kpis] = await Promise.all([
-    getLeadGenerationImportBatches({
-      limit: RECENT_IMPORTS,
-      offset: 0,
-      filters: quantifierOnly ? createdByFilter : undefined,
-    }).catch(() => [] as Awaited<ReturnType<typeof getLeadGenerationImportBatches>>),
-    getImportBatchesKpis({ createdByUserId: kpiOwner }).catch(() => FALLBACK_KPIS),
-  ]);
+  const recentForPreview = await getLeadGenerationImportBatches({
+    limit: RECENT_IMPORTS,
+    offset: 0,
+    filters: quantifierOnly ? createdByFilter : undefined,
+  }).catch(() => [] as Awaited<ReturnType<typeof getLeadGenerationImportBatches>>);
 
   const listFilters =
     hasActiveFilters || quantifierOnly ? { ...filterPayload, ...createdByFilter } : undefined;
@@ -131,7 +123,9 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
         actions={<StartLeboncoinImportModal />}
       />
 
-      <ImportBatchesKpis kpis={kpis} scopedToMe={quantifierOnly} />
+      <Suspense fallback={<KpiCardSkeletonGrid count={4} />}>
+        <ImportBatchesKpisSectionAsync kpiOwner={kpiOwner} quantifierOnly={quantifierOnly} />
+      </Suspense>
 
       <section className="space-y-3">
         <header className="flex items-baseline justify-between gap-3">
@@ -170,11 +164,15 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
           </p>
         </div>
         {rows.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-            {hasActiveFilters
-              ? "Aucun import ne correspond à ces filtres. Ajustez les critères ci-dessus."
-              : "Aucun import pour le moment. Lancez un scraping Le Bon Coin avec le bouton ci-dessus."}
-          </p>
+          <EmptyState
+            title={hasActiveFilters ? "Aucun lot ne correspond à ces filtres" : "Aucun import enregistré"}
+            description={
+              hasActiveFilters
+                ? "Ajustez l’état d’import ou les autres critères du panneau Filtres."
+                : "Lancez un scraping Le Bon Coin avec le bouton en haut de page — l’historique de vos lots s’affichera ici."
+            }
+            icon={<History className="size-10" aria-hidden />}
+          />
         ) : (
           <ImportBatchesTable rows={rows} />
         )}

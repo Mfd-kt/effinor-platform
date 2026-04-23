@@ -39,6 +39,7 @@ export function LeadGenerationStockKpis({ summary, filtered }: Props) {
             ? "Nombre de fiches correspondant aux filtres actifs."
             : "Toutes les fiches actuellement dans le carnet."
         }
+        tooltip="Comptage côté stock avec les mêmes filtres que le tableau (pagination non incluse) : volume total de lignes en scope."
         icon={<Database className="size-4" aria-hidden />}
       />
       <StatCard
@@ -49,6 +50,7 @@ export function LeadGenerationStockKpis({ summary, filtered }: Props) {
             ? "Aucune fiche immédiatement contactable."
             : "Fiches qualifiées prêtes pour le terrain."
         }
+        tooltip="Fiches dont le statut de file (dispatch) est « prêts maintenant » : priorité terrain."
         icon={<Zap className="size-4" aria-hidden />}
       />
       <StatCard
@@ -59,6 +61,7 @@ export function LeadGenerationStockKpis({ summary, filtered }: Props) {
             ? "Aucune fiche en attente d'enrichissement."
             : "Fiches à compléter avant diffusion (contact, qualif…)."
         }
+        tooltip="Fiches dont la file indique d’enrichir les contacts ou la fiche avant diffusion."
         icon={<Sparkles className="size-4" aria-hidden />}
       />
       <StatCard
@@ -69,6 +72,7 @@ export function LeadGenerationStockKpis({ summary, filtered }: Props) {
             ? "Aucune conversion enregistrée."
             : "Fiches passées en lead/CRM."
         }
+        tooltip="Fiches stock dont le statut indique qu’une conversion (lead) a été enregistrée sur le stock courant filtré."
         icon={<CheckCircle2 className="size-4" aria-hidden />}
       />
     </section>

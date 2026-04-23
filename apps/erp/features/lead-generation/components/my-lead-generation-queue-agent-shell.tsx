@@ -2,7 +2,9 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ClipboardList } from "lucide-react";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
@@ -364,13 +366,22 @@ export function MyLeadGenerationQueueAgentShell({
           </div>
 
           {filteredTableRows.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-              {itemsInCeeScope.length === 0
-                ? isNoCeeSelected
-                  ? "Aucun contact dans ce périmètre. Récupérez des fiches disponibles ci-dessous si des places restent."
-                  : "Aucun contact dans votre file pour ce produit. Utilisez le bouton de récupération si des fiches sont disponibles."
-                : "Aucune ligne ne correspond à ce filtre."}
-            </p>
+            itemsInCeeScope.length === 0 ? (
+              <EmptyState
+                className="py-10"
+                title="Aucune fiche à traiter"
+                description={
+                  isNoCeeSelected
+                    ? "Aucun contact dans ce périmètre. Récupérez des fiches disponibles via le panneau plus bas si le plafond le permet."
+                    : "Aucun contact sur ce produit. Utilisez le bouton de récupération dans la section du bas s’il reste des fiches côté stock."
+                }
+                icon={<ClipboardList className="size-10" aria-hidden />}
+              />
+            ) : (
+              <p className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                Aucune ligne ne correspond à ce filtre.
+              </p>
+            )
           ) : (
             <MyLeadGenerationQueueTable
               items={filteredTableRows}

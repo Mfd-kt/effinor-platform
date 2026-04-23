@@ -1,19 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { PageHeader } from "@/components/shared/page-header";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { MyLeadGenerationQueueAgentShell } from "@/features/lead-generation/components/my-lead-generation-queue-agent-shell";
-import { MyQueueCapacityBanner } from "@/features/lead-generation/components/my-queue-capacity-banner";
+import { MyQueueWithCapacityShellAsync } from "@/features/lead-generation/components/my-queue-with-capacity-shell-async";
 import { MyQueueEmptyQueueToast } from "@/features/lead-generation/components/my-queue-empty-queue-toast";
-import {
-  type AgentCommercialCapacityViewModel,
-  computeAgentCommercialCapacity,
-} from "@/features/lead-generation/lib/agent-commercial-capacity";
-import { getLeadGenerationDispatchPolicy } from "@/features/lead-generation/lib/agent-dispatch-policy";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getLeadGenerationMyQueueCeeSheetOptions } from "@/features/lead-generation/queries/get-lead-generation-my-queue-cee-sheet-options";
 import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
-import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/auth/access-context";
 import {
   canAccessLeadGenerationMyQueue,
@@ -49,21 +45,6 @@ export default async function MyLeadGenerationQueuePage({ searchParams }: PagePr
     ceeSheetOptions = [];
   }
 
-  let effectiveStockCap = 15;
-  let commercialCapacity: AgentCommercialCapacityViewModel = { ok: false };
-  const supabase = await createClient();
-  try {
-    const dispatchPolicy = await getLeadGenerationDispatchPolicy(supabase, access.userId);
-    effectiveStockCap = dispatchPolicy.effectiveStockCap;
-  } catch {
-    effectiveStockCap = 15;
-  }
-  try {
-    commercialCapacity = { ok: true, snapshot: await computeAgentCommercialCapacity(supabase, access.userId) };
-  } catch {
-    commercialCapacity = { ok: false };
-  }
-
   return (
     <div className="space-y-8">
       {showQueueEmptyToast ? <MyQueueEmptyQueueToast /> : null}
@@ -79,19 +60,24 @@ export default async function MyLeadGenerationQueuePage({ searchParams }: PagePr
         }
       />
 
-      <MyQueueCapacityBanner
-        commercialCapacity={commercialCapacity}
-        effectiveStockCap={effectiveStockCap}
-        queueLength={items.length}
-      />
-
-      <MyLeadGenerationQueueAgentShell
-        items={items}
-        ceeSheetOptions={ceeSheetOptions}
-        viewerUserId={access.userId}
-        effectiveStockCap={effectiveStockCap}
-        commercialCapacity={commercialCapacity}
-      />
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <div className="grid gap-3 lg:grid-cols-[2fr_1fr_1fr]">
+              <Skeleton className="h-32 w-full rounded-lg" />
+              <Skeleton className="h-32 w-full rounded-lg" />
+              <Skeleton className="h-32 w-full rounded-lg" />
+            </div>
+            <TableSkeleton rows={5} cols={5} />
+          </div>
+        }
+      >
+        <MyQueueWithCapacityShellAsync
+          userId={access.userId}
+          items={items}
+          ceeSheetOptions={ceeSheetOptions}
+        />
+      </Suspense>
     </div>
   );
 }

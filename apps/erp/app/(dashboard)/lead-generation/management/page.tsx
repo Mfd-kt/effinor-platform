@@ -1,21 +1,22 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { KpiCardSkeletonGrid } from "@/components/shared/kpi-card-skeleton";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { LeadGenerationAnalyticsDashboard } from "@/features/lead-generation/components/lead-generation-analytics-dashboard";
 import { LeadGenerationCockpitDashboard } from "@/features/lead-generation/components/lead-generation-cockpit-dashboard";
 import { LeadGenerationCockpitFilters } from "@/features/lead-generation/components/lead-generation-cockpit-filters";
-import { LeadGenerationManagementDashboardView } from "@/features/lead-generation/components/lead-generation-management-dashboard-view";
+import { LeadGenerationManagementSuiviContent } from "@/features/lead-generation/components/lead-generation-management-suivi-content";
 import { LeadGenerationTeamPilotageShell } from "@/features/lead-generation/components/lead-generation-team-pilotage-shell";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { LeadGenerationCockpitFilters as CockpitFilters } from "@/features/lead-generation/domain/lead-generation-cockpit";
 import { buildTeamPilotageTabHrefs } from "@/features/lead-generation/lib/team-pilotage-url";
 import { loadLeadGenerationCockpit } from "@/features/lead-generation/queries/load-lead-generation-cockpit";
 import { getLeadGenerationAssignableAgents } from "@/features/lead-generation/queries/get-lead-generation-assignable-agents";
-import {
-  getLeadGenerationManagementDashboard,
-  type ManagementDashboardPeriod,
-} from "@/features/lead-generation/queries/get-lead-generation-management-dashboard";
+import type { ManagementDashboardPeriod } from "@/features/lead-generation/queries/get-lead-generation-management-dashboard";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationManagementDashboard } from "@/lib/auth/module-access";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -103,12 +104,6 @@ export default async function LeadGenerationManagementPage({
   const quantifierUserId = qRaw && UUID_RE.test(qRaw) ? qRaw : null;
   const ceeSheetId = ceeRaw && UUID_RE.test(ceeRaw) ? ceeRaw : null;
 
-  const data = await getLeadGenerationManagementDashboard({
-    period,
-    quantifierUserId,
-    ceeSheetId,
-  });
-
   return (
     <LeadGenerationTeamPilotageShell
       activeView="suivi"
@@ -116,7 +111,30 @@ export default async function LeadGenerationManagementPage({
       cockpitHref={cockpitHref}
       analyticsHref={analyticsHref}
     >
-      <LeadGenerationManagementDashboardView data={data} embedded />
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <KpiCardSkeletonGrid count={5} />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-48" />
+              <TableSkeleton rows={4} cols={4} />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-56" />
+              <div className={cn("grid gap-3 sm:grid-cols-2 lg:grid-cols-3")}>
+                <Skeleton className="h-24 w-full rounded-lg" />
+                <Skeleton className="h-24 w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
+        }
+      >
+        <LeadGenerationManagementSuiviContent
+          period={period}
+          quantifierUserId={quantifierUserId}
+          ceeSheetId={ceeSheetId}
+        />
+      </Suspense>
     </LeadGenerationTeamPilotageShell>
   );
 }

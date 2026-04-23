@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Inbox, Package, Settings, Target, type LucideIcon } from "lucide-react";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export type LeadGenTabKey = "stock" | "imports" | "my-queue" | "management" | "settings";
@@ -129,6 +130,7 @@ export function LeadGenShell({ access, children }: LeadGenShellProps) {
   const visibleTabs = TAB_DEFINITIONS.filter((tab) => pickAccess(access, tab.key));
 
   return (
+    <TooltipProvider delayDuration={0}>
     <div className="mx-auto w-full max-w-7xl space-y-8">
       <header className="space-y-2">
         <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
@@ -179,5 +181,6 @@ export function LeadGenShell({ access, children }: LeadGenShellProps) {
 
       <div className="space-y-6">{children}</div>
     </div>
+    </TooltipProvider>
   );
 }

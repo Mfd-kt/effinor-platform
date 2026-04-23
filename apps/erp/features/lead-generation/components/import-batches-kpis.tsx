@@ -46,6 +46,7 @@ export function ImportBatchesKpis({ kpis, scopedToMe }: Props) {
               ? "1 lot est en cours ou en attente de synchro."
               : `${kpis.active} lots sont en cours ou en attente de synchro.`
         }
+        tooltip="Compte des lots dont le statut est « en attente » ou « en cours » (Apify / synchro) — période et périmètre appliqués (vos lots si scope quantificateur)."
         icon={<Activity className="size-4" aria-hidden />}
       />
       <StatCard
@@ -56,6 +57,7 @@ export function ImportBatchesKpis({ kpis, scopedToMe }: Props) {
             ? "Aucun lot lancé depuis le 1er du mois."
             : `${kpis.monthCompleted} terminé${kpis.monthCompleted > 1 ? "s" : ""} · ${kpis.monthFailed} en échec.`
         }
+        tooltip="Volume de lots créés depuis le 1er du mois (UTC) — indépendant du statut final."
         icon={<CalendarRange className="size-4" aria-hidden />}
       />
       <StatCard
@@ -66,12 +68,14 @@ export function ImportBatchesKpis({ kpis, scopedToMe }: Props) {
             ? "Aucun lot terminé ce mois pour calculer le taux."
             : `${kpis.monthCompleted} succès sur ${finishedThisMonth} lots terminés.`
         }
+        tooltip="Lots en « terminé » (completed) / lots terminés (terminés + échoués) sur le mois en cours, indicateur de fiabilité."
         icon={<Target className="size-4" aria-hidden />}
       />
       <StatCard
         title="Quota téléphones LBC"
         value="—"
         hint="Intégration quota Apify à venir (plafond 10 000 / mois)."
+        tooltip="Réservé : suivi conso téléphones côté Apify (plafond prévu 10 000 / mois) — raccord en cours côté produit."
         icon={<PhoneCall className="size-4" aria-hidden />}
       />
     </section>
