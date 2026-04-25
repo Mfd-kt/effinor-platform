@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Archive, Loader2, Save, Send, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
+import { ImageUploader } from "../../components/image-uploader"
 import {
   archiveRealisationAction,
   createRealisationAction,
@@ -494,24 +495,13 @@ export function RealisationForm({ realisation }: RealisationFormProps) {
           {/* Image cover */}
           <div className="space-y-3 rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold">Image de couverture</h3>
-            <div className="space-y-1.5">
-              <label
-                className="text-xs text-muted-foreground"
-                htmlFor="r-cover"
-              >
-                URL de l&apos;image
-              </label>
-              <input
-                id="r-cover"
-                type="url"
-                value={form.cover_image_url ?? ""}
-                onChange={(e) =>
-                  set("cover_image_url", e.target.value || null)
-                }
-                placeholder="https://..."
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
+            <ImageUploader
+              folder="realisations"
+              entityId={realisation?.id}
+              value={form.cover_image_url ?? null}
+              onChange={(url) => set("cover_image_url", url)}
+              hint="Photo principale du chantier — 16/9 recommandé"
+            />
             {form.cover_image_url ? (
               <div className="space-y-1.5">
                 <label

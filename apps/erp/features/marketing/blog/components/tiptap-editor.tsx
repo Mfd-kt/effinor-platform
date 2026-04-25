@@ -5,7 +5,6 @@ import {
   Code,
   Heading2,
   Heading3,
-  Image as ImageIcon,
   Italic,
   Link2,
   List,
@@ -26,12 +25,20 @@ import StarterKit from "@tiptap/starter-kit"
 
 import { cn } from "@/lib/utils"
 
+import { TipTapImageUpload } from "./tiptap-image-upload"
+
 interface TipTapEditorProps {
   content?: Record<string, unknown> | null
   onChange: (html: string, json: Record<string, unknown>) => void
   placeholder?: string
   className?: string
   editable?: boolean
+  /**
+   * ID de l'article. Permet de scoper l'upload d'images TipTap dans
+   * le sous-dossier marketing-media/blog/{entityId}/.
+   * Si omis, l'upload va dans marketing-media/blog/new/.
+   */
+  entityId?: string
 }
 
 interface ToolbarButtonProps {
@@ -75,6 +82,7 @@ export function TipTapEditor({
   placeholder = "Commencez à écrire votre article…",
   className,
   editable = true,
+  entityId,
 }: TipTapEditorProps) {
   const editor = useEditor({
     // Next.js 15+/16 SSR : éviter le mismatch d'hydratation
@@ -137,9 +145,7 @@ export function TipTapEditor({
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run()
   }
 
-  const addImage = () => {
-    const url = window.prompt("URL de l'image :")
-    if (!url) return
+  const insertImage = (url: string) => {
     editor.chain().focus().setImage({ src: url }).run()
   }
 
@@ -249,9 +255,7 @@ export function TipTapEditor({
             <Link2 className="h-4 w-4" />
           </ToolbarButton>
 
-          <ToolbarButton onClick={addImage} title="Insérer une image par URL">
-            <ImageIcon className="h-4 w-4" />
-          </ToolbarButton>
+          <TipTapImageUpload entityId={entityId} onInsert={insertImage} />
 
           <div className="mx-1 h-5 w-px bg-border" />
 
