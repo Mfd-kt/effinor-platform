@@ -27,7 +27,6 @@ COPY package.json package-lock.json ./
 COPY apps/erp/package.json apps/erp/
 COPY apps/website/package.json apps/website/
 COPY apps/landing-pac/package.json apps/landing-pac/
-COPY apps/landing-destratification/package.json apps/landing-destratification/
 COPY packages/ui/package.json packages/ui/
 COPY packages/lib/package.json packages/lib/
 

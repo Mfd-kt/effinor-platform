@@ -13,8 +13,7 @@
     "dev:erp:alt": "PORT=3005 npm run dev -w @effinor/erp",
     "dev:landing:luminaires": "npm run dev -w @effinor/landing-luminaires",
     "dev:landing:pac": "npm run dev -w @effinor/landing-pac",
-    "dev:landing:destrat": "npm run dev -w @effinor/landing-destratification",
-    "dev:landing": "npm run dev:landing:luminaires",
+"dev:landing": "npm run dev:landing:luminaires",
     "build:website": "npm run build -w @effinor/website",
     "build:erp": "npm run build -w @effinor/erp"
   },
