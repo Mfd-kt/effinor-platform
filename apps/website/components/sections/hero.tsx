@@ -31,7 +31,7 @@ export function Hero() {
               Certifié RGE QualiPAC · Délégataire CEE
             </div>
 
-            <h1 className="mt-6 text-4xl font-bold leading-[1.05] tracking-tight text-primary-900 sm:text-5xl lg:text-6xl xl:text-7xl">
+            <h1 className="mt-6 text-4xl font-bold leading-[1.05] tracking-tight text-primary-900 sm:text-5xl lg:text-6xl">
               Votre rénovation énergétique,{' '}
               <span className="relative whitespace-nowrap">
                 <span className="relative text-secondary-600">
@@ -121,7 +121,7 @@ export function Hero() {
             </div>
 
             {/* Card stats flottante : économies */}
-            <div className="absolute -left-4 top-8 hidden rounded-2xl border border-border bg-card p-4 shadow-xl ring-1 ring-primary-900/5 lg:block">
+            <div className="absolute left-4 top-8 hidden rounded-2xl border border-border bg-card p-4 shadow-xl ring-1 ring-primary-900/5 lg:block">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary-500/10 text-secondary-700">
                   <ShieldCheck className="h-5 w-5" />
@@ -136,7 +136,7 @@ export function Hero() {
             </div>
 
             {/* Card stats flottante : aides */}
-            <div className="absolute -right-4 -bottom-4 rounded-2xl border border-border bg-card p-4 shadow-xl ring-1 ring-primary-900/5 sm:p-5">
+            <div className="absolute right-4 bottom-4 rounded-2xl border border-border bg-card p-4 shadow-xl ring-1 ring-primary-900/5 sm:p-5">
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-500/10 text-accent-700 sm:h-14 sm:w-14">
                   <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
