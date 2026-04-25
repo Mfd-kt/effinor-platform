@@ -26,7 +26,10 @@ const styles: Record<NonNullable<ButtonProps["variant"]>, CSSProperties> = {
   },
 };
 
-/** Bouton partagé Effinor — exemple minimal pour valider le monorepo. */
+/**
+ * @deprecated Utiliser Button depuis @effinor/design-system.
+ * Ce composant utilise des styles inline hors charte et sera supprimé.
+ */
 export function Button({ children, variant = "primary", style, ...props }: ButtonProps) {
   return (
     <button type="button" style={{ ...styles[variant], ...style }} {...props}>
