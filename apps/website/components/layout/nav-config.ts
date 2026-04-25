@@ -38,6 +38,7 @@ export const mainNav: NavItem[] = [
       },
     ],
   },
+  { label: 'Réalisations', href: '/realisations' },
   { label: 'Blog', href: '/blog' },
   { label: 'À propos', href: '/a-propos' },
   { label: 'Contact', href: '/contact' },
