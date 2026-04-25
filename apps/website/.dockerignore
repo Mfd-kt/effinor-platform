@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Development
+*.local
+.env*.local
+
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# Tests
+coverage/
+.nyc_output/
+
+# Git
+.git/
+.gitignore
+
+# Misc
+*.tsbuildinfo
+README.md
+CHANGELOG.md
