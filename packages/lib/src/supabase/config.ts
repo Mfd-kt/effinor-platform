@@ -46,8 +46,8 @@ function getEnvObject(): Record<string, string | undefined> {
   // Vite (browser + SSR)
   const viteEnv: Record<string, string | undefined> =
     typeof import.meta !== 'undefined' &&
-    (import.meta as { env?: Record<string, string> }).env
-      ? (import.meta as { env: Record<string, string> }).env
+    (import.meta as unknown as { env?: Record<string, string> }).env
+      ? (import.meta as unknown as { env: Record<string, string> }).env
       : {}
 
   // Priorité : Next.js (process.env) écrase Vite si les deux sont présents
