@@ -37,7 +37,7 @@ export function ServiceHero({
             </p>
 
             {benefitTagline && (
-              <p className="mt-6 inline-flex items-center rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">
+              <p className="mt-6 inline-flex items-center rounded-full bg-secondary-50 px-3 py-1.5 text-sm font-semibold text-secondary-700 ring-1 ring-secondary-200">
                 {benefitTagline}
               </p>
             )}
@@ -64,7 +64,6 @@ export function ServiceHero({
               alt={imageAlt}
               fill
               priority
-              quality={85}
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />

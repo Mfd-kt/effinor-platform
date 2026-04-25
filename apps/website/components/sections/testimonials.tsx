@@ -37,7 +37,7 @@ export function Testimonials() {
                     className={
                       i < testimonial.rating
                         ? 'h-4 w-4 fill-accent-500 text-accent-500'
-                        : 'h-4 w-4 text-gray-300'
+                        : 'h-4 w-4 text-muted-foreground/40'
                     }
                     aria-hidden="true"
                   />

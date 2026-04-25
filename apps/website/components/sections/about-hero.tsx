@@ -30,7 +30,6 @@ export function AboutHero() {
               alt="Équipe Effinor au travail sur une installation de pompe à chaleur"
               fill
               priority
-              quality={85}
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
