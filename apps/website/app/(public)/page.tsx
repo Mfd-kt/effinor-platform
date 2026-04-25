@@ -2,7 +2,7 @@ import { Button, Container, Section } from '@effinor/design-system'
 
 export default function HomePage() {
   return (
-    <main>
+    <>
       <Section variant="hero" spacing="xl">
         <Container size="hero">
           <p className="text-secondary-300 text-sm font-semibold uppercase tracking-widest">
@@ -13,7 +13,7 @@ export default function HomePage() {
           </h1>
           <p className="text-xl mt-6 text-primary-200 max-w-content">
             Le scaffolding Next.js 16 fonctionne ✅. Design system intégré, fonts Geist chargées,
-            tokens CSS actifs. Prêt à recevoir les vraies pages.
+            tokens CSS actifs. Header et Footer en place.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button variant="accent" size="lg">
@@ -33,8 +33,8 @@ export default function HomePage() {
         <Container size="site">
           <h2 className="text-3xl font-semibold">Vérification du design system</h2>
           <p className="text-muted-foreground mt-2">
-            Cette page confirme que les tokens CSS, les composants partagés et la police Geist
-            sont correctement intégrés dans Next.js 16.
+            Cette page confirme que les tokens CSS, les composants partagés, la police Geist
+            ainsi que le Header et le Footer sont correctement intégrés.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
             <div className="rounded-lg bg-primary-50 p-6 border border-primary-200">
@@ -52,6 +52,6 @@ export default function HomePage() {
           </div>
         </Container>
       </Section>
-    </main>
+    </>
   )
 }
