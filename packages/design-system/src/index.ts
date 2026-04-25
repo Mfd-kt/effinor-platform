@@ -1,5 +1,10 @@
 // @effinor/design-system
 // Point d'entrée du design system partagé
-// Les exports seront ajoutés au fur et à mesure de la création des composants
 
-export {}
+// Utilitaires
+export { cn } from './lib/cn'
+
+// Fonts (re-export Geist pour Next.js)
+export { GeistSans, GeistMono } from './lib/fonts'
+
+// Les composants seront ajoutés à l'étape 2.3
