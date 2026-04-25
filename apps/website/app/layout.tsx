@@ -1,19 +1,65 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { GeistSans, GeistMono } from '@effinor/design-system'
+import { siteConfig } from '@/lib/site-config'
 import '../styles/globals.css'
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0F172A' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
   title: {
-    default: 'Effinor — Rénovation énergétique et CEE',
-    template: '%s | Effinor',
+    default: `${siteConfig.name} — ${siteConfig.tagline}`,
+    template: `%s | ${siteConfig.name}`,
   },
-  description:
-    "Effinor accompagne particuliers et professionnels dans leurs projets de rénovation énergétique : pompes à chaleur, système solaire combiné, rénovation globale.",
-  metadataBase: new URL('https://effinor.fr'),
+  description: siteConfig.description,
+  keywords: [
+    'rénovation énergétique',
+    'pompe à chaleur',
+    'CEE',
+    'MaPrimeRénov',
+    'certificats économie énergie',
+    'isolation',
+    'système solaire combiné',
+    'BAR-TH-174',
+    'aides rénovation',
+    'RGE QualiPAC',
+  ],
+  authors: [{ name: siteConfig.name, url: siteConfig.url }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
-    siteName: 'Effinor',
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    description: siteConfig.description,
+  },
+  twitter: {
+    card: 'summary',
+    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    description: siteConfig.description,
+  },
+  alternates: {
+    canonical: siteConfig.url,
   },
 }
 
