@@ -1,0 +1,14 @@
+/*
+ * apps/website - Styles globaux
+ *
+ * Import du design-system Effinor (tokens + reset + base)
+ * + directives Tailwind v4
+ */
+
+/* Tokens et reset depuis le design-system partagé */
+@import '@effinor/design-system/styles';
+
+/* Tailwind v4 directives */
+@import 'tailwindcss';
+
+/* Personnalisations spécifiques au website (si besoin plus tard) */
