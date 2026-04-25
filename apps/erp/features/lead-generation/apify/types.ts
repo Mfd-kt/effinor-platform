@@ -16,8 +16,10 @@ export type ApifyRunStatus =
 
 /** Codes de sources Apify actives dans l'ERP. */
 export type ApifySourceCode =
-  | "leboncoin_immobilier";
-  // Prochains : "pap", "pages_jaunes", "seloger"
+  | "leboncoin_immobilier"
+  | "pap"
+  | "pap_location";
+  // Prochains : "pages_jaunes", "seloger"
 
 /** Définition d'une source Apify dans le registry. */
 export type ApifySourceDefinition = {

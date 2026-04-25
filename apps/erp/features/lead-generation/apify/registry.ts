@@ -16,6 +16,22 @@ const DEFINITIONS: readonly ApifySourceDefinition[] = [
       "Annonces immobilières leboncoin.fr avec téléphones des vendeurs. Filtres : DPE, type de bien, surface, prix, localisation.",
     requiresCredentials: true,
   },
+  {
+    code: "pap",
+    label: "PAP.fr — Particuliers (Vente)",
+    actorId: "azzouzana/pap-fr-mass-products-scraper-by-search-url",
+    description:
+      "Annonces PAP.fr **vente maison** entre particuliers, avec téléphones inclus. Input : URL `pap.fr/annonce/vente-…`.",
+    requiresCredentials: false,
+  },
+  {
+    code: "pap_location",
+    label: "PAP.fr — Locations",
+    actorId: "azzouzana/pap-fr-mass-products-scraper-by-search-url",
+    description:
+      "Annonces PAP.fr **location maison** entre particuliers, avec téléphones inclus. Input : URL `pap.fr/annonce/location-…`. Filtre prix : loyer mensuel.",
+    requiresCredentials: false,
+  },
 ] as const;
 
 /** Liste toutes les sources Apify actives. */
