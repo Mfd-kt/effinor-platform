@@ -39,7 +39,8 @@ export const leboncoinImmobilierInputSchema = z
     adLimit: z.number().int().min(1).max(LBC_MAX_AD_LIMIT).default(500),
 
     // --- Téléphone (credentials injectés côté serveur) ---
-    includePhone: z.boolean().default(true),
+    // Default false : non supporté en mode recherche (cf. LBC_INCLUDE_PHONE_SUPPORTED).
+    includePhone: z.boolean().default(false),
     email: z.string().email().optional(),
     password: z.string().optional(),
 
@@ -55,8 +56,8 @@ export const leboncoinImmobilierInputSchema = z
     sortBy: z.enum(["time", "price", "relevance"]).default("time"),
     sortOrder: z.enum(["asc", "desc"]).default("desc"),
 
-    // --- Filtre vendeur (pro/particulier/tous) ---
-    seller_type: z.enum(["all", "pro", "pri"]).default("all"),
+    // --- Filtre vendeur (pro/particulier/tous) — Apify exige "private", pas "pri". ---
+    seller_type: z.enum(["all", "pro", "private"]).default("private"),
 
     // --- Amenities booléens ---
     elevator: z.boolean().optional(),

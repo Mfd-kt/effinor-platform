@@ -16,7 +16,7 @@ type Props = {
 };
 
 /**
- * Bouton "Actualiser" pour un batch Apify en cours.
+ * Bouton « Synchroniser » pour un batch Le Bon Coin (en cours ou terminé selon handler).
  * Appelle la Server Action de sync, affiche un toast avec le résultat.
  * La page se rafraîchit automatiquement via revalidatePath dans l'action.
  */
@@ -77,7 +77,7 @@ export function SyncLeboncoinImportButton({ batchId, size = "sm", variant = "out
       ) : (
         <>
           <RefreshCw className="size-4 shrink-0" aria-hidden />
-          Actualiser
+          Synchroniser
         </>
       )}
     </Button>

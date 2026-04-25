@@ -5,8 +5,10 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { LeadsTable } from "@/features/leads/components/leads-table";
 import { getLeads } from "@/features/leads/queries/get-leads";
+import { NewLeadFromSimulatorButton } from "@/features/simulator-cee/components/new-lead-from-simulator-button";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLostLeadsInbox } from "@/lib/auth/module-access";
+import { hasRole, isCloser, isSalesAgent } from "@/lib/auth/role-codes";
 import { cn } from "@/lib/utils";
 import { FolderKanban } from "lucide-react";
 
@@ -14,6 +16,11 @@ export default async function LeadsPage() {
   const access = await getAccessContext();
   const auth = access.kind === "authenticated" ? access : undefined;
   const showLostInbox = auth ? await canAccessLostLeadsInbox(auth) : false;
+  const canUseSimulator = auth
+    ? isSalesAgent(auth.roleCodes) ||
+      isCloser(auth.roleCodes) ||
+      hasRole(auth.roleCodes, "admin", "super_admin")
+    : false;
   let leads;
   try {
     leads = await getLeads(auth);
@@ -44,9 +51,13 @@ export default async function LeadsPage() {
                 Prospects perdus
               </Link>
             ) : null}
-            <Link href="/leads/new" className={cn(buttonVariants())}>
-              Nouveau lead
-            </Link>
+            {canUseSimulator ? (
+              <NewLeadFromSimulatorButton />
+            ) : (
+              <Link href="/leads/new" className={cn(buttonVariants())}>
+                Nouveau lead
+              </Link>
+            )}
           </>
         }
       />
@@ -57,9 +68,13 @@ export default async function LeadsPage() {
           description="Créez un premier lead pour alimenter le pipeline commercial."
           icon={<FolderKanban className="size-10 opacity-50" />}
           action={
-            <Link href="/leads/new" className={cn(buttonVariants())}>
-              Nouveau lead
-            </Link>
+            canUseSimulator ? (
+              <NewLeadFromSimulatorButton />
+            ) : (
+              <Link href="/leads/new" className={cn(buttonVariants())}>
+                Nouveau lead
+              </Link>
+            )
           }
         />
       ) : (

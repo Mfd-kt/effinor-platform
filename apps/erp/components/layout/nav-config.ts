@@ -1,4 +1,5 @@
 import {
+  Calculator,
   Home,
   Inbox,
   Settings,
@@ -80,6 +81,14 @@ export const NAV_SECTIONS: NavSection[] = [
         roles: ["sales_agent", "closer", "sales_director", "admin", "super_admin"],
         matchPrefixes: ["/leads", "/commercial-callbacks"],
         shortcut: "G C",
+      },
+      {
+        href: "/simulateur",
+        label: "Simulateur CEE",
+        icon: Calculator,
+        roles: ["sales_agent", "closer", "admin", "super_admin"],
+        matchPrefixes: ["/simulateur"],
+        shortcut: "G S",
       },
       {
         href: "/technical-visits",

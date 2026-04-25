@@ -40,14 +40,16 @@ const formSchema = z
     location: z.string().optional(),
     immobilierCategory: z.enum(["9", "10", "11", "13", "2001"]).default("9"),
     real_estate_type: z.array(z.enum(["1", "2", "3", "4", "5"])).default(["1"]),
-    seller_type: z.enum(["all", "pro", "pri"]).default("pri"),
+    seller_type: z.enum(["all", "pro", "private"]).default("private"),
     energy_rate: z.array(z.enum(["a", "b", "c", "d", "e", "f", "g"])).default(["d", "e", "f", "g"]),
     price_min_filter: z.coerce.number().int().min(0).optional(),
     price_max_filter: z.coerce.number().int().min(0).optional(),
     rooms_min: z.coerce.number().int().min(1).max(8).optional(),
 
     adLimit: z.coerce.number().int().min(1).max(2000).default(500),
-    includePhone: z.boolean().default(true),
+    // L'extraction de téléphones n'est supportée par l'acteur que sur des URLs
+    // d'annonces directes. En mode recherche, on force false (cf. start-import.ts).
+    includePhone: z.boolean().default(false),
   })
   .refine((d) => (d.mode === "url" ? Boolean(d.searchUrl) : Boolean(d.location)), {
     message: "URL requise en mode URL, ville/département requis en mode filtres",
@@ -67,10 +69,10 @@ export function StartLeboncoinImportModal() {
       mode: "filters",
       immobilierCategory: "9",
       real_estate_type: ["1"],
-      seller_type: "pri",
+      seller_type: "private",
       energy_rate: ["d", "e", "f", "g"],
       adLimit: 500,
-      includePhone: true,
+      includePhone: false,
     },
   });
 
@@ -123,9 +125,9 @@ export function StartLeboncoinImportModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" variant="outline">
           <Plus className="size-4" />
-          Nouvel import
+          Import Le Bon Coin
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
@@ -199,14 +201,14 @@ export function StartLeboncoinImportModal() {
                   <Select
                     value={form.watch("seller_type")}
                     onValueChange={(v) =>
-                      form.setValue("seller_type", v as "all" | "pro" | "pri")
+                      form.setValue("seller_type", v as "all" | "pro" | "private")
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pri">Particuliers uniquement</SelectItem>
+                      <SelectItem value="private">Particuliers uniquement</SelectItem>
                       <SelectItem value="pro">Professionnels</SelectItem>
                       <SelectItem value="all">Tous</SelectItem>
                     </SelectContent>
@@ -253,7 +255,9 @@ export function StartLeboncoinImportModal() {
                 <ul className="mt-1 list-inside list-disc text-xs text-emerald-800 dark:text-emerald-300">
                   <li>Type de bien : Maison individuelle</li>
                   <li>DPE : D, E, F, G (éligibles CEE)</li>
-                  <li>Téléphone : extraction activée</li>
+                  <li>
+                    Téléphone : non extrait en mode recherche (limitation de l&apos;acteur Apify)
+                  </li>
                 </ul>
               </div>
             </div>
