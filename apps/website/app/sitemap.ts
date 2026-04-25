@@ -1,22 +1,21 @@
 import type { MetadataRoute } from 'next'
+import { getAllBlogSlugs } from '@/lib/blog'
 import { siteConfig } from '@/lib/site-config'
 
 const BASE = siteConfig.url
 
 /**
- * Sitemap statique du site vitrine Effinor.
- * À enrichir dynamiquement quand le blog et les réalisations seront en place (Phase 4-5).
+ * Sitemap du site vitrine Effinor.
+ * - Routes statiques codées en dur
+ * - Routes blog dynamiques (alimentées depuis Supabase blog_articles
+ *   où status='published' et published_at <= now())
  */
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
+  const blogSlugs = await getAllBlogSlugs()
 
-  return [
-    {
-      url: BASE,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 1,
-    },
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: BASE, lastModified: now, changeFrequency: 'weekly', priority: 1 },
     {
       url: `${BASE}/services`,
       lastModified: now,
@@ -60,6 +59,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: `${BASE}/blog`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: `${BASE}/mentions-legales`,
       lastModified: now,
       changeFrequency: 'yearly',
@@ -78,4 +83,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.2,
     },
   ]
+
+  const blogRoutes: MetadataRoute.Sitemap = blogSlugs.map((slug) => ({
+    url: `${BASE}/blog/${slug}`,
+    lastModified: now,
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }))
+
+  return [...staticRoutes, ...blogRoutes]
 }
