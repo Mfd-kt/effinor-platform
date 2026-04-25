@@ -4,7 +4,7 @@ import { isCeeTeamManager } from "@/features/dashboard/queries/get-managed-teams
 
 import type { AccessContext } from "./access-context";
 import { getAccessContext } from "./access-context";
-import { isSalesDirector, isSuperAdmin } from "./role-codes";
+import { isMarketingStaff, isSalesDirector, isSuperAdmin } from "./role-codes";
 
 /**
  * Coupe l’accès aux pages réservées au super administrateur (404 si non autorisé).
@@ -47,4 +47,15 @@ export async function requireUsersSettingsAccess(): Promise<Extract<AccessContex
     return access;
   }
   notFound();
+}
+
+/**
+ * Module Marketing (blog + réalisations) : super_admin, admin, marketing_manager.
+ */
+export async function requireMarketingStaff(): Promise<Extract<AccessContext, { kind: "authenticated" }>> {
+  const access = await getAccessContext();
+  if (access.kind !== "authenticated" || !isMarketingStaff(access.roleCodes)) {
+    notFound();
+  }
+  return access;
 }

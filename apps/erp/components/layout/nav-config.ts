@@ -1,6 +1,8 @@
 import {
   Calculator,
+  FileText,
   Home,
+  ImageIcon,
   Inbox,
   Settings,
   Target,
@@ -112,6 +114,26 @@ export const NAV_SECTIONS: NavSection[] = [
         roles: "*",
         badgeKey: "notifsCount",
         shortcut: "G D",
+      },
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    items: [
+      {
+        href: "/marketing/blog",
+        label: "Articles de blog",
+        icon: FileText,
+        roles: ["admin", "super_admin", "marketing_manager"],
+        matchPrefixes: ["/marketing/blog"],
+      },
+      {
+        href: "/marketing/realisations",
+        label: "Réalisations",
+        icon: ImageIcon,
+        roles: ["admin", "super_admin", "marketing_manager"],
+        matchPrefixes: ["/marketing/realisations"],
       },
     ],
   },
