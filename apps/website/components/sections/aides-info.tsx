@@ -40,10 +40,10 @@ export function AidesInfo() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16 lg:items-center">
           {/* Colonne texte */}
           <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-secondary-600">
+            <p className="text-sm font-semibold uppercase tracking-widest text-secondary-700">
               Aides & financement
             </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-primary-900 sm:text-4xl lg:text-5xl">
               Profitez de toutes les aides cumulables en 2026
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
@@ -100,10 +100,10 @@ export function AidesInfo() {
               return (
                 <div
                   key={aide.title}
-                  className="rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+                  className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-secondary-300 hover:shadow-md"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary-50 text-secondary-700">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary-500/10 text-secondary-700 ring-1 ring-secondary-500/10">
                       <Icon className="h-6 w-6" />
                     </div>
                     <div className="flex-1">
