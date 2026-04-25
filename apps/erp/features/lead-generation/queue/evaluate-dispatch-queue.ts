@@ -3,8 +3,11 @@
  * Le plafond capacité agent (120) est appliqué au moment des attributions (`dispatch_lead_generation_stock_claim*`,
  * services TS `dispatch-lead-generation-stock`, round-robin auto-dispatch).
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { createClient } from "@/lib/supabase/server";
 
+import type { Database } from "@/types/database.types";
 import type { LeadGenerationStockRow } from "../domain/stock-row";
 import { lgTable } from "../lib/lg-db";
 import { isLeadGenerationStockOperational } from "../lib/lead-generation-operational-scope";
@@ -31,16 +34,19 @@ const BATCH_MAX = 100;
 
 export type EvaluateLeadGenerationDispatchQueueResult = LeadGenerationDispatchQueueDecision;
 
+type AppSupabase = SupabaseClient<Database>;
+
 /**
- * Charge la fiche, calcule la décision de file et persiste (action manuelle).
+ * Même logique que `evaluateLeadGenerationDispatchQueue`, avec un client Supabase imposé
+ * (ex. service_role pendant la sync PAP cron sans session).
  */
-export async function evaluateLeadGenerationDispatchQueue(input: {
-  stockId: string;
-}): Promise<{ stock: LeadGenerationStockRow; decision: LeadGenerationDispatchQueueDecision }> {
-  const supabase = await createClient();
+export async function evaluateLeadGenerationDispatchQueueWithClient(
+  supabase: AppSupabase,
+  stockId: string,
+): Promise<{ stock: LeadGenerationStockRow; decision: LeadGenerationDispatchQueueDecision }> {
   const stockTable = lgTable(supabase, "lead_generation_stock");
 
-  const { data: row, error } = await stockTable.select("*").eq("id", input.stockId).maybeSingle();
+  const { data: row, error } = await stockTable.select("*").eq("id", stockId).maybeSingle();
   if (error) {
     throw new Error(`Fiche stock : ${error.message}`);
   }
@@ -62,7 +68,7 @@ export async function evaluateLeadGenerationDispatchQueue(input: {
       dispatch_queue_rank: decision.dispatchQueueRank,
       dispatch_queue_evaluated_at: new Date().toISOString(),
     })
-    .eq("id", input.stockId);
+    .eq("id", stockId);
 
   if (upErr) {
     throw new Error(`Mise à jour file de dispatch : ${upErr.message}`);
@@ -80,16 +86,31 @@ export async function evaluateLeadGenerationDispatchQueue(input: {
   };
 }
 
-export async function evaluateLeadGenerationDispatchQueueBatch(stockIds: string[]): Promise<EvaluateLeadGenerationDispatchQueueBatchSummary> {
+/**
+ * Charge la fiche, calcule la décision de file et persiste (action manuelle).
+ */
+export async function evaluateLeadGenerationDispatchQueue(input: {
+  stockId: string;
+}): Promise<{ stock: LeadGenerationStockRow; decision: LeadGenerationDispatchQueueDecision }> {
+  const supabase = await createClient();
+  return evaluateLeadGenerationDispatchQueueWithClient(supabase, input.stockId);
+}
+
+export async function evaluateLeadGenerationDispatchQueueBatch(
+  stockIds: string[],
+  options?: { supabase?: AppSupabase },
+): Promise<EvaluateLeadGenerationDispatchQueueBatchSummary> {
   const capped = stockIds.slice(0, BATCH_MAX);
   const failedStockIds: string[] = [];
   let totalSucceeded = 0;
   let dispatchReadyNowCount = 0;
   let dispatchEnrichFirstCount = 0;
 
+  const supabase = options?.supabase ?? (await createClient());
+
   for (const stockId of capped) {
     try {
-      const { decision } = await evaluateLeadGenerationDispatchQueue({ stockId });
+      const { decision } = await evaluateLeadGenerationDispatchQueueWithClient(supabase, stockId);
       totalSucceeded += 1;
       if (decision.dispatchQueueStatus === "ready_now") {
         dispatchReadyNowCount += 1;

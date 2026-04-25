@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { syncLeboncoinImmobilierImport } from "@/features/lead-generation/apify/sources/leboncoin-immobilier/sync-import";
+import { syncPapImport } from "@/features/lead-generation/apify/sources/pap/sync-import";
+import { syncPapLocationImport } from "@/features/lead-generation/apify/sources/pap_location/sync-import";
 import type { ApifySourceCode } from "@/features/lead-generation/apify/types";
 import { verifyCronBearer } from "@/features/cron/domain/cron-http";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -19,8 +21,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /** Mapping source → handler de sync correspondant. */
 const SYNC_HANDLERS: Record<ApifySourceCode, (batchId: string) => Promise<unknown>> = {
   leboncoin_immobilier: syncLeboncoinImmobilierImport,
+  pap: syncPapImport,
+  pap_location: syncPapLocationImport,
   // Prochaines sources :
-  // pap: syncPapImport,
   // pages_jaunes: syncPagesJaunesImport,
 };
 

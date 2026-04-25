@@ -1,44 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ExternalLink, Phone } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConvertAssignmentForm } from "@/features/lead-generation/components/convert-assignment-form";
-import { LeadGenerationEnrichStockButton } from "@/features/lead-generation/components/lead-generation-enrich-stock-button";
-import { LeadGenerationEnrichmentConfidenceBadge } from "@/features/lead-generation/components/lead-generation-enrichment-confidence-badge";
-import { LeadGenerationEnrichmentProvenanceNote } from "@/features/lead-generation/components/lead-generation-enrichment-provenance-note";
-import { LeadGenerationEnrichmentStatusBadge } from "@/features/lead-generation/components/lead-generation-enrichment-status-badge";
-import { LeadGenerationCommercialPriorityBadge } from "@/features/lead-generation/components/lead-generation-commercial-priority-badge";
-import { LeadGenerationCommercialScoreRecalcButton } from "@/features/lead-generation/components/lead-generation-commercial-score-recalc-button";
-import { LeadGenerationDispatchQueueBadge } from "@/features/lead-generation/components/lead-generation-dispatch-queue-badge";
-import { LeadGenerationDispatchQueueEvaluateButton } from "@/features/lead-generation/components/lead-generation-dispatch-queue-evaluate-button";
-import { LeadGenerationIdentifyDecisionMakerButton } from "@/features/lead-generation/components/lead-generation-identify-decision-maker-button";
-import {
-  LeadGenerationDecisionMakerConfidenceBadge,
-  LeadGenerationDecisionMakerIdentifiedBadge,
-  LeadGenerationPremiumLeadBadge,
-  LeadGenerationTierOutlineBadge,
-} from "@/features/lead-generation/components/lead-generation-premium-badges";
-import { LeadGenerationVerifySiteButton } from "@/features/lead-generation/components/lead-generation-verify-site-button";
-import { isEligibleForLeadGenerationEnrichment } from "@/features/lead-generation/enrichment/enrich-lead-generation-stock";
-import { isEligibleForVerifiedLeadGenerationEnrichment } from "@/features/lead-generation/enrichment/verified-enrichment-eligibility";
-import { formatDuplicateMatchReasonsForDisplay } from "@/features/lead-generation/dedup/duplicate-match-labels";
+import { LeadGenerationDeleteStockButton } from "@/features/lead-generation/components/lead-generation-delete-stock-button";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
 import { lgTable } from "@/features/lead-generation/lib/lg-db";
 import { leadGenerationConvertedStockMessage } from "@/features/lead-generation/lib/lead-generation-operational-scope";
-import { LeadGenerationCommercialActivitySection } from "@/features/lead-generation/components/lead-generation-commercial-activity-section";
-import { LeadGenerationRecyclingSection } from "@/features/lead-generation/components/lead-generation-recycling-section";
 import { getLeadGenerationAssignableAgents } from "@/features/lead-generation/queries/get-lead-generation-assignable-agents";
-import { getLeadGenerationStockActivities } from "@/features/lead-generation/queries/get-lead-generation-assignment-activities";
-import { getLeadGenerationAssignmentRecycleSnapshot } from "@/features/lead-generation/queries/get-lead-generation-assignment-recycle-snapshot";
-import { LeadGenerationClosingReadinessBadge } from "@/features/lead-generation/components/lead-generation-closing-readiness-badge";
-import { LeadGenerationCallReadinessCard } from "@/features/lead-generation/components/lead-generation-call-readiness-card";
-import { LeadGenerationDeleteStockButton } from "@/features/lead-generation/components/lead-generation-delete-stock-button";
-import { LeadGenerationQuickValidationPanel } from "@/features/lead-generation/components/lead-generation-quick-validation-panel";
-import { LeadGenerationManualReviewPanel } from "@/features/lead-generation/components/lead-generation-manual-review-panel";
-import { getLeadGenerationManualReviews } from "@/features/lead-generation/queries/get-lead-generation-manual-reviews";
 import { getLeadGenerationStockById } from "@/features/lead-generation/queries/get-lead-generation-stock-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
 import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
@@ -53,15 +26,32 @@ type PageProps = {
 };
 
 async function getAssignmentAgentId(assignmentId: string | null): Promise<string> {
-  if (!assignmentId) {
-    return "";
-  }
+  if (!assignmentId) return "";
   const supabase = await createClient();
   const { data } = await lgTable(supabase, "lead_generation_assignments")
     .select("agent_id")
     .eq("id", assignmentId)
     .maybeSingle();
   return (data as { agent_id: string } | null)?.agent_id ?? "";
+}
+
+const DPE_TONE: Record<string, string> = {
+  A: "bg-emerald-600 text-white",
+  B: "bg-emerald-500 text-white",
+  C: "bg-lime-500 text-white",
+  D: "bg-yellow-500 text-slate-900",
+  E: "bg-orange-500 text-white",
+  F: "bg-red-600 text-white",
+  G: "bg-rose-900 text-white",
+};
+
+function eur(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(n);
 }
 
 export default async function LeadGenerationStockDetailPage({ params }: PageProps) {
@@ -71,110 +61,46 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
   }
 
   const { id } = await params;
-  const [detail, agents, commercialActivities] = await Promise.all([
+  const [detail, agents] = await Promise.all([
     getLeadGenerationStockById(id),
     getLeadGenerationAssignableAgents(),
-    (async () => {
-      try {
-        return await getLeadGenerationStockActivities(id);
-      } catch {
-        return [];
-      }
-    })(),
   ]);
-  if (!detail) {
-    notFound();
-  }
+  if (!detail) notFound();
 
-  const { stock, import_batch } = detail;
-  if (stock.converted_lead_id) {
-    return (
-      <div className="mx-auto w-full max-w-4xl space-y-8">
-        <PageHeader
-          title={stock.company_name}
-          description="Fiche lead generation convertie"
-          actions={
-            <div className="flex flex-wrap items-end justify-end gap-2">
-              <Link href={`/leads/${stock.converted_lead_id}`} className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
-                Ouvrir la fiche prospect
-              </Link>
-              <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-                ← Fiches disponibles
-              </Link>
-            </div>
-          }
-        />
+  const { stock } = detail;
 
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-base">Fiche déjà convertie</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>{leadGenerationConvertedStockMessage()}</p>
-          </CardContent>
-        </Card>
+  // Champs immobilier — pas typés sur LeadGenerationStockRow mais présents en DB
+  // après migration `add_immobilier_columns_to_stock`. Cast contrôlé pour lecture.
+  const immo = stock as unknown as {
+    title: string | null;
+    source_url: string | null;
+    contact_name: string | null;
+    property_type: string | null;
+    surface_m2: number | null;
+    rooms: number | null;
+    bedrooms: number | null;
+    dpe_class: string | null;
+    ges_class: string | null;
+    price_eur: number | null;
+    listing_kind: "sale" | "rental" | null;
+    published_at: string | null;
+    is_professional: boolean | null;
+  };
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Informations de suivi</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-            <DetailRow label="Société" value={stock.company_name} />
-            <DetailRow label="Source" value={formatLeadGenerationSourceLabel(stock.source)} />
-            <DetailRow label="Code postal / Ville" value={[stock.postal_code, stock.city].filter(Boolean).join(" ") || "—"} />
-            <DetailRow label="Téléphone" value={stock.phone ?? "—"} />
-            <DetailRow label="Créée le" value={formatDateTimeFr(stock.created_at)} />
-            <DetailRow label="Importée le" value={stock.imported_at ? formatDateTimeFr(stock.imported_at) : "—"} />
-            {import_batch ? (
-              <DetailRow label="Import lié" value={import_batch.source_label ?? import_batch.source ?? "—"} />
-            ) : null}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  const duplicateRef =
-    stock.qualification_status === "duplicate" && stock.duplicate_of_stock_id
-      ? (await getLeadGenerationStockById(stock.duplicate_of_stock_id))?.stock ?? null
-      : null;
+  const phoneRaw = stock.phone ?? null;
+  const telHref = phoneRaw ? `tel:${phoneRaw.replace(/\s+/g, "")}` : null;
+  const cityLine = [stock.postal_code, stock.city].filter(Boolean).join(" ") || null;
+  const dpeUpper = immo.dpe_class?.toUpperCase() ?? null;
 
-  let manualReviews: Awaited<ReturnType<typeof getLeadGenerationManualReviews>> = [];
-  try {
-    manualReviews = await getLeadGenerationManualReviews(id);
-  } catch {
-    manualReviews = [];
-  }
-  let manualReviewerDisplayName: string | null = null;
-  if (stock.manually_reviewed_by_user_id) {
-    const supabase = await createClient();
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("full_name, email")
-      .eq("id", stock.manually_reviewed_by_user_id)
-      .maybeSingle();
-    if (prof) {
-      const p = prof as { full_name: string | null; email: string | null };
-      manualReviewerDisplayName = p.full_name?.trim() || p.email?.trim() || null;
-    }
-  }
-
-  let recycleSnapshot = null;
-  try {
-    recycleSnapshot = await getLeadGenerationAssignmentRecycleSnapshot(stock.current_assignment_id);
-  } catch {
-    recycleSnapshot = null;
-  }
   const defaultAgentId = await getAssignmentAgentId(stock.current_assignment_id);
-  const enrichElig = isEligibleForLeadGenerationEnrichment(stock);
-  const verifiedElig = isEligibleForVerifiedLeadGenerationEnrichment(stock);
-
-  const rawJson = JSON.stringify(stock.raw_payload ?? {}, null, 2);
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-8">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       <PageHeader
-        title={stock.company_name}
-        description={[stock.city, stock.phone].filter(Boolean).join(" · ") || "Fiche stock lead generation"}
+        title={immo.title?.trim() || stock.company_name}
+        description={[cityLine, formatLeadGenerationSourceLabel(stock.source)]
+          .filter(Boolean)
+          .join(" · ")}
         actions={
           <div className="flex flex-wrap items-end justify-end gap-2">
             <LeadGenerationDeleteStockButton
@@ -183,371 +109,23 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
               convertedLeadId={stock.converted_lead_id}
               stockStatus={stock.stock_status}
             />
-            <Link href="/lead-generation" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+            <Link
+              href="/lead-generation"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
               ← Fiches disponibles
             </Link>
           </div>
         }
       />
 
-      <LeadGenerationQuickValidationPanel
-        stockId={stock.id}
-        mapsUrl={null}
-        showMapsLink={false}
-        variant="hub"
-        disabled={
-          Boolean(stock.converted_lead_id) ||
-          stock.stock_status === "rejected" ||
-          stock.qualification_status === "duplicate"
-        }
-      />
-
-      <LeadGenerationCallReadinessCard stock={stock} />
-
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="outline" className="text-xs">
-          Stock : {stock.stock_status}
-        </Badge>
-        <Badge variant="secondary" className="text-xs">
-          Qualification : {stock.qualification_status}
-        </Badge>
-        <LeadGenerationTierOutlineBadge tier={stock.lead_tier ?? "raw"} />
-        <LeadGenerationPremiumLeadBadge tier={stock.lead_tier} />
-        <LeadGenerationDecisionMakerIdentifiedBadge hasName={Boolean(stock.decision_maker_name?.trim())} />
-        {stock.decision_maker_confidence ? (
-          <LeadGenerationDecisionMakerConfidenceBadge confidence={stock.decision_maker_confidence} />
-        ) : null}
-      </div>
-
-      {stock.qualification_status === "duplicate" && stock.duplicate_of_stock_id ? (
-        <Card className="border-amber-500/35 bg-amber-500/[0.06]">
-          <CardHeader>
-            <CardTitle className="text-base">Doublon</CardTitle>
-            <p className="text-xs font-normal text-muted-foreground">
-              Cette fiche trace un import en doublon d’une entreprise déjà présente dans le stock.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {stock.duplicate_match_score != null ? (
-              <p>
-                <span className="text-muted-foreground">Score de rapprochement :</span>{" "}
-                <span className="font-medium tabular-nums">{stock.duplicate_match_score}</span> / 100
-              </p>
-            ) : null}
-            {formatDuplicateMatchReasonsForDisplay(stock.duplicate_match_reasons).length > 0 ? (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Motifs détectés</p>
-                <ul className="mt-1 list-inside list-disc text-sm">
-                  {formatDuplicateMatchReasonsForDisplay(stock.duplicate_match_reasons).map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            <div>
-              <p className="text-xs text-muted-foreground">Fiche de référence (originale)</p>
-              <Link
-                href={`/lead-generation/${stock.duplicate_of_stock_id}`}
-                className={cn(buttonVariants({ variant: "default", size: "sm" }), "mt-2 inline-flex")}
-              >
-                {duplicateRef?.company_name ?? "Ouvrir la fiche de référence"}
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <LeadGenerationManualReviewPanel
-        stockId={stock.id}
-        stock={stock}
-        reviews={manualReviews}
-        lastReviewerDisplayName={manualReviewerDisplayName}
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Informations entreprise</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-          <DetailRow label="Société" value={stock.company_name} />
-          <DetailRow label="Téléphone" value={stock.phone ?? "—"} />
-          <DetailRow label="Email" value={stock.email ?? "—"} />
-          <DetailRow label="Site web" value={stock.website ?? "—"} />
-          <DetailRow label="Adresse" value={stock.address ?? "—"} />
-          <DetailRow label="Code postal / Ville" value={[stock.postal_code, stock.city].filter(Boolean).join(" ") || "—"} />
-          <DetailRow label="Catégorie" value={stock.category ?? "—"} />
-          <DetailRow label="Sous-catégorie" value={stock.sub_category ?? "—"} />
-          <DetailRow label="SIRET" value={stock.siret ?? "—"} />
-        </CardContent>
-      </Card>
-
-      <Card className="border-emerald-500/20 bg-emerald-500/[0.04]">
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-            Prêt pour le closing
-            <LeadGenerationClosingReadinessBadge
-              status={(stock.closing_readiness_status ?? "low") as "low" | "medium" | "high"}
-              score={stock.closing_readiness_score ?? 0}
-            />
-          </CardTitle>
-          <p className="text-xs font-normal text-muted-foreground">
-            Lecture terrain : ce qui aide le commercial à passer le standard et cadrer l’appel.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DetailRow
-              label="Score closing"
-              value={String(stock.closing_readiness_score ?? 0)}
-            />
-            <DetailRow
-              label="Calculé le"
-              value={stock.closing_scored_at ? formatDateTimeFr(stock.closing_scored_at) : "—"}
-            />
-            <DetailRow label="Nom décideur" value={stock.decision_maker_name ?? "—"} />
-            <DetailRow label="Rôle décideur" value={stock.decision_maker_role ?? "—"} />
-            <DetailRow label="Confiance décideur" value={stock.decision_maker_confidence ?? "—"} />
-            <DetailRow
-              label="Profil public (URL)"
-              value={stock.linkedin_url?.trim() ? stock.linkedin_url : "—"}
-            />
-            <DetailRow label="Angle suggéré" value={stock.approach_angle ?? "—"} />
-            <DetailRow label="Accroche téléphone" value={stock.approach_hook ?? "—"} />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Pourquoi ce score</p>
-            {Array.isArray(stock.closing_reasons) && stock.closing_reasons.length > 0 ? (
-              <ul className="mt-1 list-inside list-disc text-sm">
-                {(stock.closing_reasons as string[]).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-1 text-muted-foreground">Pas encore calculé — lancez « Scorer le closing » depuis le cockpit.</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Décideur B2B</CardTitle>
-          <p className="text-xs font-normal text-muted-foreground">
-            Données extraites uniquement depuis des sources publiques (pas de génération). Les champs déjà renseignés ne
-            sont pas écrasés.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DetailRow label="Nom" value={stock.decision_maker_name ?? "—"} />
-            <DetailRow label="Rôle / fonction" value={stock.decision_maker_role ?? "—"} />
-            <DetailRow label="Source extraction" value={stock.decision_maker_source ?? "—"} />
-            <DetailRow label="Confiance" value={stock.decision_maker_confidence ?? "—"} />
-          </div>
-          <LeadGenerationIdentifyDecisionMakerButton stockId={stock.id} />
-        </CardContent>
-      </Card>
-
-      <Card className="border-violet-500/20 bg-violet-500/[0.03]">
-        <CardHeader>
-          <CardTitle className="text-base">Lead premium</CardTitle>
-          <p className="text-xs font-normal text-muted-foreground">
-            Classification et score complémentaires au score commercial — recalculés via le cockpit « Leads premium ».
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <LeadGenerationTierOutlineBadge tier={stock.lead_tier ?? "raw"} />
-            <LeadGenerationPremiumLeadBadge tier={stock.lead_tier} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DetailRow label="Tier" value={stock.lead_tier ?? "raw"} />
-            <DetailRow label="Score premium" value={String(stock.premium_score ?? 0)} />
-            <DetailRow
-              label="Score premium calculé le"
-              value={stock.premium_scored_at ? formatDateTimeFr(stock.premium_scored_at) : "—"}
-            />
-            <DetailRow label="Décideur (nom)" value={stock.decision_maker_name ?? "—"} />
-            <DetailRow label="Décideur (rôle)" value={stock.decision_maker_role ?? "—"} />
-            <DetailRow label="Confiance décideur" value={stock.decision_maker_confidence ?? "—"} />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Motifs du score</p>
-            {parsePremiumReasons(stock.premium_reasons).length === 0 ? (
-              <p className="mt-1 text-muted-foreground">Aucun motif enregistré (score non calculé ou nul).</p>
-            ) : (
-              <ul className="mt-1 list-inside list-disc text-sm">
-                {parsePremiumReasons(stock.premium_reasons).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">État de la fiche</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-          <DetailRow label="Statut stock" value={stock.stock_status} />
-          <DetailRow label="Qualification" value={stock.qualification_status} />
-          <DetailRow label="Motif de rejet" value={stock.rejection_reason ?? "—"} />
-          <DetailRow label="Source" value={formatLeadGenerationSourceLabel(stock.source)} />
-          <DetailRow label="Importée le" value={stock.imported_at ? formatDateTimeFr(stock.imported_at) : "—"} />
-          <DetailRow label="Créée le" value={formatDateTimeFr(stock.created_at)} />
-          {import_batch ? (
-            <DetailRow label="Import lié" value={import_batch.source_label ?? import_batch.source ?? "—"} />
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Score commercial</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Priorisation par règles métier pondérées (étape 12). Recalcul recommandé après enrichissement ou mise à
-            jour des données.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Score</p>
-              <p className="text-2xl font-semibold tabular-nums leading-tight">{stock.commercial_score ?? 0}</p>
-            </div>
-            <LeadGenerationCommercialPriorityBadge priority={stock.commercial_priority ?? "normal"} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DetailRow label="Score historique (import)" value={String(stock.target_score)} />
-            <DetailRow
-              label="Dernier calcul"
-              value={stock.commercial_scored_at ? formatDateTimeFr(stock.commercial_scored_at) : "—"}
-            />
-          </div>
-          <details className="rounded-md border border-border bg-muted/20">
-            <summary className="cursor-pointer px-3 py-2 text-xs font-medium">Détail du score (JSON)</summary>
-            <pre className="max-h-48 overflow-auto p-3 font-mono text-[11px] leading-relaxed">
-              {JSON.stringify(stock.commercial_score_breakdown ?? {}, null, 2)}
-            </pre>
-          </details>
-          <LeadGenerationCommercialScoreRecalcButton stockId={stock.id} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">File « prêt à distribuer »</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Décision opérationnelle : la fiche est-elle prête à être mise en relation, à enrichir d’abord, à revoir, ou
-            hors cible ? (étape 13 — recalcul manuel.)
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <LeadGenerationDispatchQueueBadge
-              status={stock.dispatch_queue_status ?? "review"}
-              reason={stock.dispatch_queue_reason}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DetailRow label="Rang (tri liste)" value={String(stock.dispatch_queue_rank ?? 0)} />
-            <DetailRow
-              label="Évaluée le"
-              value={stock.dispatch_queue_evaluated_at ? formatDateTimeFr(stock.dispatch_queue_evaluated_at) : "—"}
-            />
-            <DetailRow label="Motif" value={stock.dispatch_queue_reason ?? "—"} cellClassName="sm:col-span-2" />
-          </div>
-          <LeadGenerationDispatchQueueEvaluateButton stockId={stock.id} />
-        </CardContent>
-      </Card>
-
-      <LeadGenerationCommercialActivitySection
-        assignmentId={stock.current_assignment_id}
-        initialActivities={commercialActivities}
-      />
-
-      <LeadGenerationRecyclingSection
-        assignmentId={stock.current_assignment_id}
-        initialSnapshot={recycleSnapshot}
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Suggestions et vérification</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Les suggestions heuristiques sont indicatives. La vérification site lit des pages publiques (coût API
-            maîtrisé) — rien n’est garanti sans contrôle humain pour un usage critique.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">État :</span>
-            <LeadGenerationEnrichmentStatusBadge status={stock.enrichment_status ?? "not_started"} />
-            {stock.enrichment_status === "completed" ? (
-              <>
-                <Badge variant="secondary" className="text-xs font-normal">
-                  Heuristique
-                </Badge>
-                <LeadGenerationEnrichmentConfidenceBadge level={stock.enrichment_confidence ?? "low"} />
-              </>
-            ) : null}
-          </div>
-          <LeadGenerationEnrichmentProvenanceNote stock={stock} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DetailRow label="Email suggéré" value={stock.enriched_email ?? "—"} />
-            <DetailRow label="Domaine suggéré" value={stock.enriched_domain ?? "—"} />
-            <DetailRow label="Site suggéré" value={stock.enriched_website ?? "—"} cellClassName="sm:col-span-2" />
-            <DetailRow
-              label="Enregistré le"
-              value={stock.enriched_at ? formatDateTimeFr(stock.enriched_at) : "—"}
-            />
-            {stock.enrichment_error ? (
-              <DetailRow label="Message" value={stock.enrichment_error} cellClassName="sm:col-span-2" />
-            ) : null}
-          </div>
-          <div className="space-y-3 border-t border-border pt-4">
-            <p className="text-xs font-medium text-muted-foreground">Suggestion (heuristique)</p>
-            <LeadGenerationEnrichStockButton
-              stockId={stock.id}
-              disabled={
-                stock.enrichment_status === "completed" ||
-                stock.enrichment_status === "in_progress" ||
-                !enrichElig.ok
-              }
-              disabledReason={
-                stock.enrichment_status === "in_progress"
-                  ? "Enrichissement en cours…"
-                  : stock.enrichment_status === "completed"
-                    ? "Des suggestions sont déjà enregistrées pour cette fiche."
-                    : !enrichElig.ok
-                      ? enrichElig.reason
-                      : undefined
-              }
-            />
-          </div>
-          <LeadGenerationVerifySiteButton
-            stockId={stock.id}
-            disabled={stock.enrichment_status === "in_progress" || !verifiedElig.ok}
-            disabledReason={
-              stock.enrichment_status === "in_progress"
-                ? "Opération en cours…"
-                : !verifiedElig.ok
-                  ? verifiedElig.reason
-                  : undefined
-            }
-          />
-        </CardContent>
-      </Card>
-
       {stock.converted_lead_id ? (
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
-            <CardTitle className="text-base">Déjà convertie</CardTitle>
+            <CardTitle className="text-base">Fiche déjà convertie</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>Cette fiche a déjà été transformée en fiche prospect CRM.</p>
+          <CardContent className="space-y-3 text-sm">
+            <p>{leadGenerationConvertedStockMessage()}</p>
             <Link
               href={`/leads/${stock.converted_lead_id}`}
               className={cn(buttonVariants({ variant: "default", size: "sm" }), "w-fit")}
@@ -558,6 +136,99 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
         </Card>
       ) : null}
 
+      <Card>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-base">Annonce immobilière</CardTitle>
+            {immo.listing_kind === "rental" ? (
+              <Badge variant="secondary" className="rounded-full">Location</Badge>
+            ) : immo.listing_kind === "sale" ? (
+              <Badge variant="secondary" className="rounded-full">Vente</Badge>
+            ) : null}
+            {dpeUpper ? (
+              <span
+                className={cn(
+                  "inline-flex h-6 w-6 items-center justify-center rounded text-xs font-bold",
+                  DPE_TONE[dpeUpper] ?? "bg-slate-200 text-slate-700",
+                )}
+                title={`DPE ${dpeUpper}`}
+              >
+                {dpeUpper}
+              </span>
+            ) : null}
+            {immo.is_professional ? (
+              <Badge variant="outline" className="text-xs">Professionnel</Badge>
+            ) : null}
+          </div>
+          {immo.title?.trim() ? (
+            <p className="text-sm text-slate-700">{immo.title.trim()}</p>
+          ) : null}
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Détails clés */}
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <DetailRow label="Type de bien" value={immo.property_type ?? "—"} />
+            <DetailRow
+              label={immo.listing_kind === "rental" ? "Loyer mensuel" : "Prix"}
+              value={eur(immo.price_eur)}
+            />
+            <DetailRow
+              label="Surface"
+              value={immo.surface_m2 != null ? `${immo.surface_m2} m²` : "—"}
+            />
+            <DetailRow label="Pièces" value={immo.rooms != null ? String(immo.rooms) : "—"} />
+            <DetailRow label="DPE" value={dpeUpper ?? "—"} />
+            <DetailRow label="GES" value={immo.ges_class?.toUpperCase() ?? "—"} />
+            <DetailRow label="Adresse" value={cityLine ?? "—"} />
+            <DetailRow
+              label="Publiée le"
+              value={immo.published_at ? formatDateTimeFr(immo.published_at) : "—"}
+            />
+          </div>
+
+          {/* Téléphone — bouton cliquable Aircall (tel:) */}
+          <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-medium text-emerald-900">Téléphone particulier</p>
+              <p className="text-lg font-bold text-emerald-950">
+                {phoneRaw ?? "Non disponible"}
+              </p>
+              {immo.contact_name ? (
+                <p className="text-xs text-emerald-800">{immo.contact_name}</p>
+              ) : null}
+            </div>
+            {telHref ? (
+              <a
+                href={telHref}
+                className={cn(
+                  buttonVariants({ variant: "default", size: "lg" }),
+                  "gap-2 bg-emerald-600 text-white hover:bg-emerald-700",
+                )}
+              >
+                <Phone className="h-4 w-4" aria-hidden />
+                Appeler
+              </a>
+            ) : null}
+          </div>
+
+          {/* Lien vers l'annonce source */}
+          {immo.source_url ? (
+            <a
+              href={immo.source_url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "default" }),
+                "w-full justify-center gap-2 sm:w-auto",
+              )}
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+              Voir l&apos;annonce sur {formatLeadGenerationSourceLabel(stock.source)}
+            </a>
+          ) : null}
+        </CardContent>
+      </Card>
+
       {!stock.converted_lead_id && stock.current_assignment_id ? (
         <ConvertAssignmentForm
           assignmentId={stock.current_assignment_id}
@@ -565,60 +236,15 @@ export default async function LeadGenerationStockDetailPage({ params }: PageProp
           agents={agents}
         />
       ) : null}
-
-      {!stock.converted_lead_id && !stock.current_assignment_id ? (
-        <p className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          Aucune attribution active sur cette fiche : la conversion en fiche prospect n’est pas disponible
-          depuis cet écran. Distribuez d’abord la fiche à un agent.
-        </p>
-      ) : null}
-
-      <details className="group rounded-lg border border-border bg-card">
-        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center justify-between gap-2">
-            Données techniques
-            <span className="text-xs font-normal text-muted-foreground group-open:hidden">Afficher</span>
-            <span className="hidden text-xs font-normal text-muted-foreground group-open:inline">Masquer</span>
-          </span>
-        </summary>
-        <div className="space-y-4 border-t border-border px-4 py-4 text-sm">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <DetailRow label="ID fiche stock" value={stock.id} />
-            <DetailRow label="ID externe source" value={stock.source_external_id ?? "—"} />
-            <DetailRow label="ID import" value={stock.import_batch_id ?? "—"} />
-            <DetailRow label="Doublon de" value={stock.duplicate_of_stock_id ?? "—"} />
-            <DetailRow label="ID attribution courante" value={stock.current_assignment_id ?? "—"} />
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Payload brut (JSON)</p>
-            <pre className="max-h-72 overflow-auto rounded-md bg-muted/40 p-3 font-mono text-[11px] leading-relaxed">
-              {rawJson}
-            </pre>
-          </div>
-        </div>
-      </details>
     </div>
   );
 }
 
-function parsePremiumReasons(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
-}
-
-function DetailRow({
-  label,
-  value,
-  cellClassName,
-}: {
-  label: string;
-  value: string;
-  cellClassName?: string;
-}) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className={cellClassName}>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="break-words">{value}</p>
+    <div>
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="break-words text-slate-900">{value}</p>
     </div>
   );
 }

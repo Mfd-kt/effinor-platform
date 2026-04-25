@@ -13,6 +13,8 @@ import { ImportBatchesKpisSectionAsync } from "@/features/lead-generation/compon
 import { ImportBatchesTable } from "@/features/lead-generation/components/import-batches-table";
 import { LeadGenerationRecentImports } from "@/features/lead-generation/components/lead-generation-recent-imports";
 import { StartLeboncoinImportModal } from "@/features/lead-generation/components/start-leboncoin-import-modal";
+import { StartPapImportModal } from "@/features/lead-generation/components/start-pap-import-modal";
+import { StartPapLocationImportModal } from "@/features/lead-generation/components/start-pap-location-import-modal";
 import {
   buildImportBatchesListUrl,
   type ImportBatchesListSearchState,
@@ -120,7 +122,13 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
             ? "Vos lots lancés depuis la quantification (synchronisation Apify)."
             : "Importer des fiches, lancer un scraping immobilier, synchroniser les lots."
         }
-        actions={<StartLeboncoinImportModal />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <StartPapImportModal />
+            <StartPapLocationImportModal />
+            <StartLeboncoinImportModal />
+          </div>
+        }
       />
 
       <Suspense fallback={<KpiCardSkeletonGrid count={4} />}>

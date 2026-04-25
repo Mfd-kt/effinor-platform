@@ -10,9 +10,20 @@ export type CockpitVariant =
   | "closer"
   | "sales_agent"
   | "technician"
+  | "daf"
+  | "admin_agent"
+  | "installer"
+  | "lead_generation_quantifier"
   | "default";
 
-/** Manager d’équipe CEE actif (membre `cee_sheet_team_members` avec rôle manager). */
+/**
+ * Manager d'équipe CEE actif (membre `cee_sheet_team_members` avec rôle manager).
+ *
+ * NOTE — Plus utilisé par le routing dashboard home : le concept legacy `manager` a
+ * été remplacé par `sales_director` dans la nouvelle architecture. Cette fonction
+ * reste exportée pour les contrôles d'éligibilité CEE (`switch-cee-sheet-eligibility`,
+ * permissions feuille CEE) qui dépendent toujours de la table.
+ */
 export async function userIsActiveCeeTeamManager(userId: string): Promise<boolean> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -27,7 +38,11 @@ export async function userIsActiveCeeTeamManager(userId: string): Promise<boolea
 }
 
 /**
- * Priorité cockpit : direction → rôles spécialisés (closer) → manager d’équipe CEE → agent.
+ * Priorité dashboard home : direction → rôles spécialisés → ops terrain → quantifier → default.
+ *
+ * Ne renvoie plus `"manager"` — le concept legacy CEE a été retiré du routing
+ * (équivalent moderne = `sales_director`). Un ancien manager retombe naturellement
+ * sur sa seconde affiliation (sales_agent, technician…) ou `default`.
  */
 export async function resolveCockpitVariant(access: AccessContext): Promise<CockpitVariant> {
   if (access.kind !== "authenticated") {
@@ -37,9 +52,12 @@ export async function resolveCockpitVariant(access: AccessContext): Promise<Cock
   if (codes.includes("super_admin")) return "super_admin";
   if (codes.includes("admin")) return "admin";
   if (codes.includes("sales_director")) return "sales_director";
+  if (codes.includes("daf")) return "daf";
   if (codes.includes("closer")) return "closer";
-  if (await userIsActiveCeeTeamManager(access.userId)) return "manager";
   if (codes.includes("sales_agent")) return "sales_agent";
   if (codes.includes("technician")) return "technician";
+  if (codes.includes("admin_agent")) return "admin_agent";
+  if (codes.includes("installer")) return "installer";
+  if (codes.includes("lead_generation_quantifier")) return "lead_generation_quantifier";
   return "default";
 }

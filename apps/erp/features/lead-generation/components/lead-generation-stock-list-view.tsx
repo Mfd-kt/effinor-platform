@@ -56,7 +56,7 @@ export function LeadGenerationStockListView({
         ) : (
           <EmptyState
             title="Aucune fiche dans le stock"
-            description="Lancez un import Le Bon Coin pour alimenter votre carnet de prospection, puis revenez ici pour qualifier et dispatcher."
+            description="Lancez un import (PAP.fr, Le Bon Coin…) depuis la page Imports, attendez la fin du run Apify, puis cliquez Synchroniser sur le lot pour alimenter le carnet. Les annonces hors critères CEE restent côté rejet (voir détail du lot)."
             icon={<Building2 className="size-10" aria-hidden />}
             action={
               <Link

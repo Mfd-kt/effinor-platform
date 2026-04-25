@@ -2,6 +2,8 @@ import { getApifyRunStatus, listApifyDatasetItems } from "../../client";
 import type { ApifyRunStatus } from "../../types";
 import { leboncoinImmobilierItemSchema } from "./actor-output";
 import { mapLeboncoinImmobilierItems } from "./map-item";
+import { filterRowsByExistingPhone } from "@/features/lead-generation/lib/dedup-by-phone";
+import { notifyApifyImportCompleted } from "@/features/lead-generation/services/notify-apify-import-completed";
 import { createClient } from "@/lib/supabase/server";
 
 export type SyncLeboncoinImportResult =
@@ -134,36 +136,50 @@ export async function syncLeboncoinImmobilierImport(
   // Ajouter le batch_id à chaque row
   const rowsWithBatch = stockRows.map((row) => ({
     ...row,
+    /**
+     * LBC renvoie des particuliers / pros avec téléphone : on saute la
+     * quantification et on rend la fiche directement appelable par les agents.
+     * Pré-requis dispatch RPC : stock_status='ready' + qualification_status='qualified'
+     * + phone_status='found' + dispatch_queue_status='ready_now'.
+     */
+    qualification_status: "qualified" as const,
+    stock_status: row.phone ? ("ready" as const) : ("new" as const),
+    phone_status: row.phone ? ("found" as const) : ("missing" as const),
     import_batch_id: batch.id,
     imported_at: new Date().toISOString(),
   }));
 
-  // 6. Insertion en DB (upsert sur source + source_external_id si contrainte unique existe)
+  // 6. Dédup par téléphone (intra-batch + vs DB) puis INSERT plain
   let insertedCount = 0;
   let duplicateCount = 0;
 
   if (rowsWithBatch.length > 0) {
-    // Insertion par chunks de 500 pour éviter les limites SQL
+    const { toInsert, intraBatchDuplicates, dbDuplicates } = await filterRowsByExistingPhone(
+      supabase,
+      rowsWithBatch,
+    );
+    duplicateCount = intraBatchDuplicates + dbDuplicates;
+    console.log("[sync-leboncoin] dédup phone", {
+      total: rowsWithBatch.length,
+      toInsert: toInsert.length,
+      intraBatchDuplicates,
+      dbDuplicates,
+    });
+
     const CHUNK_SIZE = 500;
-    for (let i = 0; i < rowsWithBatch.length; i += CHUNK_SIZE) {
-      const chunk = rowsWithBatch.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+      const chunk = toInsert.slice(i, i + CHUNK_SIZE);
       const { data: inserted, error: insertErr } = await supabase
         .from("lead_generation_stock")
-        .upsert(chunk, {
-          onConflict: "source,source_external_id",
-          ignoreDuplicates: true,
-        })
+        .insert(chunk)
         .select("id");
 
       if (insertErr) {
         console.error("[sync-leboncoin] insert error:", insertErr);
-        // On continue quand même le reste
       } else if (inserted) {
         insertedCount += inserted.length;
       }
     }
-
-    duplicateCount = rowsWithBatch.length - insertedCount;
   }
 
   // 7. Finaliser le batch
@@ -183,6 +199,17 @@ export async function syncLeboncoinImmobilierImport(
       },
     })
     .eq("id", batch.id);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await notifyApifyImportCompleted({
+    batchId: batch.id,
+    outcome: "success",
+    source: "leboncoin_immobilier",
+    inserted: insertedCount,
+    duplicates: duplicateCount,
+    rejected: rawItems.length - validItems.length,
+    client: supabase as any,
+  });
 
   return {
     ok: true,

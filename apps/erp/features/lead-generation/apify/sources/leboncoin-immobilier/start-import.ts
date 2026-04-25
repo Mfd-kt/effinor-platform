@@ -1,5 +1,5 @@
 import { startApifyActorRun } from "../../client";
-import { LEBONCOIN_IMMOBILIER_ACTOR_ID } from "./config";
+import { LEBONCOIN_IMMOBILIER_ACTOR_ID, LBC_INCLUDE_PHONE_SUPPORTED } from "./config";
 import type { LeboncoinImmobilierInput } from "./actor-input";
 import { leboncoinImmobilierInputSchema } from "./actor-input";
 import { createClient } from "@/lib/supabase/server";
@@ -17,10 +17,14 @@ export async function startLeboncoinImmobilierImport(
   input: Partial<LeboncoinImmobilierInput>,
   ctx: { userId: string; ceeSheetId?: string | null },
 ): Promise<StartLeboncoinImportResult> {
-  // 1. Injecter les credentials depuis les vars d'env
+  // 1. Injecter les credentials depuis les vars d'env.
+  //    includePhone est forcé à false en mode recherche : l'acteur Apify retourne 0 résultats
+  //    sinon (« includePhone is only supported with ad URLs »). Cf. LBC_INCLUDE_PHONE_SUPPORTED.
+  //    On ne tolère true que si l'appelant fournit explicitement `adDetailUrls`.
+  const hasAdUrls = Array.isArray(input.adDetailUrls) && input.adDetailUrls.length > 0;
   const inputWithCreds: Partial<LeboncoinImmobilierInput> = {
     ...input,
-    includePhone: input.includePhone ?? true,
+    includePhone: hasAdUrls ? (input.includePhone ?? LBC_INCLUDE_PHONE_SUPPORTED) : false,
     email: process.env.LBC_SCRAPING_EMAIL,
     password: process.env.LBC_SCRAPING_PASSWORD,
   };

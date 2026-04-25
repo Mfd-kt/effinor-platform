@@ -4,6 +4,8 @@ const DEFINITIONS: readonly LeadGenerationImportSourceDefinition[] = [
   { code: "apify_google_maps", label: "Google Maps (Apify)" },
   { code: "csv_manual", label: "CSV manuel" },
   { code: "leboncoin_immobilier", label: "Le Bon Coin — Immobilier" },
+  { code: "pap", label: "PAP.fr — Particuliers (Vente)" },
+  { code: "pap_location", label: "PAP.fr — Locations" },
 ] as const;
 
 const byCode = new Map<string, LeadGenerationImportSourceDefinition>(

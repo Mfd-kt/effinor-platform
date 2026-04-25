@@ -31,3 +31,8 @@ coverage
 
 # Local overrides
 *.local
+
+# Données foncières / DVF (trop volumineux pour le repo)
+ValeursFoncieres-*.txt
+ValeursFoncieres-*.csv
+*.dvf

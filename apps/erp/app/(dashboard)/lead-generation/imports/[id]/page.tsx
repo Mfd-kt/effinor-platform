@@ -6,8 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImportBatchCeeTeamEditor } from "@/features/lead-generation/components/import-batch-cee-team-editor";
+import { PapImportRejectedInspect } from "@/features/lead-generation/components/pap-import-rejected-inspect";
 import { ImportBatchRetrySyncButton } from "@/features/lead-generation/components/import-batch-retry-sync-button";
 import { ImportBatchSyncButton } from "@/features/lead-generation/components/import-batch-sync-button";
+import { SyncLeboncoinImportButton } from "@/features/lead-generation/components/sync-leboncoin-import-button";
+import { SyncPapImportButton } from "@/features/lead-generation/components/sync-pap-import-button";
 import { LeadGenerationStockListView } from "@/features/lead-generation/components/lead-generation-stock-list-view";
 import { formatLeadGenerationSourceLabel } from "@/features/lead-generation/lib/lead-generation-display";
 import { formatMyQueueCeeSheetOptionLabel } from "@/features/lead-generation/lib/my-queue-cee-sheet-option";
@@ -266,6 +269,12 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
         </CardContent>
       </Card>
 
+      <PapImportRejectedInspect
+        source={batch.source}
+        rejectedCount={batch.rejected_count}
+        metadata={batch.metadata_json}
+      />
+
       {!stockLoadError &&
       stockSummary &&
       stockSummary.totalMatching === 0 &&
@@ -371,9 +380,17 @@ export default async function LeadGenerationImportBatchDetailPage({ params, sear
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-muted-foreground">
-            Relance la récupération des résultats Apify vers le stock lorsque le scraping est terminé.
+            Relance la récupération des résultats Apify vers le stock lorsque le scraping est terminé. Pour un lot
+            déjà terminé (PAP / Le Bon Coin), permet aussi de rattacher les fiches et d&apos;enregistrer l&apos;échantillon
+            des rejets.
           </p>
-          <ImportBatchSyncButton batchId={batch.id} />
+          {batch.source === "pap" ? (
+            <SyncPapImportButton batchId={batch.id} />
+          ) : batch.source === "leboncoin_immobilier" ? (
+            <SyncLeboncoinImportButton batchId={batch.id} />
+          ) : (
+            <ImportBatchSyncButton batchId={batch.id} />
+          )}
           {batch.status === "failed" ? (
             <div className="space-y-2 border-t border-border pt-3">
               <p className="text-xs text-muted-foreground">

@@ -1,4 +1,5 @@
 import type { LeboncoinImmobilierItem } from "./actor-output";
+import { normalizePhone } from "@/features/lead-generation/lib/normalize-phone";
 
 /**
  * Format "stock row" prêt à être inséré dans lead_generation_stock.
@@ -14,6 +15,8 @@ export type LbcImmobilierStockRow = {
   is_professional: boolean;
   siret: string | null;
   phone: string | null; // normalisé +33
+  /** Téléphone normalisé (digits, format national 0XXXXXXXXX) — clé de dédup. */
+  normalized_phone: string | null;
   email: string | null;
   address: string | null;
   city: string | null;
@@ -65,6 +68,7 @@ export function mapLeboncoinImmobilierItem(
   if (!externalId) return null;
 
   const phone = normalizePhoneFr(item.phone);
+  const normalizedPhone = normalizePhone(item.phone);
   const isPro = isProSeller(item.seller_type);
 
   return {
@@ -77,6 +81,7 @@ export function mapLeboncoinImmobilierItem(
     is_professional: isPro,
     siret: item.seller_siren ?? null,
     phone,
+    normalized_phone: normalizedPhone,
     email: null, // LBC ne fournit pas d'email
     address: null, // LBC ne fournit pas l'adresse exacte (seulement ville)
     city: item.city ?? null,

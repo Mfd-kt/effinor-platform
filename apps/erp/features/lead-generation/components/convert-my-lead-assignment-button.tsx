@@ -1,113 +1,56 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import type { LeadGenerationStockRow } from "@/features/lead-generation/domain/stock-row";
-import { LeadGenerationCeeSimulatorModal } from "@/features/lead-generation/components/lead-generation-cee-simulator-modal";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { LeadGenStockSimulatorPopup } from "@/features/lead-generation/components/lead-gen-stock-simulator-popup";
 
+/**
+ * @deprecated Conservé pour compatibilité — la prop `ceeBundle` n'est plus utilisée.
+ * Le bouton de conversion ouvre directement le nouveau simulateur CEE en modal.
+ */
 export type ConvertMyLeadAssignmentCeeBundle = {
-  sheets: any[];
-  activity: any;
-  destratProducts: any[];
+  sheets: unknown[];
+  activity: unknown;
+  destratProducts: unknown[];
 };
 
 type Props = {
   stock: LeadGenerationStockRow;
-  /** Données poste agent / CEE ; sans fiches actives, l’agent est orienté vers le poste agent. */
-  ceeBundle: ConvertMyLeadAssignmentCeeBundle | null;
+  /** Bundle CEE legacy — ignoré ; conservé pour compatibilité de signature. */
+  ceeBundle?: ConvertMyLeadAssignmentCeeBundle | null;
   /**
-   * Navigation post-conversion (page « Ma file » détail) : même ordre que `getMyLeadGenerationQueue`.
-   * Si absent : simple `router.refresh()` après succès.
+   * Navigation post-conversion : ordre des fiches de la file de l'agent.
    */
   myQueuePostConversion?: {
     nextStockId: string | null;
-    /** Base pour le paramètre `from` sur la fiche suivante */
+    /** Base pour le paramètre `from` sur la fiche suivante. */
     listHrefForFromParam: string;
   };
 };
 
 /**
- * Conversion depuis « Ma file » : uniquement via le simulateur CEE (modale).
+ * Conversion depuis « Ma file » : ouvre le simulateur CEE en modal.
+ * Au succès, le lead créé est rattaché à la fiche stock (`converted_lead_id`)
+ * et l'agent est dirigé vers la fiche suivante.
  */
-export function ConvertMyLeadAssignmentButton({ stock, ceeBundle, myQueuePostConversion }: Props) {
-  const router = useRouter();
-  const stockId = stock.id;
-  const hasCeeSimulator = Boolean(ceeBundle && ceeBundle.sheets.length > 0);
-  const [simOpen, setSimOpen] = useState(false);
-
-  const agentHref = `/agent?lgStock=${encodeURIComponent(stockId)}`;
-
+export function ConvertMyLeadAssignmentButton({ stock, myQueuePostConversion }: Props) {
   return (
     <div className="space-y-3 rounded-lg border border-border bg-card p-4">
       <div>
-        <h3 className="text-sm font-semibold">Conversion</h3>
+        <h3 className="text-sm font-semibold">Conversion en prospect CRM</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          {hasCeeSimulator
-            ? "La conversion en prospect CRM passe par le simulateur CEE : saisissez la simulation, puis validez. La fiche Lead Gen est clôturée une fois le prospect créé."
-            : "La conversion passe obligatoirement par le simulateur CEE. Aucune fiche CEE n’est affectée à votre compte pour l’instant — ouvrez le poste agent (même prospection préremplie) ou contactez votre responsable."}
+          Ouvrez le simulateur CEE pour qualifier le prospect. Le lead créé sera automatiquement
+          rattaché à cette fiche de prospection.
         </p>
       </div>
 
-      {hasCeeSimulator && ceeBundle ? (
-        <>
-          <Button type="button" onClick={() => setSimOpen(true)}>
-            Convertir avec le simulateur
-          </Button>
-          <LeadGenerationCeeSimulatorModal
-            open={simOpen}
-            onOpenChange={setSimOpen}
-            stock={stock}
-            sheets={ceeBundle.sheets}
-            activity={ceeBundle.activity}
-            destratProducts={ceeBundle.destratProducts}
-            onConversionComplete={() => {
-              if (myQueuePostConversion) {
-                toast.success("Bravo : fiche convertie en prospect CRM. Passage à la suivante…");
-                if (myQueuePostConversion.nextStockId) {
-                  const p = new URLSearchParams();
-                  p.set("from", myQueuePostConversion.listHrefForFromParam);
-                  router.push(`/lead-generation/my-queue/${myQueuePostConversion.nextStockId}?${p.toString()}`);
-                } else {
-                  router.push("/lead-generation/my-queue?queueEmpty=1");
-                }
-                return;
-              }
-              router.refresh();
-            }}
-          />
-        </>
-      ) : (
-        <Link
-          href={agentHref}
-          className={cn(buttonVariants({ variant: "default", size: "default" }), "inline-flex w-fit")}
-        >
-          Ouvrir le simulateur (poste agent)
-        </Link>
-      )}
-
-      <p className="text-[11px] text-muted-foreground">
-        Besoin de modifier le périmètre ? Utilisez la{" "}
-        <Link href="/leads" className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-auto p-0 align-baseline")}>
-          liste des prospects
-        </Link>
-        .
-        {hasCeeSimulator ? (
-          <>
-            {" "}
-            Variante plein écran :{" "}
-            <Link href={agentHref} className={cn(buttonVariants({ variant: "link", size: "sm" }), "h-auto p-0 align-baseline")}>
-              poste agent
-            </Link>
-            .
-          </>
-        ) : null}
-      </p>
+      <LeadGenStockSimulatorPopup
+        stockId={stock.id}
+        nextStockId={myQueuePostConversion?.nextStockId ?? null}
+        listHrefForFromParam={
+          myQueuePostConversion?.listHrefForFromParam ?? "/lead-generation/my-queue"
+        }
+        label="Ouvrir le simulateur"
+      />
     </div>
   );
 }

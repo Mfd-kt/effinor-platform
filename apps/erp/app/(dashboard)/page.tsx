@@ -1,26 +1,34 @@
-import { redirect } from "next/navigation";
-
 import { getAccessContext } from "@/lib/auth/access-context";
 import { resolveCockpitVariant } from "@/lib/auth/cockpit-variant";
+
 import {
-  CockpitAdminView,
-  CockpitAgentView,
-  CockpitCloserView,
-  CockpitDirectorView,
-} from "@/features/dashboard/components/cockpit/cockpit-role-views";
+  AdminAgentDashboard,
+  AdminDashboard,
+  CloserDashboard,
+  DafDashboard,
+  InstallerDashboard,
+  LeadQuantifierDashboard,
+  SalesAgentDashboard,
+  SalesDirectorDashboard,
+  TechnicianDashboard,
+  parseDashboardPeriod,
+} from "@/features/dashboards";
 import { DashboardDefault } from "@/features/dashboard/components/dashboard-default";
-import { DashboardTechnician } from "@/features/dashboard/components/dashboard-technician";
-import { LeadGenerationQuantifierDashboardView } from "@/features/lead-generation/components/lead-generation-quantifier-dashboard-view";
-import { getLeadGenerationQuantifierPersonalDashboard } from "@/features/lead-generation/queries/get-lead-generation-quantifier-personal-dashboard";
-import { DEFAULT_COCKPIT_FILTERS } from "@/features/dashboard/domain/cockpit";
-import { parseCockpitFilters } from "@/features/dashboard/lib/cockpit-filters";
-import { getCockpitBundle } from "@/features/dashboard/queries/get-cockpit-bundle";
-import { getDashboardMetrics } from "@/features/dashboard/queries/get-dashboard-metrics";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+/**
+ * Aiguilleur des dashboards par rôle.
+ *
+ * Priorité (cf. resolveCockpitVariant) : super_admin → admin → sales_director → daf →
+ * closer → sales_agent → technician → admin_agent → installer →
+ * lead_generation_quantifier → default.
+ *
+ * Les vues mock-first vivent sous `features/dashboards/<role>/`. Le concept legacy
+ * `manager` (CEE) a été retiré : son équivalent moderne est `sales_director`.
+ */
 export default async function DashboardPage({ searchParams }: PageProps) {
   const access = await getAccessContext();
   if (access.kind !== "authenticated") {
@@ -28,41 +36,29 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   const variant = await resolveCockpitVariant(access);
-  if (variant === "default") {
-    if (access.roleCodes.includes("lead_generation_quantifier")) {
-      const quantifierData = await getLeadGenerationQuantifierPersonalDashboard(access.userId);
-      return <LeadGenerationQuantifierDashboardView data={quantifierData} />;
-    }
-    return <DashboardDefault />;
-  }
-
-  if (variant === "technician") {
-    return <DashboardTechnician access={access} />;
-  }
-
-  if (variant === "manager") {
-    redirect("/cockpit");
-  }
-
   const raw = await searchParams;
-  const filters = { ...DEFAULT_COCKPIT_FILTERS, ...parseCockpitFilters(raw) };
-  const includeAdminHealth = variant === "super_admin" || variant === "admin";
-
-  const [metrics, bundle] = await Promise.all([
-    getDashboardMetrics(access, filters.period),
-    getCockpitBundle(access, filters, { includeAdminHealth, cockpitVariant: variant }),
-  ]);
+  const period = parseDashboardPeriod(raw.period);
 
   switch (variant) {
     case "super_admin":
     case "admin":
-      return <CockpitAdminView metrics={metrics} bundle={bundle} />;
+      return <AdminDashboard period={period} />;
     case "sales_director":
-      return <CockpitDirectorView metrics={metrics} bundle={bundle} />;
-    case "sales_agent":
-      return await CockpitAgentView({ access, metrics, bundle });
+      return <SalesDirectorDashboard period={period} />;
+    case "daf":
+      return <DafDashboard period={period} />;
     case "closer":
-      return await CockpitCloserView({ access, metrics, bundle });
+      return <CloserDashboard period={period} />;
+    case "sales_agent":
+      return <SalesAgentDashboard period={period} />;
+    case "technician":
+      return <TechnicianDashboard period={period} />;
+    case "admin_agent":
+      return <AdminAgentDashboard period={period} />;
+    case "installer":
+      return <InstallerDashboard period={period} />;
+    case "lead_generation_quantifier":
+      return <LeadQuantifierDashboard userId={access.userId} />;
     default:
       return <DashboardDefault />;
   }
