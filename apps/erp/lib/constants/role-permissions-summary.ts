@@ -21,4 +21,6 @@ export const ROLE_PERMISSIONS_SUMMARY_FR: Record<AppRoleCode, string> = {
     "Pilotage des chantiers d’installation : visites techniques planifiées et chantiers assignés uniquement.",
   daf:
     "Direction administrative et financière : indicateurs financiers, paiements, trésorerie et vue large sur les leads.",
+  marketing_manager:
+    "Gestion du module Marketing : articles de blog et réalisations publiés sur effinor.fr (création, édition, publication, archivage).",
 };

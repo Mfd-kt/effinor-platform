@@ -9,6 +9,7 @@ export const APP_ROLE_CODES = [
   "admin_agent",
   "installer",
   "daf",
+  "marketing_manager",
 ] as const;
 
 export type AppRoleCode = (typeof APP_ROLE_CODES)[number];
@@ -25,6 +26,7 @@ export const ROLE_LABEL_FR: Record<AppRoleCode, string> = {
   admin_agent: "Agent administratif",
   installer: "Installateur",
   daf: "Directeur administratif et financier",
+  marketing_manager: "Responsable Marketing",
 };
 
 const SET = new Set<string>(APP_ROLE_CODES);
@@ -71,4 +73,20 @@ export function isInstaller(codes: readonly string[]): boolean {
 
 export function isDaf(codes: readonly string[]): boolean {
   return codes.includes("daf");
+}
+
+export function isMarketingManager(codes: readonly string[]): boolean {
+  return codes.includes("marketing_manager");
+}
+
+/**
+ * Staff autorisé à gérer le module Marketing (blog + réalisations) :
+ * super_admin, admin, marketing_manager.
+ */
+export function isMarketingStaff(codes: readonly string[]): boolean {
+  return (
+    codes.includes("super_admin") ||
+    codes.includes("admin") ||
+    codes.includes("marketing_manager")
+  );
 }
