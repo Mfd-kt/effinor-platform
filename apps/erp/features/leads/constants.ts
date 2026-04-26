@@ -4,6 +4,7 @@ import type { LeadSource } from "@/types/database.types";
 export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   website: "Site web",
   landing_pac: "Landing PAC",
+  landing_reno_global: "Landing Rénovation globale",
   cold_call: "Appel froid",
   commercial_callback: "Rappel commercial",
   landing_froid: "Landing froid",
