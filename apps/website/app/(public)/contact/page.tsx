@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Mail, Phone, MapPin, Clock, ShieldCheck } from 'lucide-react'
 import { Container, Section } from '@effinor/design-system'
-import { siteConfig } from '@/lib/site-config'
+import { getSiteContact } from '@/lib/site-settings'
 import { ContactForm } from './contact-form'
 
 export const metadata: Metadata = {
@@ -15,7 +15,8 @@ export const metadata: Metadata = {
   },
 }
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const contact = await getSiteContact()
   return (
     <>
       <section className="bg-gradient-to-b from-primary-50 to-background">
@@ -65,10 +66,10 @@ export default function ContactPage() {
                     <div>
                       <p className="font-medium text-white">Téléphone</p>
                       <a
-                        href={`tel:${siteConfig.contact.phoneE164}`}
+                        href={`tel:${contact.phoneE164}`}
                         className="mt-0.5 block text-primary-200 hover:text-white transition-colors"
                       >
-                        {siteConfig.contact.phone}
+                        {contact.phone}
                       </a>
                     </div>
                   </li>
@@ -78,10 +79,10 @@ export default function ContactPage() {
                     <div>
                       <p className="font-medium text-white">Email</p>
                       <a
-                        href={`mailto:${siteConfig.contact.email}`}
+                        href={`mailto:${contact.email}`}
                         className="mt-0.5 block text-primary-200 hover:text-white transition-colors break-all"
                       >
-                        {siteConfig.contact.email}
+                        {contact.email}
                       </a>
                     </div>
                   </li>
@@ -91,10 +92,10 @@ export default function ContactPage() {
                     <div>
                       <p className="font-medium text-white">Adresse</p>
                       <address className="not-italic mt-0.5 text-primary-200">
-                        {siteConfig.contact.address.street}
+                        {contact.address.street}
                         <br />
-                        {siteConfig.contact.address.postalCode}{' '}
-                        {siteConfig.contact.address.city}
+                        {contact.address.postalCode}{' '}
+                        {contact.address.city}
                       </address>
                     </div>
                   </li>
@@ -103,7 +104,7 @@ export default function ContactPage() {
                     <Clock className="mt-0.5 h-5 w-5 shrink-0 text-secondary-400" />
                     <div>
                       <p className="font-medium text-white">Horaires</p>
-                      <p className="mt-0.5 text-primary-200">{siteConfig.contact.hours.label}</p>
+                      <p className="mt-0.5 text-primary-200">{contact.hours.label}</p>
                     </div>
                   </li>
                 </ul>

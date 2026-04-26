@@ -6,9 +6,13 @@ import { Menu, X, Phone } from 'lucide-react'
 import { Button, Container, cn } from '@effinor/design-system'
 import { Logo } from '@/components/brand/logo'
 import { mainNav } from './nav-config'
-import { siteConfig } from '@/lib/site-config'
+import type { SiteContact } from '@/lib/site-settings'
 
-export function Header() {
+type HeaderProps = {
+  contact: SiteContact
+}
+
+export function Header({ contact }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -58,11 +62,11 @@ export function Header() {
           {/* CTA desktop */}
           <div className="hidden lg:flex items-center gap-3">
             <a
-              href={`tel:${siteConfig.contact.phoneE164}`}
+              href={`tel:${contact.phoneE164}`}
               className="flex items-center gap-2 text-sm font-medium text-foreground/80 hover:text-foreground transition-colors"
             >
               <Phone className="h-4 w-4" />
-              {siteConfig.contact.phone}
+              {contact.phone}
             </a>
             <Button asChild variant="accent" size="md">
               <Link href="/contact">Demander un devis</Link>
@@ -98,11 +102,11 @@ export function Header() {
             </nav>
             <div className="mt-4 flex flex-col gap-3">
               <a
-                href={`tel:${siteConfig.contact.phoneE164}`}
+                href={`tel:${contact.phoneE164}`}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted"
               >
                 <Phone className="h-4 w-4" />
-                {siteConfig.contact.phone}
+                {contact.phone}
               </a>
               <Button asChild variant="accent" size="md" fullWidth>
                 <Link href="/contact" onClick={() => setMobileOpen(false)}>

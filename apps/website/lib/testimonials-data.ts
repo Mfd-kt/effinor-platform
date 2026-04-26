@@ -16,7 +16,8 @@ export interface Testimonial {
   date: string            // ex: "Mars 2026"
 }
 
-export const homeTestimonials: Testimonial[] = [
+/** Valeurs de secours si aucun témoignage publié en base. */
+export const defaultHomeTestimonials: Testimonial[] = [
   {
     id: 'placeholder-1',
     authorName: 'Sophie L.',
@@ -50,4 +51,7 @@ export const homeTestimonials: Testimonial[] = [
     service: 'Système solaire combiné',
     date: 'Février 2026',
   },
-] as const
+]
+
+/** @deprecated Utiliser `defaultHomeTestimonials` ou `getPublishedTestimonials()`. */
+export const homeTestimonials = defaultHomeTestimonials

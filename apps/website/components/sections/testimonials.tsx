@@ -1,8 +1,9 @@
 import { Quote, Star } from 'lucide-react'
 import { Container, Section } from '@effinor/design-system'
-import { homeTestimonials } from '@/lib/testimonials-data'
+import { getPublishedTestimonials } from '@/lib/testimonials'
 
-export function Testimonials() {
+export async function Testimonials() {
+  const { items, isFallback } = await getPublishedTestimonials()
   return (
     <Section spacing="lg" id="temoignages">
       <Container size="site">
@@ -18,14 +19,16 @@ export function Testimonials() {
             expérience avec Effinor.
           </p>
 
-          <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-accent-200 bg-accent-50 px-3 py-1.5 text-xs font-medium text-accent-800">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
-            Témoignages d&apos;exemple — vrais avis bientôt en ligne
-          </div>
+          {isFallback ? (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-accent-200 bg-accent-50 px-3 py-1.5 text-xs font-medium text-accent-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
+              Témoignages d&apos;exemple — vrais avis bientôt en ligne
+            </div>
+          ) : null}
         </div>
 
         <ul className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {homeTestimonials.map((testimonial) => (
+          {items.map((testimonial) => (
             <li
               key={testimonial.id}
               className="relative flex flex-col rounded-2xl border border-border bg-card p-7 shadow-sm transition-shadow hover:shadow-md"

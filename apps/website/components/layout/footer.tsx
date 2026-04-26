@@ -4,8 +4,13 @@ import { Container } from '@effinor/design-system'
 import { Logo } from '@/components/brand/logo'
 import { mainNav, legalNav } from './nav-config'
 import { siteConfig } from '@/lib/site-config'
+import type { SiteContact } from '@/lib/site-settings'
 
-export function Footer() {
+type FooterProps = {
+  contact: SiteContact
+}
+
+export function Footer({ contact }: FooterProps) {
   const currentYear = new Date().getFullYear()
 
   // Service links flat list (extraits des children de "Services")
@@ -25,13 +30,13 @@ export function Footer() {
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-secondary-400" />
                 <span className="text-primary-200">
-                  {siteConfig.contact.address.full}
+                  {contact.address.full}
                 </span>
               </div>
               <div className="flex items-start gap-2">
                 <Clock className="h-4 w-4 mt-0.5 shrink-0 text-secondary-400" />
                 <span className="text-primary-200">
-                  {siteConfig.contact.hours.label}
+                  {contact.hours.label}
                 </span>
               </div>
             </address>
@@ -81,20 +86,20 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li>
                 <a
-                  href={`mailto:${siteConfig.contact.email}`}
+                  href={`mailto:${contact.email}`}
                   className="flex items-center gap-2 text-primary-200 hover:text-white transition-colors"
                 >
                   <Mail className="h-4 w-4 text-secondary-400 shrink-0" />
-                  {siteConfig.contact.email}
+                  {contact.email}
                 </a>
               </li>
               <li>
                 <a
-                  href={`tel:${siteConfig.contact.phoneE164}`}
+                  href={`tel:${contact.phoneE164}`}
                   className="flex items-center gap-2 text-primary-200 hover:text-white transition-colors"
                 >
                   <Phone className="h-4 w-4 text-secondary-400 shrink-0" />
-                  {siteConfig.contact.phone}
+                  {contact.phone}
                 </a>
               </li>
             </ul>
