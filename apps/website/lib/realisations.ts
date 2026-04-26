@@ -55,6 +55,7 @@ export async function getPublishedRealisations(params?: {
   limit?: number
 }): Promise<RealisationCard[]> {
   const supabase = createSupabaseServerClient()
+  if (!supabase) return []
 
   let query = supabase
     .from('realisations')
@@ -89,6 +90,7 @@ export async function getRealisationBySlug(
   slug: string
 ): Promise<RealisationFull | null> {
   const supabase = createSupabaseServerClient()
+  if (!supabase) return null
 
   const { data, error } = await supabase
     .from('realisations')
@@ -109,9 +111,12 @@ export async function getRealisationBySlug(
 
 /**
  * Tous les slugs publiés (pour generateStaticParams).
+ * Retourne [] si le client Supabase n'est pas disponible (env vars manquantes
+ * au build). Next.js rendra alors les pages à la demande au runtime.
  */
 export async function getAllRealisationSlugs(): Promise<string[]> {
   const supabase = createSupabaseServerClient()
+  if (!supabase) return []
 
   const { data, error } = await supabase
     .from('realisations')

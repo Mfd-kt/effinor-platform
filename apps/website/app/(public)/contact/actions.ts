@@ -109,6 +109,16 @@ export async function submitContactForm(
 
   // 5. Insertion en base (RLS : INSERT anon autorisé)
   const supabase = createSupabaseServerClient()
+  if (!supabase) {
+    console.error('[contact form] Supabase client unavailable — env vars manquantes')
+    return {
+      status: 'error',
+      message:
+        "Le service est temporairement indisponible. Veuillez réessayer plus tard ou nous contacter par téléphone.",
+      values: raw,
+    }
+  }
+
   const { error } = await supabase.from('contacts').insert({
     first_name: raw.firstName,
     last_name: raw.lastName,

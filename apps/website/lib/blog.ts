@@ -37,6 +37,7 @@ export async function getPublishedBlogPosts(params?: {
   limit?: number
 }): Promise<BlogPostCard[]> {
   const supabase = createSupabaseServerClient()
+  if (!supabase) return []
 
   let query = supabase
     .from('blog_articles')
@@ -72,6 +73,7 @@ export async function getBlogPostBySlug(
   slug: string
 ): Promise<BlogPostFull | null> {
   const supabase = createSupabaseServerClient()
+  if (!supabase) return null
 
   const { data, error } = await supabase
     .from('blog_articles')
@@ -92,9 +94,12 @@ export async function getBlogPostBySlug(
 
 /**
  * Tous les slugs publiés (pour generateStaticParams).
+ * Retourne [] si le client Supabase n'est pas disponible (env vars manquantes
+ * au build). Next.js rendra alors les pages à la demande au runtime.
  */
 export async function getAllBlogSlugs(): Promise<string[]> {
   const supabase = createSupabaseServerClient()
+  if (!supabase) return []
 
   const { data, error } = await supabase
     .from('blog_articles')
@@ -120,6 +125,7 @@ export async function getRelatedPosts(
   limit = 3
 ): Promise<BlogPostCard[]> {
   const supabase = createSupabaseServerClient()
+  if (!supabase) return []
 
   let query = supabase
     .from('blog_articles')
