@@ -1,14 +1,27 @@
 import type { Metadata } from 'next'
-import { Building2, Wallet, Users, ClipboardCheck } from 'lucide-react'
+import { Building2, Wallet, Users, ClipboardCheck, LineChart } from 'lucide-react'
+import { JsonLdService } from '@/components/seo/json-ld-service'
 import { ServiceHero } from '@/components/sections/service-hero'
+import { ServiceTrustBar, type ServiceTrustStat } from '@/components/sections/service-trust-bar'
+import { PartnersBar } from '@/components/sections/partners-bar'
 import { ServiceBenefits } from '@/components/sections/service-benefits'
 import { HowItWorks } from '@/components/sections/how-it-works'
 import { FinalCTA } from '@/components/sections/final-cta'
+import { siteConfig } from '@/lib/site-config'
+
+const canonical = `${siteConfig.url.replace(/\/$/, '')}/services/pompe-a-chaleur/immeuble-collectif`
 
 export const metadata: Metadata = {
   title: 'Pompe à chaleur — Immeuble collectif',
   description:
     "Solutions de pompes à chaleur pour copropriétés, bailleurs sociaux et immeubles résidentiels. Étude thermique, AMO, installation clé en main par Effinor.",
+  alternates: { canonical },
+  openGraph: {
+    url: canonical,
+    type: 'website',
+    title: 'Pompe à chaleur immeuble & copropriété',
+    description: 'Chauffage collectif, audit, dossiers de financement — Effinor.',
+  },
 }
 
 const benefits = [
@@ -53,9 +66,22 @@ const approach = [
   },
 ]
 
+const serviceTrust: ServiceTrustStat[] = [
+  { value: '100%', label: 'Projet encadré (AMO)', icon: LineChart },
+  { value: 'AG', label: "Support prise de décision", icon: Users },
+  { value: 'CEE+', label: "Primes collectives négociées", icon: Wallet },
+  { value: 'GTB', label: "Mise en service & suivi", icon: Building2 },
+]
+
 export default function PacImmeublePage() {
   return (
     <>
+      <JsonLdService
+        name="Installation pompe à chaleur immeuble collectif"
+        description="Chauffage collectif, audits, scénario technique et aides MaPrimeRénov' Copropriétés — Effinor."
+        urlPath="/services/pompe-a-chaleur/immeuble-collectif"
+        serviceType="Pompe à chaleur"
+      />
       <ServiceHero
         eyebrow="Pompe à chaleur"
         title={
@@ -66,8 +92,11 @@ export default function PacImmeublePage() {
         description="Solutions centralisées pour copropriétés, bailleurs sociaux et résidences. De l'audit énergétique à la mise en service, nous accompagnons votre projet collectif de bout en bout — y compris l'animation des AG."
         imageSrc="/images/services/pac-immeuble.jpg"
         imageAlt="Pompe à chaleur installée pour un immeuble collectif"
+        imageBlurKey="pacImmeuble"
         benefitTagline="Aides MaPrimeRénov' Copropriétés mobilisables"
       />
+      <ServiceTrustBar items={serviceTrust} />
+      <PartnersBar />
 
       <ServiceBenefits
         eyebrow="Avantages"
@@ -81,6 +110,7 @@ export default function PacImmeublePage() {
         title="Un projet collectif piloté de A à Z"
         benefits={approach}
         variant="muted"
+        spacing="md"
       />
 
       <HowItWorks />

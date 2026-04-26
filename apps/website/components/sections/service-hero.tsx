@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowRight, Phone } from 'lucide-react'
 import { Button, Container } from '@effinor/design-system'
 import { getSiteContact } from '@/lib/site-settings'
+import { BLUR_PLACEHOLDERS, type BlurImageKey } from '@/lib/blur-placeholders'
 
 interface ServiceHeroProps {
   eyebrow: string
@@ -10,6 +11,9 @@ interface ServiceHeroProps {
   description: string
   imageSrc: string
   imageAlt: string
+  imageBlurKey: BlurImageKey
+  /** LCP : true sur chaque page service (un seul hero) */
+  imagePriority?: boolean
   benefitTagline?: string
 }
 
@@ -19,18 +23,21 @@ export async function ServiceHero({
   description,
   imageSrc,
   imageAlt,
+  imageBlurKey,
+  imagePriority = true,
   benefitTagline,
 }: ServiceHeroProps) {
   const contact = await getSiteContact()
+  const blurDataURL = BLUR_PLACEHOLDERS[imageBlurKey]
   return (
     <section className="bg-gradient-to-b from-primary-50 to-background">
       <Container size="site">
-        <div className="grid grid-cols-1 gap-10 py-14 lg:grid-cols-2 lg:gap-16 lg:py-20 lg:items-center">
+        <div className="grid grid-cols-1 gap-10 py-12 lg:grid-cols-2 lg:gap-14 lg:items-center lg:py-16">
           <div>
             <p className="text-sm font-semibold uppercase tracking-widest text-secondary-600">
               {eyebrow}
             </p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
+            <h1 className="mt-3 text-balance text-4xl font-bold tracking-tight sm:text-5xl">
               {title}
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
@@ -64,9 +71,13 @@ export async function ServiceHero({
               src={imageSrc}
               alt={imageAlt}
               fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              priority={imagePriority}
+              quality={80}
+              placeholder="blur"
+              blurDataURL={blurDataURL}
+              sizes="(min-width: 1024px) 50vw, 100vw"
               className="object-cover"
+              fetchPriority={imagePriority ? 'high' : 'auto'}
             />
           </div>
         </div>

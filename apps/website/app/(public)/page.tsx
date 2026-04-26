@@ -3,6 +3,7 @@ import { TrustBar } from '@/components/sections/trust-bar'
 import { ServicesGrid } from '@/components/sections/services-grid'
 import { WhyEffinor } from '@/components/sections/why-effinor'
 import { HowItWorks } from '@/components/sections/how-it-works'
+import { PartnersBar } from '@/components/sections/partners-bar'
 import { AidesInfo } from '@/components/sections/aides-info'
 import { Testimonials } from '@/components/sections/testimonials'
 import { FinalCTA } from '@/components/sections/final-cta'
@@ -16,6 +17,7 @@ export default function HomePage() {
       <ServicesGrid />
       <WhyEffinor />
       <HowItWorks />
+      <PartnersBar />
       <AidesInfo />
       <Testimonials />
       <FinalCTA />

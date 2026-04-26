@@ -6,18 +6,28 @@ import {
   Wrench,
   ShieldCheck,
   Gauge,
+  Timer,
 } from 'lucide-react'
+import { JsonLdService } from '@/components/seo/json-ld-service'
 import { ServiceHero } from '@/components/sections/service-hero'
+import { ServiceTrustBar, type ServiceTrustStat } from '@/components/sections/service-trust-bar'
+import { PartnersBar } from '@/components/sections/partners-bar'
 import { ServiceBenefits } from '@/components/sections/service-benefits'
 import { ServiceFAQ } from '@/components/sections/service-faq'
 import { HowItWorks } from '@/components/sections/how-it-works'
 import { FinalCTA } from '@/components/sections/final-cta'
+import { siteConfig } from '@/lib/site-config'
+
+const canonical = `${siteConfig.url.replace(/\/$/, '')}/services/pompe-a-chaleur/maison-individuelle`
 
 export const metadata: Metadata = {
   title: 'Pompe à chaleur — Maison individuelle',
   description:
     "Installation de pompes à chaleur air-eau et air-air pour maisons individuelles. Devis gratuit, jusqu'à 11 000 € d'aides cumulables, équipes RGE QualiPAC.",
+  alternates: { canonical },
   openGraph: {
+    url: canonical,
+    type: 'website',
     title: 'Pompe à chaleur pour maison individuelle',
     description:
       "PAC air-eau et air-air haute performance — installation clé en main par Effinor.",
@@ -94,9 +104,22 @@ const faqItems = [
   },
 ]
 
+const serviceTrust: ServiceTrustStat[] = [
+  { value: '11 000 €', label: 'Aides moyennes cumulées', icon: Wallet },
+  { value: '70 %', label: "Jusqu'à 70% d'économies", icon: ThermometerSun },
+  { value: '2–3 j', label: 'Pose maison type', icon: Timer },
+  { value: 'RGE', label: 'Installateurs QualiPAC', icon: ShieldCheck },
+]
+
 export default function PacMaisonIndividuellePage() {
   return (
     <>
+      <JsonLdService
+        name="Installation pompe à chaleur air-eau & air-air — maison individuelle"
+        description="Remplacement de chaudière par PAC, étude thermique, aides CEE & MaPrimeRénov' — Effinor."
+        urlPath="/services/pompe-a-chaleur/maison-individuelle"
+        serviceType="Pompe à chaleur"
+      />
       <ServiceHero
         eyebrow="Pompe à chaleur"
         title={
@@ -107,8 +130,11 @@ export default function PacMaisonIndividuellePage() {
         description="Remplacez votre ancien système de chauffage par une pompe à chaleur air-eau ou air-air haute performance. Économies immédiates, confort augmenté, démarche écologique. Étude thermique, installation et démarches d'aides incluses."
         imageSrc="/images/services/pac-maison.jpg"
         imageAlt="Pompe à chaleur installée dans une maison individuelle"
+        imageBlurKey="pacMaison"
         benefitTagline="Jusqu'à 11 000 € d'aides cumulables"
       />
+      <ServiceTrustBar items={serviceTrust} />
+      <PartnersBar />
 
       <ServiceBenefits
         eyebrow="Pourquoi une PAC ?"
@@ -123,6 +149,7 @@ export default function PacMaisonIndividuellePage() {
         description="Étude personnalisée, équipements premium, pose certifiée."
         benefits={technicalArguments}
         variant="muted"
+        spacing="md"
       />
 
       <HowItWorks />

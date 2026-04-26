@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { GeistSans, GeistMono } from '@effinor/design-system'
+import { JsonLdGlobal } from '@/components/seo/json-ld-global'
 import { siteConfig } from '@/lib/site-config'
 import '../styles/globals.css'
 
@@ -54,7 +55,7 @@ export const metadata: Metadata = {
     description: siteConfig.description,
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: `${siteConfig.name} — ${siteConfig.tagline}`,
     description: siteConfig.description,
   },
@@ -76,6 +77,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground antialiased min-h-screen flex flex-col">
+        <JsonLdGlobal />
         {children}
       </body>
     </html>

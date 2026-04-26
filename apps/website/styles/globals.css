@@ -23,3 +23,11 @@
 
 /* 5. Tokens CSS et reset depuis le design-system */
 @import '@effinor/design-system/styles';
+
+/* Rythme resserré pour le site vitrine (overrides --spacing-section-* du design-system) */
+:root {
+  --spacing-section-sm: 1.75rem;
+  --spacing-section-md: 2.75rem;
+  --spacing-section-lg: 3.75rem; /* -25% vs 5rem initial */
+  --spacing-section-xl: 5rem;
+}

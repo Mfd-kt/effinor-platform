@@ -1,9 +1,13 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { Phone, Sparkles, Star } from 'lucide-react'
 import { Button, Container } from '@effinor/design-system'
 
 import { Simulator } from '@/components/simulator/simulator'
+import { BLUR_PLACEHOLDERS } from '@/lib/blur-placeholders'
 import { getSiteContact, getSiteStats } from '@/lib/site-settings'
+
+const HERO_IMAGE = '/images/hero-residence.png'
 
 export async function Hero() {
   const contact = await getSiteContact()
@@ -17,15 +21,15 @@ export async function Hero() {
       />
       <div
         aria-hidden="true"
-        className="absolute -top-40 -right-40 -z-10 h-[500px] w-[500px] rounded-full bg-secondary-200/30 blur-3xl"
+        className="absolute -top-40 -right-40 -z-10 h-[500px] w-[500px] rounded-full bg-secondary-200/20 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="absolute -bottom-40 -left-40 -z-10 h-[500px] w-[500px] rounded-full bg-accent-200/20 blur-3xl"
+        className="absolute -bottom-40 -left-40 -z-10 h-[500px] w-[500px] rounded-full bg-accent-200/15 blur-3xl"
       />
 
       <Container size="site">
-        <div className="grid grid-cols-1 gap-10 py-12 lg:grid-cols-12 lg:gap-12 lg:py-20">
+        <div className="grid grid-cols-1 gap-8 py-8 lg:grid-cols-12 lg:gap-10 lg:py-14">
           {/* COLONNE GAUCHE — Contenu */}
           <div className="flex flex-col justify-center lg:col-span-6">
             {/* Eyebrow chip */}
@@ -56,6 +60,21 @@ export async function Hero() {
               Effinor gère votre projet de A à Z et maximise vos aides
               <strong className="font-semibold text-foreground"> CEE, MaPrimeRénov&apos;, éco-PTZ</strong>.
             </p>
+
+            <div className="relative mt-6 aspect-[16/9] w-full max-w-xl overflow-hidden rounded-2xl shadow-lg ring-1 ring-border/40">
+              <Image
+                src={HERO_IMAGE}
+                alt="Résidence rénovée — isolation et équipements performants"
+                fill
+                priority
+                quality={80}
+                placeholder="blur"
+                blurDataURL={BLUR_PLACEHOLDERS.heroResidence}
+                sizes="(min-width: 1024px) 38vw, 100vw"
+                className="object-cover"
+                fetchPriority="high"
+              />
+            </div>
 
             {/* Liste de réassurance */}
             <ul className="mt-6 grid grid-cols-1 gap-2 text-sm text-foreground sm:grid-cols-2">
@@ -109,8 +128,15 @@ export async function Hero() {
               </a>
             </div>
 
+            <p className="mt-5 text-center text-[11px] font-serif uppercase tracking-[0.18em] text-muted-foreground sm:text-left">
+              <span className="font-medium text-foreground/80">Partenaires installés :</span>{' '}
+              <span className="text-foreground/70">
+                Daikin · Mitsubishi · Atlantic · Ariston · Panasonic
+              </span>
+            </p>
+
             {/* Note confiance */}
-            <div className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
+            <div className="mt-4 flex items-center gap-2.5 text-sm text-muted-foreground">
               <div className="flex" aria-hidden="true">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
