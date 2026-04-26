@@ -36,7 +36,7 @@ export function StepChoiceCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        'group relative flex w-full rounded-xl border bg-card text-left transition-all',
+        'group relative flex w-full touch-manipulation rounded-xl border bg-card text-left transition-all',
         'hover:border-secondary-400 hover:bg-secondary-50/60',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500 focus-visible:ring-offset-2',
         compact

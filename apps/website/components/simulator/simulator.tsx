@@ -295,7 +295,7 @@ export function Simulator({ contact }: SimulatorProps) {
   // ── Résultat (remplace le contenu, pas de redirection) ─────────────
   if (result) {
     return (
-      <div className="mx-auto w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+      <div className="mx-auto w-full min-w-0 max-w-lg touch-manipulation rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6 md:p-8">
         <SimulatorResult
           firstName={result.firstName}
           phoneDisplay={result.phoneDisplay}
@@ -311,7 +311,7 @@ export function Simulator({ contact }: SimulatorProps) {
   return (
     <div
       className={cn(
-        'mx-auto w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-sm transition-all sm:p-8',
+        'mx-auto w-full min-w-0 max-w-lg touch-manipulation rounded-2xl border border-border bg-card p-4 shadow-sm transition-all sm:p-6 md:p-8',
         step === 6 && 'bg-gradient-to-b from-card to-secondary-50/30'
       )}
     >
@@ -464,7 +464,7 @@ export function Simulator({ contact }: SimulatorProps) {
           title="Quels travaux vous intéressent ?"
           description="Sélectionnez tout ce qui vous intéresse — plusieurs choix possibles."
         >
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-2.5">
             {TRAVAUX_OPTIONS.map(({ value, label, Icon }) => (
               <StepChoiceCard
                 key={value}
@@ -501,7 +501,7 @@ export function Simulator({ contact }: SimulatorProps) {
                 autoComplete="given-name"
                 value={answers.prenom ?? ''}
                 onChange={(e) => update('prenom', e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
+                className="mt-1.5 w-full min-h-11 rounded-lg border border-border bg-card px-3 py-2.5 text-base shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
               />
             </div>
             <div>
@@ -517,7 +517,7 @@ export function Simulator({ contact }: SimulatorProps) {
                 autoComplete="family-name"
                 value={answers.nom ?? ''}
                 onChange={(e) => update('nom', e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
+                className="mt-1.5 w-full min-h-11 rounded-lg border border-border bg-card px-3 py-2.5 text-base shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
               />
             </div>
             <div>
@@ -535,7 +535,7 @@ export function Simulator({ contact }: SimulatorProps) {
                 placeholder="06 12 34 56 78"
                 value={answers.telephone ?? ''}
                 onChange={(e) => update('telephone', e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
+                className="mt-1.5 w-full min-h-11 rounded-lg border border-border bg-card px-3 py-2.5 text-base shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
               />
             </div>
             <div>
@@ -556,7 +556,7 @@ export function Simulator({ contact }: SimulatorProps) {
                 onChange={(e) =>
                   update('code_postal', e.target.value.replace(/\D/g, '').slice(0, 5))
                 }
-                className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
+                className="mt-1.5 w-full min-h-11 rounded-lg border border-border bg-card px-3 py-2.5 text-base shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
               />
             </div>
             <div className="sm:col-span-2">
@@ -573,12 +573,12 @@ export function Simulator({ contact }: SimulatorProps) {
                 placeholder="vous@exemple.fr"
                 value={answers.email ?? ''}
                 onChange={(e) => update('email', e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
+                className="mt-1.5 w-full min-h-11 rounded-lg border border-border bg-card px-3 py-2.5 text-base shadow-xs outline-none transition-colors focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/30"
               />
             </div>
           </div>
 
-          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3.5 text-sm">
+          <label className="mt-5 flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3.5 text-base">
             <input
               type="checkbox"
               checked={answers.rgpd_consent === true}

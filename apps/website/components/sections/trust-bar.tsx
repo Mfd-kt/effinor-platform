@@ -11,25 +11,22 @@ export async function TrustBar() {
   return (
     <section className="border-y border-border bg-muted/40">
       <Container size="site">
-        <ul className="grid grid-cols-2 divide-y divide-border lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+        <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-none border border-border bg-border lg:grid-cols-4">
           {stats.map((stat, idx) => {
             const Icon = ICONS[idx] ?? BadgeCheck
             return (
               <li
                 key={`${stat.label}-${idx}`}
-                className={[
-                  'flex items-center gap-4 px-2 py-5 sm:px-6 lg:py-7',
-                  idx === 1 ? 'border-l border-border lg:border-l-0' : '',
-                ].join(' ')}
+                className="flex min-h-[5.5rem] items-center gap-3 border-0 bg-muted/40 px-3 py-4 sm:gap-4 sm:px-5 sm:py-5 lg:min-h-0 lg:px-6 lg:py-7"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary-500/10 text-secondary-700">
-                  <Icon className="h-5 w-5" />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary-500/10 text-secondary-700 sm:h-11 sm:w-11">
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-xl font-bold leading-tight text-primary-900 sm:text-2xl">
+                  <p className="text-lg font-bold leading-tight text-primary-900 sm:text-xl lg:text-2xl">
                     {stat.value}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground sm:text-sm">
+                  <p className="line-clamp-2 break-words text-[11px] leading-snug text-muted-foreground sm:text-xs sm:leading-tight md:text-sm">
                     {stat.label}
                   </p>
                 </div>

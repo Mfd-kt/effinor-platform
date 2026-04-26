@@ -19,7 +19,7 @@ export async function FinalCTA() {
       </div>
 
       <Container size="site">
-        <div className="py-14 lg:py-20 text-center">
+        <div className="pt-9 pb-safe text-center sm:pt-10 lg:pt-11">
           <p className="text-sm font-semibold uppercase tracking-widest text-secondary-300">
             Prêt à passer à l&apos;action ?
           </p>
@@ -34,7 +34,7 @@ export async function FinalCTA() {
             Notre équipe vous accompagne du diagnostic au versement de vos primes.
           </p>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild variant="accent" size="lg">
               <Link href="/contact">
                 Démarrer mon projet
@@ -54,7 +54,7 @@ export async function FinalCTA() {
             </Button>
           </div>
 
-          <p className="mt-6 text-sm text-primary-200">
+          <p className="mt-4 text-sm text-primary-200">
             {contact.hours.label} ·{' '}
             <a
               href={`mailto:${contact.email}`}
