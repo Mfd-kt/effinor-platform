@@ -4,10 +4,66 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { CompleteSimulatorForLeadButton } from "@/features/simulator-cee/components/complete-simulator-for-lead-button";
+import {
+  extractWebsiteSimulatorPayload,
+  mapWebsitePayloadToSimulatorAnswers,
+} from "@/features/simulator-cee/domain/website-answers";
 import { getLatestSimulationForLead } from "@/features/simulator-cee/queries/get-latest-simulation-for-lead";
 import { cn } from "@/lib/utils";
 
-type LeadLike = { id: string } | null | undefined;
+type LeadLike =
+  | {
+      id: string;
+      sim_payload_json?: unknown;
+      worksite_address?: string | null;
+      worksite_postal_code?: string | null;
+      worksite_city?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      email?: string | null;
+      phone?: string | null;
+    }
+  | null
+  | undefined;
+
+const WEBSITE_LOGEMENT_LABEL: Record<string, string> = {
+  maison: "Maison individuelle",
+  appartement: "Appartement",
+  immeuble: "Immeuble collectif",
+};
+
+const WEBSITE_STATUT_LABEL: Record<string, string> = {
+  proprietaire: "Propriétaire occupant",
+  locataire: "Locataire",
+  sci_sarl: "SCI / SARL / Bailleur",
+};
+
+const WEBSITE_CHAUFFAGE_LABEL: Record<string, string> = {
+  gaz: "Gaz",
+  fioul: "Fioul",
+  electrique: "Électrique",
+  autre: "Autre / Je ne sais pas",
+};
+
+const WEBSITE_TRANCHE_LABEL: Record<string, string> = {
+  tres_modeste: "Très modestes",
+  modeste: "Modestes",
+  intermediaire: "Intermédiaires",
+  superieur: "Supérieurs",
+  nr: "Non communiqué",
+};
+
+const WEBSITE_TRAVAUX_LABEL: Record<string, string> = {
+  isolation: "Isolation",
+  pac_clim: "Pompe à chaleur & Clim.",
+  chauffage_traditionnel: "Chauffage traditionnel",
+  chauffage_bois: "Chauffage bois",
+  solaire: "Solaire",
+  chauffe_eau: "Chauffe-eau",
+  renovation_globale: "Rénovation globale",
+  je_ne_sais_pas: "Je ne sais pas encore",
+};
 
 const CHAUFFAGE_LABEL: Record<string, string> = {
   gaz: "Gaz (chaudière classique)",
@@ -101,6 +157,124 @@ export async function LeadSimulationResults({
   const sim = await getLatestSimulationForLead(lead.id);
 
   if (!sim) {
+    const websitePayload = extractWebsiteSimulatorPayload(lead.sim_payload_json);
+
+    if (websitePayload) {
+      const { answers: mapped, missingFields } = mapWebsitePayloadToSimulatorAnswers(
+        websitePayload,
+        {
+          address: lead.worksite_address,
+          postalCode: lead.worksite_postal_code,
+          city: lead.worksite_city,
+        },
+      );
+      // Enrichir avec les infos contact déjà en DB (prioritaires sur la payload site).
+      if (!mapped.contact || !mapped.contact.email || !mapped.contact.telephone) {
+        mapped.contact = {
+          civilite: mapped.contact?.civilite ?? "M.",
+          prenom: (mapped.contact?.prenom ?? lead.first_name ?? "").trim(),
+          nom: (mapped.contact?.nom ?? lead.last_name ?? "").trim(),
+          email: mapped.contact?.email ?? lead.email ?? "",
+          telephone: mapped.contact?.telephone ?? lead.phone ?? "",
+        };
+      }
+
+      const a = websitePayload.answers;
+
+      return (
+        <div className="space-y-3">
+          <Card className="border-2 border-emerald-200 bg-emerald-50/40 shadow-none">
+            <CardContent className="space-y-3 py-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="rounded-full">
+                  Pré-qualifié via le site
+                </Badge>
+                <p className="text-xs text-emerald-900">
+                  Le prospect a rempli le simulateur sur effinor.fr. Complétez
+                  avec lui les questions techniques ci-dessous pour calculer l'éligibilité finale.
+                </p>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-emerald-200 bg-white">
+                <Table>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="w-2/5 font-medium text-slate-600">Logement</TableCell>
+                      <TableCell>{WEBSITE_LOGEMENT_LABEL[a.logement] ?? a.logement}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-slate-600">Statut</TableCell>
+                      <TableCell>{WEBSITE_STATUT_LABEL[a.statut] ?? a.statut}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-slate-600">Chauffage (déclaré)</TableCell>
+                      <TableCell>{WEBSITE_CHAUFFAGE_LABEL[a.chauffage] ?? a.chauffage}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-slate-600">Foyer</TableCell>
+                      <TableCell>
+                        {a.nb_personnes === 5 ? "5 personnes ou plus" : `${a.nb_personnes} personne${a.nb_personnes > 1 ? "s" : ""}`}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-slate-600">Revenus annuels</TableCell>
+                      <TableCell>
+                        {WEBSITE_TRANCHE_LABEL[a.tranche_revenus] ?? a.tranche_revenus}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-slate-600">
+                        Travaux souhaités
+                      </TableCell>
+                      <TableCell>
+                        {a.travaux.length
+                          ? a.travaux
+                              .map((k) => WEBSITE_TRAVAUX_LABEL[k] ?? k)
+                              .join(", ")
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-slate-600">Code postal</TableCell>
+                      <TableCell className="font-mono">{a.code_postal}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              {missingFields.length ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  <p className="font-semibold">À compléter avec le prospect :</p>
+                  <ul className="mt-1 list-disc pl-5 space-y-0.5">
+                    {missingFields.map((f) => (
+                      <li key={f}>{f}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <CompleteSimulatorForLeadButton
+                  leadId={lead.id}
+                  initialAnswers={mapped}
+                  label="Compléter la simulation avec le prospect"
+                />
+                <Link
+                  href="/simulateur"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "rounded-full",
+                  )}
+                >
+                  Recommencer à zéro
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <Card className="border-dashed border-violet-200 bg-violet-50/40 shadow-none">
         <CardContent className="flex flex-col items-start gap-3 py-6">

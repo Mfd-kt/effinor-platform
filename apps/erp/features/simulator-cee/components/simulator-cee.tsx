@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { saveSimulationForLeadAction } from "@/features/simulator-cee/actions/save-simulation-for-lead-action";
 import { submitSimulationAction } from "@/features/simulator-cee/actions/submit-simulation";
 import { computeResult, detectZone } from "@/features/simulator-cee/domain/eligibility-rules";
 import { buildTranches } from "@/features/simulator-cee/domain/plafonds";
@@ -216,18 +217,43 @@ export type SimulatorCeeProps = {
   onLeadCreated?: (leadId: string) => void;
   /** Bouton « Annuler » (modal). */
   onCancel?: () => void;
+  /**
+   * Pré-remplissage (ex. réponses déjà collectées via le simulateur public).
+   * Écrase les defaults (chauffage = 'gaz', etc.) pour les champs présents.
+   */
+  initialAnswers?: Partial<SimulationAnswers>;
+  /**
+   * Si défini : au lieu de créer un nouveau lead, on enregistre la simulation
+   * sur ce lead existant (`saveSimulationForLeadAction`).
+   */
+  targetLeadId?: string;
 };
 
-export function SimulatorCee({ embedded, onLeadCreated, onCancel }: SimulatorCeeProps = {}) {
+export function SimulatorCee({
+  embedded,
+  onLeadCreated,
+  onCancel,
+  initialAnswers,
+  targetLeadId,
+}: SimulatorCeeProps = {}) {
   const router = useRouter();
-  const [answers, setAnswers] = useState<Partial<SimulationAnswers>>({
-    chauffage: "gaz",
-    dpe: "D",
-    nbPersonnes: 2,
-    trancheRevenu: "modeste",
-    adresse: emptyAddress(),
-    contact: emptyContact(),
-    rappel: emptyRappel(),
+  const [answers, setAnswers] = useState<Partial<SimulationAnswers>>(() => {
+    const base: Partial<SimulationAnswers> = {
+      chauffage: "gaz",
+      dpe: "D",
+      nbPersonnes: 2,
+      trancheRevenu: "modeste",
+      adresse: emptyAddress(),
+      contact: emptyContact(),
+      rappel: emptyRappel(),
+    };
+    const merged: Partial<SimulationAnswers> = { ...base, ...(initialAnswers ?? {}) };
+    // Garantit que adresse/contact/rappel restent des objets complets même si
+    // `initialAnswers` ne les fournit pas.
+    merged.adresse = initialAnswers?.adresse ?? base.adresse;
+    merged.contact = initialAnswers?.contact ?? base.contact;
+    merged.rappel = initialAnswers?.rappel ?? base.rappel;
+    return merged;
   });
 
   const fullAnswers = useMemo(() => toSimulationAnswers(answers), [answers]);
@@ -304,9 +330,11 @@ export function SimulatorCee({ embedded, onLeadCreated, onCancel }: SimulatorCee
   async function onCreateLead(opts: { savedDespiteNonEligible?: boolean } = {}) {
     setSubmitting(true);
     try {
-      const res = await submitSimulationAction(fullAnswers, opts);
+      const res = targetLeadId
+        ? await saveSimulationForLeadAction(targetLeadId, fullAnswers, opts)
+        : await submitSimulationAction(fullAnswers, opts);
       if (res.ok) {
-        toast.success("Lead créé");
+        toast.success(targetLeadId ? "Simulation enregistrée" : "Lead créé");
         if (onLeadCreated) {
           onLeadCreated(res.leadId);
         } else {
