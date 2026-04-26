@@ -69,7 +69,9 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Fichiers Next.js standalone
-COPY --from=builder /app/apps/website/public ./public
+# Note: en monorepo avec outputFileTracingRoot, server.js est à apps/website/server.js
+# et Next.js cherche public/ RELATIF au server.js → donc apps/website/public (pas ./public).
+COPY --from=builder --chown=nextjs:nodejs /app/apps/website/public ./apps/website/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/website/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/website/.next/static ./apps/website/.next/static
 
