@@ -59,8 +59,8 @@ export async function Hero() {
             {/* CTA */}
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button asChild variant="accent" size="lg" className="group shadow-lg shadow-accent-500/20">
-                <Link href="/contact">
-                  Obtenir une étude gratuite
+                <Link href="/#simulateur">
+                  Estimer mes aides gratuitement
                   <ArrowRight className="ml-1 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
               </Button>

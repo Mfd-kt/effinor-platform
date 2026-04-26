@@ -6,6 +6,7 @@ import { HowItWorks } from '@/components/sections/how-it-works'
 import { AidesInfo } from '@/components/sections/aides-info'
 import { Testimonials } from '@/components/sections/testimonials'
 import { FinalCTA } from '@/components/sections/final-cta'
+import { SimulatorSection } from '@/components/sections/simulator-section'
 
 export default function HomePage() {
   return (
@@ -15,6 +16,7 @@ export default function HomePage() {
       <ServicesGrid />
       <WhyEffinor />
       <HowItWorks />
+      <SimulatorSection />
       <AidesInfo />
       <Testimonials />
       <FinalCTA />
