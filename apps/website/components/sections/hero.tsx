@@ -1,7 +1,8 @@
-import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, Phone, ShieldCheck, Star, Sparkles } from 'lucide-react'
+import { Phone, Sparkles, Star } from 'lucide-react'
 import { Button, Container } from '@effinor/design-system'
+
+import { Simulator } from '@/components/simulator/simulator'
 import { getSiteContact, getSiteStats } from '@/lib/site-settings'
 
 export async function Hero() {
@@ -24,9 +25,9 @@ export async function Hero() {
       />
 
       <Container size="site">
-        <div className="grid grid-cols-1 gap-12 py-16 lg:grid-cols-12 lg:gap-12 lg:py-24">
+        <div className="grid grid-cols-1 gap-10 py-12 lg:grid-cols-12 lg:gap-12 lg:py-20">
           {/* COLONNE GAUCHE — Contenu */}
-          <div className="lg:col-span-7 flex flex-col justify-center">
+          <div className="flex flex-col justify-center lg:col-span-6">
             {/* Eyebrow chip */}
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-secondary-200 bg-secondary-50 px-3 py-1.5 text-xs font-semibold text-secondary-700">
               <Sparkles className="h-3.5 w-3.5" />
@@ -50,28 +51,48 @@ export async function Hero() {
               </span>
             </h1>
 
-            <p className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               Pompe à chaleur, système solaire combiné, rénovation globale —
               Effinor gère votre projet de A à Z et maximise vos aides
               <strong className="font-semibold text-foreground"> CEE, MaPrimeRénov&apos;, éco-PTZ</strong>.
             </p>
 
-            {/* CTA */}
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button asChild variant="accent" size="lg" className="group shadow-lg shadow-accent-500/20">
-                <Link href="/#simulateur">
-                  Estimer mes aides gratuitement
-                  <ArrowRight className="ml-1 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </Button>
+            {/* Liste de réassurance */}
+            <ul className="mt-6 grid grid-cols-1 gap-2 text-sm text-foreground sm:grid-cols-2">
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary-500/10 text-secondary-700">
+                  <Sparkles className="h-3 w-3" aria-hidden="true" />
+                </span>
+                <span>
+                  <strong className="font-semibold">11 000 €</strong> d&apos;aides moyennes par projet
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary-500/10 text-secondary-700">
+                  <Sparkles className="h-3 w-3" aria-hidden="true" />
+                </span>
+                <span>Étude gratuite &amp; sans engagement</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary-500/10 text-secondary-700">
+                  <Sparkles className="h-3 w-3" aria-hidden="true" />
+                </span>
+                <span>Garantie décennale · travaux assurés</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary-500/10 text-secondary-700">
+                  <Sparkles className="h-3 w-3" aria-hidden="true" />
+                </span>
+                <span>Conseiller dédié · rappel sous 24h</span>
+              </li>
+            </ul>
 
-              <Button asChild variant="outline" size="lg">
+            {/* CTA secondaire — "découvrir nos services" */}
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <Button asChild variant="outline" size="md">
                 <Link href="/services">Découvrir nos services</Link>
               </Button>
-            </div>
 
-            {/* Footer reassurance */}
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
               <a
                 href={`tel:${contact.phoneE164}`}
                 className="group inline-flex items-center gap-3 text-sm text-foreground"
@@ -86,74 +107,51 @@ export async function Hero() {
                   </span>
                 </span>
               </a>
+            </div>
 
-              <div className="hidden h-10 w-px bg-border sm:block" aria-hidden="true" />
-
-              <div className="flex items-center gap-2.5 text-sm">
-                <div className="flex" aria-hidden="true">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-4 w-4 fill-accent-500 text-accent-500"
-                    />
-                  ))}
-                </div>
-                <span>
-                  <span className="block font-semibold leading-tight">
-                    {stats[2]?.value ?? '4.7/5'}
-                  </span>
-                  <span className="block text-xs text-muted-foreground">
-                    {stats[0]?.value} {stats[0]?.label.toLowerCase() ?? 'chantiers'}
-                  </span>
-                </span>
+            {/* Note confiance */}
+            <div className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
+              <div className="flex" aria-hidden="true">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className="h-4 w-4 fill-accent-500 text-accent-500"
+                  />
+                ))}
               </div>
+              <span>
+                <strong className="font-semibold text-foreground">
+                  {stats[2]?.value ?? '4.7/5'}
+                </strong>
+                {' · '}
+                {stats[0]?.value} {stats[0]?.label?.toLowerCase() ?? 'chantiers'}
+              </span>
             </div>
           </div>
 
-          {/* COLONNE DROITE — Visuel */}
-          <div className="relative lg:col-span-5">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-2xl ring-1 ring-primary-900/10">
-              <Image
-                src="/images/hero-residence.png"
-                alt="Résidence rénovée par Effinor"
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                className="object-cover"
+          {/* COLONNE DROITE — Simulateur CEE (capture directe) */}
+          <div className="relative lg:col-span-6" id="simulateur">
+            <div className="relative">
+              {/* Pastille titre au-dessus du simulateur */}
+              <div className="mb-4 text-center lg:text-left">
+                <span className="inline-flex items-center gap-2 rounded-full border border-accent-200 bg-accent-50 px-3 py-1.5 text-xs font-semibold text-accent-800">
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  Simulateur gratuit · 2 minutes
+                </span>
+                <h2 className="mt-3 text-xl font-bold tracking-tight text-primary-900 sm:text-2xl">
+                  Combien d&apos;aides pouvez-vous obtenir ?
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  6 questions pour estimer vos primes CEE &amp; MaPrimeRénov&apos;.
+                </p>
+              </div>
+              <Simulator
+                contact={{
+                  phone: contact.phone,
+                  phoneE164: contact.phoneE164,
+                  email: contact.email,
+                }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary-900/60 via-transparent to-transparent" />
-            </div>
-
-            {/* Card stats flottante : économies */}
-            <div className="absolute left-4 top-8 hidden rounded-2xl border border-border bg-card p-4 shadow-xl ring-1 ring-primary-900/5 lg:block">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary-500/10 text-secondary-700">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div className="text-sm">
-                  <p className="font-semibold leading-tight text-foreground">
-                    Garantie décennale
-                  </p>
-                  <p className="text-xs text-muted-foreground">Travaux assurés</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Card stats flottante : aides */}
-            <div className="absolute right-4 bottom-4 rounded-2xl border border-border bg-card p-4 shadow-xl ring-1 ring-primary-900/5 sm:p-5">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-500/10 text-accent-700 sm:h-14 sm:w-14">
-                  <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold leading-tight text-primary-900 sm:text-3xl">
-                    11 000 €
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    d&apos;aides moyennes par projet
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
