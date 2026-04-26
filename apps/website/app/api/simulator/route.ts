@@ -94,6 +94,7 @@ export async function POST(request: Request) {
 
   const simPayload = {
     source: 'website_simulator',
+    origin_label: 'simulateur effinor.fr',
     version: 'website-simulator-v1',
     answers: {
       logement: data.logement,
@@ -123,7 +124,10 @@ export async function POST(request: Request) {
   const { data: row, error } = await supabase
     .from('leads')
     .insert({
-      source: 'website_simulator',
+      // Valeur d'enum existante (libellé ERP : « Site web »). La distinction
+      // avec le simulateur ERP (`simulator_cee`) se fait via `sim_version` et
+      // `sim_payload_json.source = 'website_simulator'`.
+      source: 'website',
       lead_status: 'new',
       qualification_status: 'pending',
       company_name: companyName,
