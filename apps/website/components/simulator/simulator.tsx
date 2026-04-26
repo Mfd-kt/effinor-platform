@@ -6,19 +6,23 @@ import {
   ArrowRight,
   Building,
   Building2,
+  Droplets,
   Flame,
   Home,
   Key,
+  Layers3,
   Loader2,
   Plug,
   ShieldCheck,
+  ShieldQuestion,
+  Snowflake,
   Sun,
   Thermometer,
+  TreePine,
   User,
   UserCircle2,
   Users,
   HelpCircle,
-  ShieldQuestion,
   Wrench,
   Sparkles,
 } from 'lucide-react'
@@ -154,33 +158,16 @@ const CHAUFFAGE_OPTIONS: {
 const TRAVAUX_OPTIONS: {
   value: TravauxValue
   label: string
-  description: string
   Icon: typeof Thermometer
 }[] = [
-  {
-    value: 'pac',
-    label: 'Pompe à chaleur',
-    description: 'Remplacement de chaudière ou chauffage élec',
-    Icon: Thermometer,
-  },
-  {
-    value: 'renovation_globale',
-    label: 'Rénovation globale',
-    description: 'Isolation + chauffage + ventilation',
-    Icon: Wrench,
-  },
-  {
-    value: 'ssc',
-    label: 'Système solaire combiné',
-    description: 'Chauffage solaire + eau chaude',
-    Icon: Sun,
-  },
-  {
-    value: 'je_ne_sais_pas',
-    label: 'Je ne sais pas encore',
-    description: 'Conseil sur-mesure par un expert',
-    Icon: ShieldQuestion,
-  },
+  { value: 'isolation', label: 'Isolation', Icon: Layers3 },
+  { value: 'pac_clim', label: 'Pompe à chaleur & Clim.', Icon: Snowflake },
+  { value: 'chauffage_traditionnel', label: 'Chauffage traditionnel', Icon: Flame },
+  { value: 'chauffage_bois', label: 'Chauffage bois', Icon: TreePine },
+  { value: 'solaire', label: 'Solaire', Icon: Sun },
+  { value: 'chauffe_eau', label: 'Chauffe-eau', Icon: Droplets },
+  { value: 'renovation_globale', label: 'Rénovation globale', Icon: Wrench },
+  { value: 'je_ne_sais_pas', label: 'Je ne sais pas encore', Icon: ShieldQuestion },
 ]
 
 export function Simulator({ contact }: SimulatorProps) {
@@ -477,16 +464,16 @@ export function Simulator({ contact }: SimulatorProps) {
           title="Quels travaux vous intéressent ?"
           description="Sélectionnez tout ce qui vous intéresse — plusieurs choix possibles."
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            {TRAVAUX_OPTIONS.map(({ value, label, description, Icon }) => (
+          <div className="grid grid-cols-2 gap-2.5">
+            {TRAVAUX_OPTIONS.map(({ value, label, Icon }) => (
               <StepChoiceCard
                 key={value}
                 selected={(answers.travaux ?? []).includes(value)}
                 onSelect={() => toggleTravaux(value)}
-                icon={<Icon className="h-5 w-5" />}
+                icon={<Icon />}
                 label={label}
-                description={description}
                 tone="multi"
+                compact
               />
             ))}
           </div>

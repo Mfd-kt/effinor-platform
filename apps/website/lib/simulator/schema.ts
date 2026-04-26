@@ -11,9 +11,13 @@ export const TRANCHE_VALUES = [
   'nr',
 ] as const
 export const TRAVAUX_VALUES = [
-  'pac',
+  'isolation',
+  'pac_clim',
+  'chauffage_traditionnel',
+  'chauffage_bois',
+  'solaire',
+  'chauffe_eau',
   'renovation_globale',
-  'ssc',
   'je_ne_sais_pas',
 ] as const
 
