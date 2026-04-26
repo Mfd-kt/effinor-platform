@@ -28,6 +28,7 @@ import type { SiteContact } from '@/lib/site-settings'
 import { SimulatorStep } from './simulator-step'
 import { StepChoiceCard } from './step-choice-card'
 import { SimulatorResult } from './simulator-result'
+import { buildTrancheOptions } from '@/lib/simulator/income-thresholds'
 import type {
   ChauffageValue,
   LogementValue,
@@ -150,34 +151,6 @@ const CHAUFFAGE_OPTIONS: {
   },
 ]
 
-const TRANCHE_OPTIONS: { value: TrancheValue; label: string; description: string }[] = [
-  {
-    value: 'tres_modeste',
-    label: 'Moins de 22 000 €',
-    description: 'Ménages très modestes — primes majorées',
-  },
-  {
-    value: 'modeste',
-    label: '22 000 € – 30 000 €',
-    description: 'Ménages modestes — primes Coup de pouce',
-  },
-  {
-    value: 'intermediaire',
-    label: '30 000 € – 45 000 €',
-    description: 'Ménages intermédiaires — CEE standard',
-  },
-  {
-    value: 'superieur',
-    label: 'Plus de 45 000 €',
-    description: 'Ménages supérieurs — CEE éligibles',
-  },
-  {
-    value: 'nr',
-    label: 'Je préfère ne pas répondre',
-    description: 'Nous ferons le calcul avec vous lors du rappel',
-  },
-]
-
 const TRAVAUX_OPTIONS: {
   value: TravauxValue
   label: string
@@ -220,6 +193,22 @@ export function Simulator({ contact }: SimulatorProps) {
   const update = <K extends keyof SimulatorAnswers>(key: K, value: SimulatorAnswers[K]) => {
     setAnswers((prev) => ({ ...prev, [key]: value }))
   }
+
+  const setNbPersonnes = (n: 1 | 2 | 3 | 4 | 5) => {
+    setAnswers((prev) => ({
+      ...prev,
+      nb_personnes: n,
+      // Les bornes de tranches changent avec la taille du foyer : on invalide
+      // la sélection précédente pour éviter toute ambiguïté (sauf "je préfère
+      // ne pas répondre", qui reste valable).
+      tranche_revenus:
+        prev.nb_personnes === n || prev.tranche_revenus === 'nr'
+          ? prev.tranche_revenus
+          : undefined,
+    }))
+  }
+
+  const trancheOptions = buildTrancheOptions(answers.nb_personnes ?? null)
 
   const toggleTravaux = (value: TravauxValue) => {
     setAnswers((prev) => {
@@ -424,7 +413,7 @@ export function Simulator({ contact }: SimulatorProps) {
                     <button
                       key={n}
                       type="button"
-                      onClick={() => update('nb_personnes', n as 1 | 2 | 3 | 4 | 5)}
+                      onClick={() => setNbPersonnes(n as 1 | 2 | 3 | 4 | 5)}
                       aria-pressed={active}
                       className={cn(
                         'h-12 rounded-lg border text-sm font-semibold transition-colors',
@@ -446,8 +435,27 @@ export function Simulator({ contact }: SimulatorProps) {
                 <Users className="h-4 w-4 text-secondary-700" aria-hidden="true" />
                 Revenus annuels du foyer
               </legend>
-              <div className="mt-3 grid gap-2">
-                {TRANCHE_OPTIONS.map(({ value, label, description }) => (
+              {answers.nb_personnes ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Bornes recalculées pour un foyer de{' '}
+                  <span className="font-semibold text-foreground">
+                    {answers.nb_personnes === 5 ? '5 personnes ou plus' : `${answers.nb_personnes} personne${answers.nb_personnes > 1 ? 's' : ''}`}
+                  </span>
+                  .
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Sélectionnez d’abord le nombre de personnes dans le foyer pour voir les tranches ajustées.
+                </p>
+              )}
+              <div
+                className={cn(
+                  'mt-3 grid gap-2 transition-opacity',
+                  !answers.nb_personnes && 'pointer-events-none opacity-50'
+                )}
+                aria-disabled={!answers.nb_personnes}
+              >
+                {trancheOptions.map(({ value, label, description }) => (
                   <StepChoiceCard
                     key={value}
                     selected={answers.tranche_revenus === value}
