@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { ArrowRight, Phone } from 'lucide-react'
 import { Button, Container } from '@effinor/design-system'
-import { siteConfig } from '@/lib/site-config'
+import { getSiteContact } from '@/lib/site-settings'
 
-export function FinalCTA() {
+export async function FinalCTA() {
+  const contact = await getSiteContact()
   return (
     <section
       aria-labelledby="final-cta-heading"
@@ -46,20 +47,20 @@ export function FinalCTA() {
               size="lg"
               className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
-              <a href={`tel:${siteConfig.contact.phoneE164}`}>
+              <a href={`tel:${contact.phoneE164}`}>
                 <Phone className="mr-1" />
-                {siteConfig.contact.phone}
+                {contact.phone}
               </a>
             </Button>
           </div>
 
           <p className="mt-6 text-sm text-primary-200">
-            {siteConfig.contact.hours.label} ·{' '}
+            {contact.hours.label} ·{' '}
             <a
-              href={`mailto:${siteConfig.contact.email}`}
+              href={`mailto:${contact.email}`}
               className="underline-offset-2 hover:underline"
             >
-              {siteConfig.contact.email}
+              {contact.email}
             </a>
           </p>
         </div>

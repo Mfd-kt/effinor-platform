@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Phone } from 'lucide-react'
 import { Button, Container } from '@effinor/design-system'
-import { siteConfig } from '@/lib/site-config'
+import { getSiteContact } from '@/lib/site-settings'
 
 interface ServiceHeroProps {
   eyebrow: string
@@ -13,7 +13,7 @@ interface ServiceHeroProps {
   benefitTagline?: string
 }
 
-export function ServiceHero({
+export async function ServiceHero({
   eyebrow,
   title,
   description,
@@ -21,6 +21,7 @@ export function ServiceHero({
   imageAlt,
   benefitTagline,
 }: ServiceHeroProps) {
+  const contact = await getSiteContact()
   return (
     <section className="bg-gradient-to-b from-primary-50 to-background">
       <Container size="site">
@@ -50,9 +51,9 @@ export function ServiceHero({
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <a href={`tel:${siteConfig.contact.phoneE164}`}>
+                <a href={`tel:${contact.phoneE164}`}>
                   <Phone className="mr-1 h-4 w-4" />
-                  {siteConfig.contact.phone}
+                  {contact.phone}
                 </a>
               </Button>
             </div>

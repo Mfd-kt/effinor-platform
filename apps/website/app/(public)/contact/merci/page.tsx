@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CheckCircle2, ArrowRight, Phone } from 'lucide-react'
 import { Button, Container, Section } from '@effinor/design-system'
-import { siteConfig } from '@/lib/site-config'
+import { getSiteContact } from '@/lib/site-settings'
 
 export const metadata: Metadata = {
   title: 'Demande envoyée',
@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function ThankYouPage() {
+export default async function ThankYouPage() {
+  const contact = await getSiteContact()
   return (
     <Section spacing="xl">
       <Container size="content">
@@ -37,14 +38,14 @@ export default function ThankYouPage() {
               en quelques minutes.
             </p>
             <a
-              href={`tel:${siteConfig.contact.phoneE164}`}
+              href={`tel:${contact.phoneE164}`}
               className="mt-4 inline-flex items-center gap-2 text-base font-semibold text-secondary-700 hover:text-secondary-800"
             >
               <Phone className="h-5 w-5" />
-              {siteConfig.contact.phone}
+              {contact.phone}
             </a>
             <p className="mt-1 text-xs text-muted-foreground">
-              {siteConfig.contact.hours.label}
+              {contact.hours.label}
             </p>
           </div>
 

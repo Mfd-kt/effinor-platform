@@ -2,9 +2,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Phone, ShieldCheck, Star, Sparkles } from 'lucide-react'
 import { Button, Container } from '@effinor/design-system'
-import { siteConfig } from '@/lib/site-config'
+import { getSiteContact, getSiteStats } from '@/lib/site-settings'
 
-export function Hero() {
+export async function Hero() {
+  const contact = await getSiteContact()
+  const stats = await getSiteStats()
   return (
     <section className="relative isolate overflow-hidden bg-background">
       {/* Background décoratif : dégradé subtil + cercles flous */}
@@ -57,8 +59,8 @@ export function Hero() {
             {/* CTA */}
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button asChild variant="accent" size="lg" className="group shadow-lg shadow-accent-500/20">
-                <Link href="/contact">
-                  Obtenir une étude gratuite
+                <Link href="/#simulateur">
+                  Estimer mes aides gratuitement
                   <ArrowRight className="ml-1 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
               </Button>
@@ -71,16 +73,16 @@ export function Hero() {
             {/* Footer reassurance */}
             <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
               <a
-                href={`tel:${siteConfig.contact.phoneE164}`}
+                href={`tel:${contact.phoneE164}`}
                 className="group inline-flex items-center gap-3 text-sm text-foreground"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary-500/10 text-secondary-700 transition-colors group-hover:bg-secondary-500 group-hover:text-white">
                   <Phone className="h-4 w-4" />
                 </span>
                 <span>
-                  <span className="block font-semibold leading-tight">{siteConfig.contact.phone}</span>
+                  <span className="block font-semibold leading-tight">{contact.phone}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {siteConfig.contact.hours.label}
+                    {contact.hours.label}
                   </span>
                 </span>
               </a>
@@ -97,9 +99,11 @@ export function Hero() {
                   ))}
                 </div>
                 <span>
-                  <span className="block font-semibold leading-tight">4.7/5</span>
+                  <span className="block font-semibold leading-tight">
+                    {stats[2]?.value ?? '4.7/5'}
+                  </span>
                   <span className="block text-xs text-muted-foreground">
-                    2 500+ chantiers
+                    {stats[0]?.value} {stats[0]?.label.toLowerCase() ?? 'chantiers'}
                   </span>
                 </span>
               </div>

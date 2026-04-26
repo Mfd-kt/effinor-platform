@@ -38,3 +38,30 @@ export function createSupabaseServerClient(): SupabaseClient | null {
     },
   })
 }
+
+/** Erreur PostgREST / Postgres typique pour « table absente » (migrations pas appliquées). */
+const SUPABASE_ERROR_SILENT = new Set(['PGRST205'])
+
+type PostgrestLike = {
+  code?: string
+  message?: string
+  details?: string
+  hint?: string
+}
+
+/**
+ * Pour les lectures publiques avec repli (defaults). Ne surtout pas utiliser
+ * `console.error` ici : en dev, Next affiche l’overlay rouge. Les erreurs
+ * « table inconnue » restent silencieuses (comportement attendu avant migration).
+ */
+export function warnIfUnexpectedSupabaseError(
+  context: string,
+  error: PostgrestLike | null | undefined
+): void {
+  if (!error) return
+  if (SUPABASE_ERROR_SILENT.has(String(error.code))) return
+  const m = [error.code, error.message, error.hint].filter(Boolean).join(' — ')
+  if (m) {
+    console.warn(`[${context}] ${m}`)
+  }
+}
