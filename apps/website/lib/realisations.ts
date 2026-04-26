@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, warnIfUnexpectedSupabaseError } from '@/lib/supabase-server'
 
 export const SERVICE_TYPES = [
   'pac-maison',
@@ -76,7 +76,7 @@ export async function getPublishedRealisations(params?: {
   const { data, error } = await query
 
   if (error) {
-    console.error('[getPublishedRealisations]', error)
+    warnIfUnexpectedSupabaseError('getPublishedRealisations', error)
     return []
   }
 
@@ -102,7 +102,7 @@ export async function getRealisationBySlug(
     .maybeSingle()
 
   if (error) {
-    console.error('[getRealisationBySlug]', slug, error)
+    warnIfUnexpectedSupabaseError(`getRealisationBySlug (${slug})`, error)
     return null
   }
 
@@ -126,7 +126,7 @@ export async function getAllRealisationSlugs(): Promise<string[]> {
     .lte('published_at', new Date().toISOString())
 
   if (error) {
-    console.error('[getAllRealisationSlugs]', error)
+    warnIfUnexpectedSupabaseError('getAllRealisationSlugs', error)
     return []
   }
 

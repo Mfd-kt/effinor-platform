@@ -2,7 +2,7 @@ import { cache } from 'react'
 
 import { siteConfig } from './site-config.defaults'
 import { siteStats as defaultSiteStats, type SiteStat } from './site-stats'
-import { createSupabaseServerClient } from './supabase-server'
+import { createSupabaseServerClient, warnIfUnexpectedSupabaseError } from './supabase-server'
 
 /** Contact fusionné (API publique) — types élargis (pas de littéraux en lecture seule). */
 export type SiteContact = {
@@ -71,7 +71,7 @@ export const getSiteContact = cache(async (): Promise<SiteContact> => {
     .maybeSingle()
 
   if (error) {
-    console.error('[getSiteContact]', error)
+    warnIfUnexpectedSupabaseError('getSiteContact', error)
     return base
   }
   if (!data?.value) return base
@@ -93,7 +93,7 @@ export const getSiteStats = cache(async (): Promise<SiteStat[]> => {
     .maybeSingle()
 
   if (error) {
-    console.error('[getSiteStats]', error)
+    warnIfUnexpectedSupabaseError('getSiteStats', error)
     return base
   }
   const raw = data?.value

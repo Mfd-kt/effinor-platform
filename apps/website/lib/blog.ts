@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, warnIfUnexpectedSupabaseError } from '@/lib/supabase-server'
 
 export interface BlogPostCard {
   id: string
@@ -59,7 +59,7 @@ export async function getPublishedBlogPosts(params?: {
   const { data, error } = await query
 
   if (error) {
-    console.error('[getPublishedBlogPosts]', error)
+    warnIfUnexpectedSupabaseError('getPublishedBlogPosts', error)
     return []
   }
 
@@ -85,7 +85,7 @@ export async function getBlogPostBySlug(
     .maybeSingle()
 
   if (error) {
-    console.error('[getBlogPostBySlug]', slug, error)
+    warnIfUnexpectedSupabaseError(`getBlogPostBySlug (${slug})`, error)
     return null
   }
 
@@ -109,7 +109,7 @@ export async function getAllBlogSlugs(): Promise<string[]> {
     .lte('published_at', new Date().toISOString())
 
   if (error) {
-    console.error('[getAllBlogSlugs]', error)
+    warnIfUnexpectedSupabaseError('getAllBlogSlugs', error)
     return []
   }
 
@@ -144,7 +144,7 @@ export async function getRelatedPosts(
   const { data, error } = await query
 
   if (error) {
-    console.error('[getRelatedPosts]', error)
+    warnIfUnexpectedSupabaseError('getRelatedPosts', error)
     return []
   }
 

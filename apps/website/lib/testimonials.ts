@@ -1,7 +1,7 @@
 import { cache } from 'react'
 
 import { defaultHomeTestimonials, type Testimonial } from './testimonials-data'
-import { createSupabaseServerClient } from './supabase-server'
+import { createSupabaseServerClient, warnIfUnexpectedSupabaseError } from './supabase-server'
 
 type TestimonialRow = {
   id: string
@@ -33,7 +33,7 @@ export const getPublishedTestimonials = cache(
       .order('published_at', { ascending: false, nullsFirst: false })
 
     if (error) {
-      console.error('[getPublishedTestimonials]', error)
+      warnIfUnexpectedSupabaseError('getPublishedTestimonials', error)
       return { items: [...defaultHomeTestimonials], isFallback: true }
     }
 
