@@ -5,6 +5,9 @@
  * pour les fichiers à scanner (app, components, design-system).
  *
  * Le @config charge le preset Tailwind du design-system partagé.
+ * Les overrides en fin de fichier redéfinissent la palette pour la
+ * landing PAC uniquement, sans toucher au design-system (qui reste
+ * partagé entre apps/website et apps/erp).
  */
 
 /* 1. Tailwind v4 EN PREMIER (ordre critique pour @layer) */
@@ -20,3 +23,66 @@
 
 /* 4. Tokens CSS et reset depuis le design-system */
 @import '@effinor/design-system/styles';
+
+/* =================================================================
+   5. OVERRIDE PALETTE LANDING PAC
+   Bleu marine (primary) + cyan turquoise (secondary) + orange (accent)
+   Ces valeurs réécrivent les tokens du design-system uniquement pour
+   cette app : aucun autre projet du monorepo n'est impacté.
+   ================================================================= */
+:root {
+  /* Primary — Blue (confiance institutionnelle) */
+  --color-primary-50:  #EFF6FF;
+  --color-primary-100: #DBEAFE;
+  --color-primary-200: #BFDBFE;
+  --color-primary-300: #93C5FD;
+  --color-primary-400: #60A5FA;
+  --color-primary-500: #3B82F6;
+  --color-primary-600: #2563EB;
+  --color-primary-700: #1D4ED8;
+  --color-primary-800: #1E40AF;
+  --color-primary-900: #0C2B5C;
+
+  /* Secondary — Cyan turquoise (énergie, air-eau) */
+  --color-secondary-50:  #ECFEFF;
+  --color-secondary-100: #CFFAFE;
+  --color-secondary-200: #A5F3FC;
+  --color-secondary-300: #67E8F9;
+  --color-secondary-400: #22D3EE;
+  --color-secondary-500: #06B6D4;
+  --color-secondary-600: #0891B2;
+  --color-secondary-700: #0E7490;
+  --color-secondary-800: #155E75;
+  --color-secondary-900: #164E63;
+
+  /* Accent — Orange (CTA fort, chaleur) */
+  --color-accent-50:  #FFF7ED;
+  --color-accent-100: #FFEDD5;
+  --color-accent-200: #FED7AA;
+  --color-accent-300: #FDBA74;
+  --color-accent-400: #FB923C;
+  --color-accent-500: #F97316;
+  --color-accent-600: #EA580C;
+  --color-accent-700: #C2410C;
+  --color-accent-800: #9A3412;
+  --color-accent-900: #7C2D12;
+
+  /* Rebind des tokens sémantiques (au cas où ils référenceraient les
+     alias directs plutôt que les échelles 500/900) */
+  --foreground: var(--color-primary-900);
+  --primary: var(--color-primary-900);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--color-secondary-500);
+  --secondary-foreground: #FFFFFF;
+  --accent: var(--color-accent-500);
+  --accent-foreground: #FFFFFF;
+  --ring: var(--color-secondary-500);
+  --success: var(--color-secondary-500);
+  --warning: var(--color-accent-500);
+
+  /* Espacements resserrés pour une densité landing (vs defaults du DS) */
+  --spacing-section-sm: 2rem;      /* 32px */
+  --spacing-section-md: 3rem;      /* 48px */
+  --spacing-section-lg: 4rem;      /* 64px */
+  --spacing-section-xl: 5.5rem;    /* 88px */
+}

@@ -1,35 +1,52 @@
 import type { Metadata, Viewport } from 'next'
 import { GeistSans, GeistMono } from '@effinor/design-system'
 
+import { JsonLd } from '@/components/seo/json-ld'
 import { landingConfig } from '@/lib/site-config'
 import '../styles/globals.css'
 
 export const viewport: Viewport = {
-  themeColor: '#0F172A',
+  themeColor: '#0C2B5C',
   width: 'device-width',
   initialScale: 1,
 }
 
+const SEO_TITLE =
+  "Pompe à chaleur air-eau maison — Aides CEE + MaPrimeRénov' 2026 | Effinor"
+const SEO_DESCRIPTION =
+  "Installez votre pompe à chaleur air-eau avec Effinor : jusqu'à 11 000 € d'aides CEE + MaPrimeRénov' déduites du devis. RGE QualiPAC, garantie décennale, étude gratuite sous 24 h."
+
 export const metadata: Metadata = {
   metadataBase: new URL(landingConfig.url),
   title: {
-    default: `Pompe à chaleur air-eau — ${landingConfig.name}`,
+    default: SEO_TITLE,
     template: `%s | ${landingConfig.name}`,
   },
-  description: landingConfig.description,
+  description: SEO_DESCRIPTION,
   keywords: [
     'pompe à chaleur air-eau',
     'PAC maison individuelle',
-    'CEE pompe à chaleur',
-    'MaPrimeRénov PAC',
     'installation pompe à chaleur',
-    'aide pompe à chaleur 2026',
-    'chauffage économique maison',
+    'CEE pompe à chaleur',
+    'coup de pouce chauffage',
+    "MaPrimeRénov' pompe à chaleur",
+    'éco-PTZ',
     'RGE QualiPAC',
+    'remplacement chaudière gaz',
+    'remplacement chaudière fioul',
+    'PAC basse température',
+    'PAC haute température',
+    'COP SCOP pompe à chaleur',
+    'chauffage et eau chaude sanitaire',
+    'aide pompe à chaleur 2026',
+    'prime énergie PAC',
+    'Daikin Altherma',
+    'Mitsubishi Ecodan',
   ],
-  authors: [{ name: landingConfig.name, url: landingConfig.url }],
+  authors: [{ name: landingConfig.name, url: landingConfig.mainSiteUrl }],
   creator: landingConfig.name,
   publisher: landingConfig.name,
+  category: 'Rénovation énergétique',
   robots: {
     index: true,
     follow: true,
@@ -46,13 +63,13 @@ export const metadata: Metadata = {
     locale: 'fr_FR',
     url: landingConfig.url,
     siteName: landingConfig.name,
-    title: `Pompe à chaleur air-eau — ${landingConfig.name}`,
-    description: landingConfig.description,
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
   },
   twitter: {
-    card: 'summary',
-    title: `Pompe à chaleur air-eau — ${landingConfig.name}`,
-    description: landingConfig.description,
+    card: 'summary_large_image',
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
   },
   alternates: {
     canonical: landingConfig.url,
@@ -71,7 +88,10 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <body className="bg-background text-foreground antialiased">{children}</body>
+      <body className="bg-background text-foreground antialiased">
+        {children}
+        <JsonLd />
+      </body>
     </html>
   )
 }

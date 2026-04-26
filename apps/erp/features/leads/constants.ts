@@ -3,6 +3,7 @@ import type { LeadSource } from "@/types/database.types";
 /** Libellés FR pour la colonne source (liste / formulaires). */
 export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   website: "Site web",
+  landing_pac: "Landing PAC",
   cold_call: "Appel froid",
   commercial_callback: "Rappel commercial",
   landing_froid: "Landing froid",
