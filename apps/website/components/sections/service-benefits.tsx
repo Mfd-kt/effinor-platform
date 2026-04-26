@@ -13,6 +13,8 @@ interface ServiceBenefitsProps {
   description?: string
   benefits: ServiceBenefit[]
   variant?: 'default' | 'muted'
+  /** Rythme section : défaut resserré (md) sur la 2e section */
+  spacing?: 'sm' | 'md' | 'lg' | 'xl' | 'none'
 }
 
 export function ServiceBenefits({
@@ -21,9 +23,10 @@ export function ServiceBenefits({
   description,
   benefits,
   variant = 'default',
+  spacing = 'lg',
 }: ServiceBenefitsProps) {
   return (
-    <Section spacing="lg" variant={variant}>
+    <Section spacing={spacing} variant={variant}>
       <Container size="site">
         <div className="text-center max-w-content mx-auto">
           {eyebrow && (

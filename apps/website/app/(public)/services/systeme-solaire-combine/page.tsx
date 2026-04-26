@@ -1,14 +1,27 @@
 import type { Metadata } from 'next'
-import { Sun, Droplets, Leaf, ShieldCheck, Wallet, Wrench } from 'lucide-react'
+import { Sun, Droplets, Leaf, ShieldCheck, Wallet, Wrench, Timer } from 'lucide-react'
+import { JsonLdService } from '@/components/seo/json-ld-service'
 import { ServiceHero } from '@/components/sections/service-hero'
+import { ServiceTrustBar, type ServiceTrustStat } from '@/components/sections/service-trust-bar'
+import { PartnersBar } from '@/components/sections/partners-bar'
 import { ServiceBenefits } from '@/components/sections/service-benefits'
 import { HowItWorks } from '@/components/sections/how-it-works'
 import { FinalCTA } from '@/components/sections/final-cta'
+import { siteConfig } from '@/lib/site-config'
+
+const canonical = `${siteConfig.url.replace(/\/$/, '')}/services/systeme-solaire-combine`
 
 export const metadata: Metadata = {
   title: 'Système solaire combiné (SSC)',
   description:
     "Le Système Solaire Combiné couvre chauffage et eau chaude sanitaire grâce à l'énergie solaire. Installation par Effinor, équipes RGE QualiSol.",
+  alternates: { canonical },
+  openGraph: {
+    url: canonical,
+    type: 'website',
+    title: 'Système solaire combiné (SSC)',
+    description: "Chauffage, ECS, aides CEE & MaPrimeRénov' — Effinor RGE QualiSol.",
+  },
 }
 
 const benefits = [
@@ -53,9 +66,22 @@ const approach = [
   },
 ]
 
+const serviceTrust: ServiceTrustStat[] = [
+  { value: '60 %', label: "Autonomie moyenne visée", icon: Sun },
+  { value: 'ECS', label: 'Eau chaude solaire', icon: Droplets },
+  { value: '25 ans', label: 'Installation durable', icon: Timer },
+  { value: 'RGE', label: 'Installateurs QualiSol', icon: ShieldCheck },
+]
+
 export default function SystemeSolaireCombinePage() {
   return (
     <>
+      <JsonLdService
+        name="Système solaire combiné (SSC) — solaire thermique"
+        description="Production solaire pour chauffage et ECS, aides publiques, installation certifiée — Effinor."
+        urlPath="/services/systeme-solaire-combine"
+        serviceType="Système solaire combiné"
+      />
       <ServiceHero
         eyebrow="Solaire thermique"
         title={
@@ -66,8 +92,11 @@ export default function SystemeSolaireCombinePage() {
         description="Une seule installation pour produire eau chaude sanitaire et chauffage grâce au soleil. Le SSC est l'une des solutions les plus rentables sur la durée pour les maisons bien orientées."
         imageSrc="/images/services/ssc-solaire.jpg"
         imageAlt="Panneaux solaires thermiques sur une toiture"
+        imageBlurKey="ssc"
         benefitTagline="Jusqu'à 60% d'autonomie énergétique"
       />
+      <ServiceTrustBar items={serviceTrust} />
+      <PartnersBar />
 
       <ServiceBenefits
         eyebrow="Avantages"
@@ -81,6 +110,7 @@ export default function SystemeSolaireCombinePage() {
         title="Une installation pensée pour 25 ans"
         benefits={approach}
         variant="muted"
+        spacing="md"
       />
 
       <HowItWorks />

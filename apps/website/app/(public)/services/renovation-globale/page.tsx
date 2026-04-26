@@ -7,15 +7,28 @@ import {
   Users,
   ShieldCheck,
 } from 'lucide-react'
+import { JsonLdService } from '@/components/seo/json-ld-service'
 import { ServiceHero } from '@/components/sections/service-hero'
+import { ServiceTrustBar, type ServiceTrustStat } from '@/components/sections/service-trust-bar'
+import { PartnersBar } from '@/components/sections/partners-bar'
 import { ServiceBenefits } from '@/components/sections/service-benefits'
 import { HowItWorks } from '@/components/sections/how-it-works'
 import { FinalCTA } from '@/components/sections/final-cta'
+import { siteConfig } from '@/lib/site-config'
+
+const canonical = `${siteConfig.url.replace(/\/$/, '')}/services/renovation-globale`
 
 export const metadata: Metadata = {
   title: 'Rénovation globale (BAR-TH-174)',
   description:
     "Bouquet de travaux pour atteindre 2 sauts de classe DPE minimum. Conforme au cahier des charges BAR-TH-174 — financement jusqu'à 90%.",
+  alternates: { canonical },
+  openGraph: {
+    url: canonical,
+    type: 'website',
+    title: 'Rénovation globale BAR-TH-174',
+    description: "Parcours accompagné, MaPrimeRénov' et CEE — Effinor.",
+  },
 }
 
 const benefits = [
@@ -60,9 +73,22 @@ const approach = [
   },
 ]
 
+const serviceTrust: ServiceTrustStat[] = [
+  { value: '2+', label: 'Sauts de classe DPE', icon: TrendingUp },
+  { value: '90 %', label: "Financement possible", icon: Wallet },
+  { value: 'BAR', label: 'Cahier BAR-TH-174', icon: Hammer },
+  { value: "MAR", label: "Accompagnateur Rénov'", icon: Users },
+]
+
 export default function RenovationGlobalePage() {
   return (
     <>
+      <JsonLdService
+        name="Rénovation globale — BAR-TH-174 (parcours accompagné)"
+        description="Bouquet de travaux, audit réglementaire, accompagnement ANAH, mobilisation CEE & MaPrimeRénov' — Effinor."
+        urlPath="/services/renovation-globale"
+        serviceType="Rénovation globale"
+      />
       <ServiceHero
         eyebrow="Rénovation globale"
         title={
@@ -73,8 +99,11 @@ export default function RenovationGlobalePage() {
         description="Une rénovation énergétique d'envergure permet de transformer votre logement durablement, tout en mobilisant le maximum d'aides. Effinor pilote l'ensemble du projet en tant qu'Accompagnateur Rénov'."
         imageSrc="/images/services/renovation-globale.jpg"
         imageAlt="Chantier de rénovation énergétique globale"
+        imageBlurKey="renoGlobale"
         benefitTagline="Jusqu'à 90% du montant financé"
       />
+      <ServiceTrustBar items={serviceTrust} />
+      <PartnersBar />
 
       <ServiceBenefits
         eyebrow="Pourquoi rénover globalement ?"
@@ -88,6 +117,7 @@ export default function RenovationGlobalePage() {
         title="Un projet ambitieux piloté de bout en bout"
         benefits={approach}
         variant="muted"
+        spacing="md"
       />
 
       <HowItWorks />

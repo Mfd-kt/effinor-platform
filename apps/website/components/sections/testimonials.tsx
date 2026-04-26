@@ -27,11 +27,11 @@ export async function Testimonials() {
           ) : null}
         </div>
 
-        <ul className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
+        <ul className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
           {items.map((testimonial) => (
             <li
               key={testimonial.id}
-              className="relative flex flex-col rounded-2xl border border-border bg-card p-7 shadow-sm transition-shadow hover:shadow-md"
+              className="relative flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
             >
               {/* Quote mark décoratif */}
               <Quote

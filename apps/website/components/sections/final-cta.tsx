@@ -19,7 +19,7 @@ export async function FinalCTA() {
       </div>
 
       <Container size="site">
-        <div className="py-16 lg:py-24 text-center">
+        <div className="py-14 lg:py-20 text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-secondary-300">
             Prêt à passer à l&apos;action ?
           </p>
