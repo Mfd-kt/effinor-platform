@@ -21,6 +21,7 @@ import {
   shouldShowLeadGenerationMyQueueNav,
   shouldUseLeanLeadGenerationHubSidebar,
 } from "./module-access";
+import { isMarketingStaff } from "./role-codes";
 
 /** Liens `/lead-generation` affichés au menu quand {@link shouldUseLeanLeadGenerationHubSidebar} est vrai. */
 const LEAN_LEAD_GENERATION_SIDEBAR_HREFS = new Set([
@@ -85,6 +86,9 @@ export async function buildAllowedNavHrefs(
   if (await canAccessCockpitRoute(access)) {
     extra.push("/cockpit");
   }
+  if (isMarketingStaff(rc)) {
+    extra.push("/marketing");
+  }
 
   const uniq = (paths: string[]) => [...new Set(paths)];
 
@@ -97,13 +101,8 @@ export async function buildAllowedNavHrefs(
       )
     : merged;
 
-  if (rc.includes("super_admin")) {
-    return uniq([
-      ...navigable,
-      "/settings/users",
-      "/settings/roles",
-      "/settings/products",
-    ]);
+  if (rc.includes("super_admin") || rc.includes("admin")) {
+    return uniq([...navigable, "/settings", "/admin"]);
   }
   if (ceeTeamManager) {
     return uniq([...navigable, "/settings/users"]);

@@ -89,10 +89,10 @@ export function DashboardStub({
         <CardContent className="flex items-start gap-3 px-4 py-3 text-sm">
           <Construction className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
           <div className="space-y-0.5">
-            <p className="font-medium text-foreground">Dashboard en cours d'implémentation</p>
+            <p className="font-medium text-foreground">Aperçu de votre espace</p>
             <p className="text-xs text-muted-foreground">
               {roadmapNote ??
-                "Cette vue présente la maquette des KPIs et widgets prévus. Les valeurs sont des placeholders."}
+                "Les indicateurs détaillés seront branchés sur les mêmes sources que le reste de l’ERP. En attendant, les raccourcis et la structure cibles sont figés — les chiffres « — » seront remplacés dès branchement des requêtes."}
             </p>
           </div>
         </CardContent>

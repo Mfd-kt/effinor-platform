@@ -8,6 +8,7 @@ import {
   DafDashboard,
   InstallerDashboard,
   LeadQuantifierDashboard,
+  MarketingHomeDashboard,
   SalesAgentDashboard,
   SalesDirectorDashboard,
   TechnicianDashboard,
@@ -22,9 +23,9 @@ type PageProps = {
 /**
  * Aiguilleur des dashboards par rôle.
  *
- * Priorité (cf. resolveCockpitVariant) : super_admin → admin → sales_director → daf →
- * closer → sales_agent → technician → admin_agent → installer →
- * lead_generation_quantifier → default.
+ * Priorité (cf. resolveCockpitVariant) : super_admin → admin → sales_director →
+ * daf → closer → sales_agent → technician → admin_agent → installer →
+ * lead_generation_quantifier → marketing_manager (si seul rôle opérationnel restant) → default.
  *
  * Les vues mock-first vivent sous `features/dashboards/<role>/`. Le concept legacy
  * `manager` (CEE) a été retiré : son équivalent moderne est `sales_director`.
@@ -43,8 +44,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     case "super_admin":
     case "admin":
       return <AdminDashboard period={period} />;
+    case "marketing_manager":
+      return <MarketingHomeDashboard />;
     case "sales_director":
-      return <SalesDirectorDashboard period={period} />;
+      return <SalesDirectorDashboard access={access} period={period} />;
     case "daf":
       return <DafDashboard period={period} />;
     case "closer":
@@ -60,6 +63,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     case "lead_generation_quantifier":
       return <LeadQuantifierDashboard userId={access.userId} />;
     default:
-      return <DashboardDefault />;
+      return <DashboardDefault access={access} />;
   }
 }

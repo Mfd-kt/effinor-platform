@@ -3,7 +3,7 @@
  *
  * - En local : `NEXT_PUBLIC_*` suffit (inliné au build).
  * - En Docker / Dokploy sans build args : définir `PUBLIC_SUPABASE_URL` et `PUBLIC_SUPABASE_ANON_KEY`
- *   au runtime ; le layout injecte `window.__EFFINOR_SUPABASE__` pour le bundle client.
+ *   au runtime ; le layout serveur transmet l’objet à `RuntimeSupabaseInjectClient` (useLayoutEffect).
  */
 
 export const EFFINOR_SUPABASE_WINDOW_KEY = "__EFFINOR_SUPABASE__" as const;

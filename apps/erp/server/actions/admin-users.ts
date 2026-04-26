@@ -59,6 +59,9 @@ async function resolveUsersSettingsActor(
   if (isSuperAdmin(access.roleCodes)) {
     return { kind: "super_admin" };
   }
+  if (access.roleCodes.includes("admin")) {
+    return { kind: "super_admin" };
+  }
   if (await isCeeTeamManager(access.userId)) {
     const ctx = await getManagedTeamsContext(access.userId);
     if (!ctx) {

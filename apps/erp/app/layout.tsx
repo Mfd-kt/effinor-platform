@@ -3,7 +3,8 @@ import { Inter, Poppins, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 
-import { RuntimeSupabaseScript } from "@/components/runtime-supabase-script";
+import { RuntimeSupabaseInjectClient } from "@/components/runtime-supabase-inject-client";
+import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/supabase/public-env";
 import { THEME_COOKIE } from "@/components/layout/theme-toggle";
 
 import "./globals.css";
@@ -48,6 +49,10 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const theme = cookieStore.get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
+  const supabaseUrl = getPublicSupabaseUrl();
+  const supabaseAnon = getPublicSupabaseAnonKey();
+  const publicSupabase =
+    supabaseUrl && supabaseAnon ? { url: supabaseUrl, anonKey: supabaseAnon } : null;
 
   return (
     <html
@@ -57,7 +62,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
-        <RuntimeSupabaseScript />
+        <RuntimeSupabaseInjectClient config={publicSupabase} />
         {children}
         <Toaster position="bottom-right" richColors closeButton />
       </body>

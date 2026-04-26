@@ -45,6 +45,11 @@ const SEGMENT_LABELS: Record<string, string> = {
   "technical-studies": "Études techniques",
   "agent-operations": "Opérations agent",
   "lead-generation/imports": "Imports",
+  marketing: "Marketing",
+  blog: "Blog",
+  "re-energie": "Rénovation énergétique",
+  realisations: "Réalisations",
+  testimonials: "Témoignages",
 };
 
 function humanizeSegment(seg: string): string {

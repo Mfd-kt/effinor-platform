@@ -1,90 +1,78 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import { Container, Section } from '@effinor/design-system'
-import { homeServices } from '@/lib/services-data'
+import { ReEnergieMegaGrid } from '@/components/renovation-energetique/re-energie-mega-grid'
 import { FinalCTA } from '@/components/sections/final-cta'
+import { getReEnergieHubData } from '@/lib/re-energie'
+import { getStaticReEnergieHubFallback } from '@/lib/re-energie-fallback'
+import { siteConfig } from '@/lib/site-config'
+
+/** Contenu piloté par Supabase ; délai raisonnable jusqu’au prochain déploiement vitrine. */
+export const revalidate = 120
+
+const HERO_IMAGE = '/images/hero-residence.png'
 
 export const metadata: Metadata = {
-  title: 'Nos services',
+  title: 'Rénovation énergétique',
   description:
-    "Pompe à chaleur (maison ou immeuble), système solaire combiné, rénovation globale : découvrez l'ensemble des solutions de rénovation énergétique proposées par Effinor.",
+    "Isoler, se chauffer autrement, engager une rénovation d'enveloppe : le hub Effinor — catégories et fiches, pilotées par nos équipes et publiées depuis notre outil de gestion.",
   openGraph: {
-    title: 'Nos services de rénovation énergétique',
+    title: 'Rénovation énergétique',
     description:
-      "Solutions complètes de rénovation énergétique : PAC, SSC, rénovation globale.",
+      "Isolation, chauffage, rénovation globale : l'essentiel pour votre projet, avec l'accompagnement Effinor.",
+    url: `${siteConfig.url}/services`,
   },
+  alternates: { canonical: `${siteConfig.url}/services` },
 }
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const fromDb = await getReEnergieHubData()
+  const hasAnyArticle = fromDb.some((c) => c.articles.length > 0)
+  const columns = hasAnyArticle ? fromDb : getStaticReEnergieHubFallback()
+
   return (
     <>
-      <section className="bg-gradient-to-b from-primary-50 to-background">
-        <Container size="site">
-          <div className="py-14 lg:py-20 max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-widest text-secondary-600">
-              Nos services
+      <section className="relative min-h-[280px] overflow-hidden bg-primary-950 lg:min-h-[320px]">
+        <Image
+          src={HERO_IMAGE}
+          alt=""
+          fill
+          className="object-cover opacity-50"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary-950/30 via-primary-950/50 to-primary-950" />
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-secondary-500" aria-hidden />
+        <Container size="site" className="relative z-10">
+          <div className="py-12 text-center lg:py-16">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-200/90">
+              Effinor
             </p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-              Des solutions sur-mesure pour chaque projet
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              Rénovation énergétique
             </h1>
-            <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-              Du remplacement d&apos;une chaudière individuelle au pilotage d&apos;une
-              rénovation globale en copropriété, nous adaptons la solution à votre
-              logement, vos besoins et votre budget — en mobilisant systématiquement
-              toutes les aides disponibles.
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-primary-100/90 sm:text-lg">
+              Isolez, renouvelez le chauffage, ou engagez une rénovation d&apos;enveloppe : explorez
+              nos fiches thématiques, rédigées et mises à jour depuis notre interface métier.
             </p>
           </div>
         </Container>
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 rounded-t-3xl bg-background lg:h-16"
+          aria-hidden
+        />
       </section>
 
-      <Section spacing="lg">
+      <Section spacing="lg" className="-mt-8 lg:-mt-10">
         <Container size="site">
-          <ul className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            {homeServices.map((service) => {
-              const Icon = service.icon
-              return (
-                <li key={service.slug}>
-                  <Link
-                    href={service.href}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-lg"
-                  >
-                    <div className="relative h-56 overflow-hidden">
-                      <Image
-                        src={service.imageSrc}
-                        alt={service.imageAlt}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-                      <div className="absolute left-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-secondary-500 text-white shadow">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <span className="inline-block rounded-full bg-emerald-500/90 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                          {service.benefitTagline}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-1 flex-col p-6">
-                      <h2 className="text-xl font-semibold tracking-tight text-primary-900">
-                        {service.title}
-                      </h2>
-                      <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                        {service.shortDescription}
-                      </p>
-                      <span className="mt-5 inline-flex items-center text-sm font-semibold text-secondary-700 group-hover:text-secondary-800">
-                        En savoir plus
-                        <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </span>
-                    </div>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
+          <p className="text-center text-sm text-muted-foreground">
+            {hasAnyArticle
+              ? "Choisissez un pilier, puis la fiche qui correspond à votre besoin."
+              : "Prévisualisation (base non connectée) — en production, le contenu est affiché depuis l’ERP."}
+          </p>
+          <div className="mt-8">
+            <ReEnergieMegaGrid columns={columns} />
+          </div>
         </Container>
       </Section>
 
