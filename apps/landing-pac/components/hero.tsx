@@ -1,80 +1,152 @@
 import Link from 'next/link'
-import { ArrowRight, Phone, ShieldCheck, Sparkles } from 'lucide-react'
+import { BadgeCheck, Phone, ShieldCheck, Sparkles, Star } from 'lucide-react'
 import { Button, Container } from '@effinor/design-system'
 
+import { Simulator } from '@/components/simulator/simulator'
 import { landingConfig } from '@/lib/site-config'
+
+const REASSURE = [
+  "MaPrimeRénov' + CEE déduites du devis",
+  'Sans sous-traitance · techniciens salariés',
+  'RGE QualiPAC · garantie décennale',
+  'Étude et devis gratuits sous 24 h',
+]
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white">
+    <section className="relative isolate overflow-hidden bg-background">
       <div
         aria-hidden="true"
-        className="absolute -top-40 -right-40 -z-0 h-[500px] w-[500px] rounded-full bg-secondary-500/10 blur-3xl"
+        className="absolute inset-0 -z-10 bg-gradient-to-br from-primary-50 via-background to-secondary-50/40"
       />
       <div
         aria-hidden="true"
-        className="absolute -bottom-40 -left-40 -z-0 h-[500px] w-[500px] rounded-full bg-accent-500/10 blur-3xl"
+        className="absolute -top-32 -right-32 -z-10 h-[460px] w-[460px] rounded-full bg-secondary-200/40 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute -bottom-32 -left-32 -z-10 h-[460px] w-[460px] rounded-full bg-primary-200/30 blur-3xl"
       />
 
       <Container size="site">
-        <div className="relative z-10 mx-auto max-w-3xl py-16 text-center sm:py-20 lg:py-28">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-secondary-200 backdrop-blur">
-            <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            Certifié RGE QualiPAC · Délégataire CEE
-          </span>
+        <div className="grid grid-cols-1 gap-10 py-10 lg:grid-cols-12 lg:gap-12 lg:py-16">
+          {/* COLONNE GAUCHE — Contenu */}
+          <div className="flex flex-col justify-center lg:col-span-6">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-secondary-200 bg-secondary-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-secondary-700">
+              <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              Certifié RGE QualiPAC · Délégataire CEE
+            </div>
 
-          <h1 className="mt-6 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-            Chauffez votre maison avec une{' '}
-            <span className="text-secondary-300">pompe à chaleur air-eau</span>
-          </h1>
+            <h1 className="mt-6 text-4xl font-bold leading-[1.05] tracking-tight text-primary-900 sm:text-5xl lg:text-6xl">
+              Pompe à chaleur air-eau,{' '}
+              <span className="text-secondary-600">jusqu&apos;à 75 %</span> d&apos;économies
+            </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-primary-100 sm:text-lg">
-            Économisez jusqu&apos;à <strong className="font-semibold text-white">75 %</strong>{' '}
-            sur votre facture de chauffage. Bénéficiez de jusqu&apos;à{' '}
-            <strong className="font-semibold text-white">11 000 €</strong> d&apos;aides
-            de l&apos;État (CEE + MaPrimeRénov&apos;).
-          </p>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Remplacez votre chaudière gaz ou fioul par une PAC Daikin ou Mitsubishi.
+              Effinor prend en charge l&apos;étude, l&apos;installation et vos aides —
+              <strong className="font-semibold text-foreground"> jusqu&apos;à 11 000 €</strong> de CEE +
+              MaPrimeRénov&apos; déduites directement du devis.
+            </p>
 
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button
-              asChild
-              variant="accent"
-              size="lg"
-              className="group shadow-lg shadow-accent-500/30"
-            >
-              <Link href="#simulateur">
-                Estimer mes aides
-                <ArrowRight className="ml-1 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
+            <ul className="mt-6 grid grid-cols-1 gap-2 text-sm text-foreground sm:grid-cols-2">
+              {REASSURE.map((label) => (
+                <li key={label} className="flex items-start gap-2">
+                  <span
+                    className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary-500/15 text-secondary-700"
+                    aria-hidden="true"
+                  >
+                    <ShieldCheck className="h-3 w-3" />
+                  </span>
+                  <span>{label}</span>
+                </li>
+              ))}
+            </ul>
 
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            >
-              <a href={`tel:${landingConfig.contact.phoneE164}`}>
-                <Phone className="mr-1 h-4 w-4" aria-hidden="true" />
-                {landingConfig.contact.phone}
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-4">
+              <Button
+                asChild
+                variant="accent"
+                size="lg"
+                className="group shadow-lg shadow-accent-500/30"
+              >
+                <a href="#simulateur">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  Estimer mes aides gratuitement
+                </a>
+              </Button>
+
+              <a
+                href={`tel:${landingConfig.contact.phoneE164}`}
+                className="group inline-flex items-center gap-3 text-sm text-foreground"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500/10 text-primary-700 transition-colors group-hover:bg-primary-500 group-hover:text-white">
+                  <Phone className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block font-semibold leading-tight">
+                    {landingConfig.contact.phone}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {landingConfig.contact.hours}
+                  </span>
+                </span>
               </a>
-            </Button>
+            </div>
+
+            <div className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
+              <div className="flex" aria-hidden="true">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-accent-500 text-accent-500" />
+                ))}
+              </div>
+              <span>
+                <strong className="font-semibold text-foreground">4,7 / 5</strong> — plus de
+                2 500 foyers équipés en France
+              </span>
+            </div>
+
+            <div className="mt-4 hidden items-center gap-3 text-xs text-muted-foreground lg:flex">
+              <Link
+                href={landingConfig.mainSiteUrl}
+                className="hover:text-foreground hover:underline"
+                rel="noopener"
+              >
+                Découvrir Effinor
+              </Link>
+              <span aria-hidden="true">·</span>
+              <Link
+                href={`${landingConfig.mainSiteUrl}/realisations`}
+                className="hover:text-foreground hover:underline"
+                rel="noopener"
+              >
+                Nos réalisations
+              </Link>
+            </div>
           </div>
 
-          <ul className="mx-auto mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-primary-100">
-            <li className="inline-flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
-              Étude gratuite
-            </li>
-            <li className="inline-flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
-              Sans engagement
-            </li>
-            <li className="inline-flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
-              Devis sous 48h
-            </li>
-          </ul>
+          {/* COLONNE DROITE — Simulateur */}
+          <div className="relative lg:col-span-6" id="simulateur">
+            <div className="mb-3 text-center lg:text-left">
+              <span className="inline-flex items-center gap-2 rounded-full border border-accent-200 bg-accent-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-accent-800">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                Simulateur gratuit · 2 min
+              </span>
+              <h2 className="mt-3 text-xl font-bold tracking-tight text-primary-900 sm:text-2xl">
+                Combien d&apos;aides pour votre PAC ?
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                6 questions. Résultat personnalisé et rappel sous 24 h.
+              </p>
+            </div>
+            <Simulator
+              contact={{
+                phone: landingConfig.contact.phone,
+                phoneE164: landingConfig.contact.phoneE164,
+                email: landingConfig.contact.email,
+              }}
+            />
+          </div>
         </div>
       </Container>
     </section>

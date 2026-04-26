@@ -124,10 +124,11 @@ export async function POST(request: Request) {
   const { data: row, error } = await supabase
     .from('leads')
     .insert({
-      // Valeur d'enum existante (libellé ERP : « Site web »). La distinction
-      // avec le simulateur ERP (`simulator_cee`) se fait via `sim_version` et
-      // `sim_payload_json.source = 'website_simulator'`.
-      source: 'website',
+      // Valeur d'enum dédiée landing PAC (libellé ERP : « Landing PAC »)
+      // — ajoutée via migration 20260426170000_lead_source_landing_pac.sql.
+      // Le simulateur garde sim_version='website-simulator-v1' pour que
+      // l'ERP reconnaisse le payload via extractWebsiteSimulatorPayload().
+      source: 'landing_pac',
       lead_status: 'new',
       qualification_status: 'pending',
       company_name: companyName,

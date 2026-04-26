@@ -1,62 +1,82 @@
 import { Container, Section } from '@effinor/design-system'
-import { Leaf, PiggyBank, ShieldCheck, Wallet } from 'lucide-react'
+import {
+  Leaf,
+  PiggyBank,
+  Snowflake,
+  Sun,
+  Volume2,
+  Wallet,
+} from 'lucide-react'
 
 const BENEFITS = [
   {
     Icon: PiggyBank,
-    title: "Économies d'énergie",
-    description: "Jusqu'à 75 % d'économies sur la facture vs chauffage au fioul ou tout-électrique.",
+    title: "Jusqu'à 75 % d'économies",
+    description:
+      'Une PAC restitue 3 à 4 kWh de chaleur pour 1 kWh consommé (COP 3 à 4). Facture divisée par 3 vs chauffage fioul ou tout-électrique.',
   },
   {
     Icon: Wallet,
-    title: 'Aides maximales',
+    title: 'Aides déduites du devis',
     description:
-      "Jusqu'à 11 000 € de primes cumulables : CEE + MaPrimeRénov' + Coup de pouce.",
+      "CEE + MaPrimeRénov' + éco-PTZ intégrés directement. Zéro avance de trésorerie à faire côté client.",
   },
   {
-    Icon: ShieldCheck,
-    title: 'Confort optimal',
+    Icon: Snowflake,
+    title: 'Chauffage et rafraîchissement',
     description:
-      'Chauffage et eau chaude sanitaire, température constante dans toutes les pièces.',
+      "Les modèles réversibles chauffent l'hiver et rafraîchissent l'été, pour un confort stable toute l'année.",
   },
   {
     Icon: Leaf,
-    title: 'Écologique',
+    title: "3× moins d'émissions CO₂",
     description:
-      "3× moins d'émissions CO₂ que le gaz. Énergie renouvelable, aérothermie.",
+      "La chaleur provient de l'air : énergie renouvelable, empreinte carbone réduite, conforme RT2020.",
+  },
+  {
+    Icon: Volume2,
+    title: 'Silence de fonctionnement',
+    description:
+      'Moins de 40 dB à 1 mètre pour les gammes Daikin Altherma 3 et Mitsubishi Ecodan. Installation discrète.',
+  },
+  {
+    Icon: Sun,
+    title: 'Chauffage + eau chaude',
+    description:
+      "Un seul équipement pour remplacer chaudière et chauffe-eau : gain de place et maintenance unique.",
   },
 ] as const
 
 export function Benefits() {
   return (
-    <Section spacing="lg" id="avantages">
+    <Section spacing="md" id="avantages">
       <Container size="site">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-secondary-600">
-            Pourquoi choisir la PAC ?
+          <p className="text-xs font-semibold uppercase tracking-widest text-secondary-700">
+            Pourquoi passer à la PAC ?
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-primary-900 sm:text-4xl">
-            La pompe à chaleur air-eau, le chauffage du futur
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-primary-900 sm:text-4xl">
+            Un seul équipement, <span className="text-secondary-600">6 bénéfices concrets</span>
           </h2>
-          <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-            Un seul équipement pour remplacer votre chaudière et chauffer votre maison
-            avec l&apos;énergie de l&apos;air.
+          <p className="mt-3 text-base text-muted-foreground">
+            Économies, confort, impact carbone — la PAC air-eau remplace avantageusement
+            votre chaudière gaz ou fioul et sécurise votre facture énergie sur 15 à 20 ans.
           </p>
         </div>
 
-        <ul className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {BENEFITS.map(({ Icon, title, description }) => (
             <li
               key={title}
               className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
             >
               <span
-                className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary-500/10 text-secondary-700"
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary-500/10 text-secondary-700"
                 aria-hidden="true"
               >
-                <Icon className="h-6 w-6" />
+                <Icon className="h-5 w-5" />
               </span>
-              <h3 className="mt-5 text-lg font-semibold tracking-tight text-primary-900">
+              <h3 className="mt-4 text-lg font-semibold tracking-tight text-primary-900">
                 {title}
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">

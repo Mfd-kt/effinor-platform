@@ -22,6 +22,7 @@ export const LEAD_SOURCE_VALUES = [
   "referral",
   "other",
   "simulator_cee",
+  "landing_pac",
 ] as const satisfies readonly LeadSource[];
 
 /** Statuts alignés sur `public.lead_status` (migration SQL). */
