@@ -211,11 +211,30 @@ export function LeadsTable({ data }: LeadsTableProps) {
         accessorKey: "created_at",
         header: "Créé le",
         sortDescFirst: true,
-        cell: ({ getValue }) => (
-          <span className="whitespace-nowrap text-muted-foreground text-sm">
-            {formatDateFr(getValue<string>())}
-          </span>
-        ),
+        cell: ({ getValue }) => {
+          const iso = getValue<string>();
+          const d = iso ? new Date(iso) : null;
+          const timeLabel =
+            d && !Number.isNaN(d.getTime())
+              ? d
+                  .toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                  .replace(":", "h")
+              : null;
+          return (
+            <div
+              className="whitespace-nowrap leading-tight"
+              title={iso ? new Date(iso).toLocaleString("fr-FR") : undefined}
+            >
+              <div className="text-sm text-foreground">{formatDateFr(iso)}</div>
+              {timeLabel ? (
+                <div className="text-xs text-muted-foreground">{timeLabel}</div>
+              ) : null}
+            </div>
+          );
+        },
       },
     ],
     [],
