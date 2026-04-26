@@ -1,0 +1,22 @@
+/*
+ * apps/landing-pac - Styles globaux
+ *
+ * Tailwind v4 + monorepo : on doit explicitement déclarer @source
+ * pour les fichiers à scanner (app, components, design-system).
+ *
+ * Le @config charge le preset Tailwind du design-system partagé.
+ */
+
+/* 1. Tailwind v4 EN PREMIER (ordre critique pour @layer) */
+@import 'tailwindcss';
+
+/* 2. Sources à scanner (monorepo : explicites) */
+@source '../app/**/*.{ts,tsx}';
+@source '../components/**/*.{ts,tsx}';
+@source '../../../packages/design-system/src/**/*.{ts,tsx}';
+
+/* 3. Config Tailwind (charge le preset Effinor avec colors, fonts, etc.) */
+@config '../tailwind.config.ts';
+
+/* 4. Tokens CSS et reset depuis le design-system */
+@import '@effinor/design-system/styles';
