@@ -12,6 +12,7 @@ import { KpiCardSkeletonGrid } from "@/components/shared/kpi-card-skeleton";
 import { ImportBatchesKpisSectionAsync } from "@/features/lead-generation/components/import-batches-kpis-section-async";
 import { ImportBatchesTable } from "@/features/lead-generation/components/import-batches-table";
 import { LeadGenerationRecentImports } from "@/features/lead-generation/components/lead-generation-recent-imports";
+import { StartCsvImportModal } from "@/features/lead-generation/components/start-csv-import-modal";
 import { StartLeboncoinImportModal } from "@/features/lead-generation/components/start-leboncoin-import-modal";
 import { StartPapImportModal } from "@/features/lead-generation/components/start-pap-import-modal";
 import { StartPapLocationImportModal } from "@/features/lead-generation/components/start-pap-location-import-modal";
@@ -124,6 +125,7 @@ export default async function LeadGenerationImportsPage({ searchParams }: PagePr
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <StartCsvImportModal />
             <StartPapImportModal />
             <StartPapLocationImportModal />
             <StartLeboncoinImportModal />
