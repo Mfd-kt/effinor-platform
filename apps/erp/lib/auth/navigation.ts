@@ -10,6 +10,7 @@ import { hasFullCeeWorkflowAccess } from "./cee-workflows-scope";
 import {
   canAccessAdminCeeSheets,
   canAccessCeeWorkflowsModule,
+  canAccessLeadGenerationMyQueue,
   canAccessLeadGenerationQuantification,
   canAccessLeadGenerationQuantifierImports,
   canAccessCloserWorkspace,
@@ -21,6 +22,7 @@ import {
   shouldShowLeadGenerationMyQueueNav,
   shouldUseLeanLeadGenerationHubSidebar,
 } from "./module-access";
+import { isMarketingStaff } from "./role-codes";
 
 /** Liens `/lead-generation` affichés au menu quand {@link shouldUseLeanLeadGenerationHubSidebar} est vrai. */
 const LEAN_LEAD_GENERATION_SIDEBAR_HREFS = new Set([
@@ -64,6 +66,10 @@ export async function buildAllowedNavHrefs(
   if (shouldShowLeadGenerationMyQueueNav(access)) {
     extra.push("/lead-generation/my-queue");
   }
+  /** Permet le lien menu « Acquisition de leads » → la page /lead-generation redirige vers la file si l’agent n’a pas le hub. */
+  if (canAccessLeadGenerationMyQueue(access) && !extra.includes("/lead-generation")) {
+    extra.push("/lead-generation");
+  }
   if (canAccessLeadGenerationQuantification(access)) {
     extra.push("/lead-generation/quantification");
   }
@@ -85,6 +91,9 @@ export async function buildAllowedNavHrefs(
   if (await canAccessCockpitRoute(access)) {
     extra.push("/cockpit");
   }
+  if (isMarketingStaff(rc)) {
+    extra.push("/marketing");
+  }
 
   const uniq = (paths: string[]) => [...new Set(paths)];
 
@@ -97,13 +106,8 @@ export async function buildAllowedNavHrefs(
       )
     : merged;
 
-  if (rc.includes("super_admin")) {
-    return uniq([
-      ...navigable,
-      "/settings/users",
-      "/settings/roles",
-      "/settings/products",
-    ]);
+  if (rc.includes("super_admin") || rc.includes("admin")) {
+    return uniq([...navigable, "/settings", "/admin"]);
   }
   if (ceeTeamManager) {
     return uniq([...navigable, "/settings/users"]);

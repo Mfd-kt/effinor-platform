@@ -1,37 +1,95 @@
 import "server-only";
 
+import { createClient } from "@/lib/supabase/server";
+import { isPostgrestMissingTableError } from "@/lib/supabase/postgrest-error";
+
 import type { FunnelStep } from "../../widgets/funnel-chart";
 import type { DashboardPeriod } from "../../shared/types";
-
-const PERIOD_MULTIPLIER: Record<DashboardPeriod, number> = {
-  today: 1,
-  "7d": 7,
-  "30d": 30,
-  "90d": 90,
-};
+import { getAdminCurrentRange } from "../lib/get-admin-date-ranges";
 
 /**
- * MOCK — Funnel global Stock → Qualifiés → RDV → Accords → VT → Install → Primes.
- * À brancher sur un agrégat des tables `lead_generation_*`, `appointments`, `agreements`,
- * `technical_visits`, `installations`, `cee_*` filtré par fenêtre temporelle.
+ * Funnel global : agrégations plateforme sur la fenêtre courante.
+ * — Stock : fiches LGC non terminées.
+ * — Étapes suivantes : leads, RDV, accords, VT, installations, primes (dans la période ou à la date, selon la métrique).
  */
 export async function getAdminFunnel(period: DashboardPeriod): Promise<FunnelStep[]> {
-  const m = PERIOD_MULTIPLIER[period];
-  const stock = 1200 * Math.max(1, Math.min(m, 30));
-  const qualified = Math.round(stock * 0.42);
-  const appointments = Math.round(qualified * 0.55);
-  const agreements = Math.round(appointments * 0.46);
-  const vt = Math.round(agreements * 0.72);
-  const installs = Math.round(vt * 0.81);
-  const primes = Math.round(installs * 0.78);
+  const now = new Date();
+  const { startIso, endIso } = getAdminCurrentRange(period, now);
+  const supabase = await createClient();
+
+  const [
+    stockRes,
+    qualifiedRes,
+    rdvRes,
+    accordsRes,
+    vtRes,
+    installsRes,
+    primesRes,
+  ] = await Promise.all([
+    supabase
+      .from("lead_generation_stock")
+      .select("id", { count: "exact", head: true })
+      .in("stock_status", ["new", "ready", "assigned", "in_progress"]),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .eq("qualification_status", "qualified")
+      .gte("created_at", startIso)
+      .lt("created_at", endIso),
+    supabase
+      .from("technical_visits")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .not("scheduled_at", "is", null)
+      .gte("scheduled_at", startIso)
+      .lt("scheduled_at", endIso),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .eq("lead_status", "accord_received")
+      .gte("updated_at", startIso)
+      .lt("updated_at", endIso),
+    supabase
+      .from("technical_visits")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .eq("status", "validated")
+      .gte("created_at", startIso)
+      .lt("created_at", endIso),
+    supabase
+      .from("installations")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", startIso)
+      .lt("created_at", endIso),
+    supabase
+      .from("operations")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .not("prime_paid_at", "is", null)
+      .gte("prime_paid_at", startIso)
+      .lt("prime_paid_at", endIso),
+  ]);
+
+  function countOr(
+    r: { count: number | null; error: { message: string; code?: string } | null },
+    table: string,
+  ): number {
+    if (r.error) {
+      if (isPostgrestMissingTableError(r.error, table)) return 0;
+      throw new Error(r.error.message);
+    }
+    return r.count ?? 0;
+  }
 
   return [
-    { key: "stock", label: "Stock", value: stock },
-    { key: "qualified", label: "Qualifiés", value: qualified },
-    { key: "appointments", label: "RDV", value: appointments },
-    { key: "agreements", label: "Accords", value: agreements },
-    { key: "vt", label: "VT", value: vt },
-    { key: "installs", label: "Installations", value: installs },
-    { key: "primes", label: "Primes", value: primes },
+    { key: "stock", label: "Stock", value: countOr(stockRes, "lead_generation_stock") },
+    { key: "qualified", label: "Qualifiés (période)", value: countOr(qualifiedRes, "leads") },
+    { key: "appointments", label: "RDV", value: countOr(rdvRes, "technical_visits") },
+    { key: "agreements", label: "Accords", value: countOr(accordsRes, "leads") },
+    { key: "vt", label: "VT", value: countOr(vtRes, "technical_visits") },
+    { key: "installs", label: "Installations", value: countOr(installsRes, "installations") },
+    { key: "primes", label: "Primes", value: countOr(primesRes, "operations") },
   ];
 }

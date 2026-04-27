@@ -14,7 +14,7 @@ export default async function PublicLayout({
   return (
     <>
       <Header contact={contact} />
-      <main>{children}</main>
+      <main className="min-w-0 flex-1 overflow-x-clip">{children}</main>
       <Footer contact={contact} />
     </>
   )

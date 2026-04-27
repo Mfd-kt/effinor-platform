@@ -54,6 +54,8 @@ Build d’une app :
 npm run build -w @effinor/website
 ```
 
+Tout recompiler **proprement** depuis le dernier `git pull` (suppression de `node_modules` + `npm ci` + ERP + site) : voir [docs/BUILD-FROM-SCRATCH.md](docs/BUILD-FROM-SCRATCH.md), commande cible : `npm run build:all` après `npm ci`.
+
 ## Packages partagés
 
 - `@effinor/ui` — composants React (ex. `Button`)
@@ -63,6 +65,8 @@ Import dans une app : `import { Button } from "@effinor/ui"` et `import { format
 
 ## Docker / Dokploy
 
+- **Guide pas à pas (branche, rebuild, 2 apps)** : [docs/DEPLOY-DOKPLOY.md](docs/DEPLOY-DOKPLOY.md)
+- Vérification locale des deux apps Next : `npm run build:all` (à la racine).
 - **Contexte de build** : répertoire `effinor-platform` (racine du monorepo — celui qui contient le `package-lock.json` unique).
 - **ERP (Dokploy)** : utiliser **`Dockerfile.erp`** à la **racine** du dépôt (évite un contexte limité à `apps/erp`, qui provoque des erreurs « file not found » sur `package-lock.json` / `packages/`). Alternative : `apps/erp/Dockerfile` uniquement si le contexte est explicitement la racine du clone.
 - **Autres apps** : un Dockerfile par app sous `apps/<nom>/` si besoin, avec les mêmes règles de contexte.

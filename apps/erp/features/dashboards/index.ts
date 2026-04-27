@@ -7,6 +7,7 @@ export { DafDashboard } from "./daf/daf-dashboard";
 export { AdminAgentDashboard } from "./admin-agent/admin-agent-dashboard";
 export { InstallerDashboard } from "./installer/installer-dashboard";
 export { LeadQuantifierDashboard } from "./lead-quantifier/lead-quantifier-dashboard";
+export { MarketingHomeDashboard } from "./marketing/marketing-home-dashboard";
 
 export {
   parseDashboardPeriod,

@@ -13,7 +13,7 @@ export interface NavItem {
 export const mainNav: NavItem[] = [
   { label: 'Accueil', href: '/' },
   {
-    label: 'Services',
+    label: 'Rénovation énergétique',
     href: '/services',
     children: [
       {

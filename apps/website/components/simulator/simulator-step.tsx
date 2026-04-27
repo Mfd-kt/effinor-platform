@@ -53,15 +53,17 @@ export function SimulatorStep({
       </div>
 
       <header>
-        <h3 className="text-xl font-bold tracking-tight text-primary-900 sm:text-2xl">
+        <h3 className="text-balance text-xl font-bold tracking-tight text-primary-900 sm:text-2xl">
           {title}
         </h3>
         {description ? (
-          <p className="mt-1.5 text-sm text-muted-foreground sm:text-base">{description}</p>
+          <p className="mt-1.5 text-pretty text-sm text-muted-foreground sm:text-base">
+            {description}
+          </p>
         ) : null}
       </header>
 
-      <div>{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   )
 }

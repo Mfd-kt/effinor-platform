@@ -43,6 +43,9 @@ export async function requireUsersSettingsAccess(): Promise<Extract<AccessContex
   if (isSuperAdmin(access.roleCodes)) {
     return access;
   }
+  if (access.roleCodes.includes("admin")) {
+    return access;
+  }
   if (await isCeeTeamManager(access.userId)) {
     return access;
   }

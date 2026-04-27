@@ -1,64 +1,98 @@
 import "server-only";
 
+import { createClient } from "@/lib/supabase/server";
+import {
+  listTodayHourBuckets,
+  listParisDayBucketRangesInCockpitPeriod,
+} from "@/features/dashboard/lib/cockpit-period";
+
 import type { TimelinePoint, TimelineSeries } from "../../widgets/timeline-chart";
 import type { DashboardPeriod } from "../../shared/types";
-
-const PERIOD_BUCKETS: Record<DashboardPeriod, number> = {
-  today: 24,
-  "7d": 7,
-  "30d": 30,
-  "90d": 12,
-};
-
-const PERIOD_LABEL_MODE: Record<DashboardPeriod, "hour" | "day" | "week"> = {
-  today: "hour",
-  "7d": "day",
-  "30d": "day",
-  "90d": "week",
-};
+import { getAdminCurrentRange } from "../lib/get-admin-date-ranges";
 
 export type AdminTimeline = {
   points: TimelinePoint[];
   series: TimelineSeries[];
 };
 
-/** Pseudo-aléatoire stable basé sur l'index — évite l'hydratation incohérente. */
-function deterministic(seed: number, base: number, amplitude: number): number {
-  const noise = Math.sin(seed * 12.9898) * 43758.5453;
-  const fraction = noise - Math.floor(noise);
-  return Math.max(0, Math.round(base + (fraction - 0.5) * amplitude * 2));
+function splitRangeEqualParts(
+  startIso: string,
+  endIso: string,
+  parts: number,
+  labelPrefix: string,
+): { startIso: string; endIso: string; label: string }[] {
+  const a = new Date(startIso).getTime();
+  const b = new Date(endIso).getTime();
+  const w = (b - a) / parts;
+  return Array.from({ length: parts }, (_, i) => ({
+    startIso: new Date(a + i * w).toISOString(),
+    endIso: new Date(a + (i + 1) * w).toISOString(),
+    label: `${labelPrefix}${i + 1}`,
+  }));
 }
 
 /**
- * MOCK — Évolution temporelle leads / accords / signés sur la période.
- * Buckets adaptés à la période (heures aujourd'hui, jours sur 7d/30d, semaines sur 90d).
+ * Courbes leads créés, passages en accord, conversions — par bucket temporel selon la période.
  */
 export async function getAdminTimeline(period: DashboardPeriod): Promise<AdminTimeline> {
-  const buckets = PERIOD_BUCKETS[period];
-  const labelMode = PERIOD_LABEL_MODE[period];
+  const now = new Date();
+  const { startIso, endIso } = getAdminCurrentRange(period, now);
+  const supabase = await createClient();
 
-  const points: TimelinePoint[] = Array.from({ length: buckets }, (_, i) => {
-    const labelIndex = i + 1;
-    const date =
-      labelMode === "hour"
-        ? `${String(i).padStart(2, "0")}h`
-        : labelMode === "week"
-          ? `S${labelIndex}`
-          : `J${labelIndex}`;
-    return {
-      date,
-      leads: deterministic(i * 3 + 1, 18, 12),
-      agreements: deterministic(i * 3 + 2, 6, 5),
-      signed: deterministic(i * 3 + 3, 3, 3),
-    };
-  });
+  let buckets: { startIso: string; endIso: string; label: string }[];
 
-  return {
-    points,
-    series: [
-      { key: "leads", label: "Leads créés", color: "#0ea5e9" },
-      { key: "agreements", label: "Accords", color: "#10b981" },
-      { key: "signed", label: "Signés", color: "#8b5cf6" },
-    ],
-  };
+  if (period === "today") {
+    buckets = listTodayHourBuckets(now);
+  } else if (period === "7d") {
+    buckets = splitRangeEqualParts(startIso, endIso, 7, "J");
+  } else if (period === "30d") {
+    buckets = listParisDayBucketRangesInCockpitPeriod("days30", now);
+  } else {
+    buckets = splitRangeEqualParts(startIso, endIso, 12, "S");
+  }
+
+  const series: TimelineSeries[] = [
+    { key: "leads", label: "Leads créés", color: "#0ea5e9" },
+    { key: "agreements", label: "Accords", color: "#10b981" },
+    { key: "signed", label: "Signés", color: "#8b5cf6" },
+  ];
+
+  const points: TimelinePoint[] = [];
+
+  for (const b of buckets) {
+    const [leadsC, agC, sgC] = await Promise.all([
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null)
+        .gte("created_at", b.startIso)
+        .lt("created_at", b.endIso),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null)
+        .eq("lead_status", "accord_received")
+        .gte("updated_at", b.startIso)
+        .lt("updated_at", b.endIso),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null)
+        .eq("lead_status", "converted")
+        .gte("updated_at", b.startIso)
+        .lt("updated_at", b.endIso),
+    ]);
+    if (leadsC.error) throw new Error(leadsC.error.message);
+    if (agC.error) throw new Error(agC.error.message);
+    if (sgC.error) throw new Error(sgC.error.message);
+
+    points.push({
+      date: b.label,
+      leads: leadsC.count ?? 0,
+      agreements: agC.count ?? 0,
+      signed: sgC.count ?? 0,
+    });
+  }
+
+  return { points, series };
 }

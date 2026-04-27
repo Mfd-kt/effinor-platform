@@ -55,7 +55,7 @@ Ne commitez jamais de secrets ; saisissez-les uniquement dans Dokploy.
 
 1. Ouvrir le **panel Dokploy** (bouton « Gérer le panel » sur Hostinger).
 2. **New application** (ou équivalent) → type **Docker** ou **Git + Dockerfile**.
-3. **Repository** : URL Git + branche (ex. `main`).
+3. **Repository** : URL Git + **branche exacte** que vous poussez (ex. `refonte/monorepo-nextjs` ou `main`). Si la branche Dokploy ≠ branche de dev, vous verrez toujours une « ancienne » version sans erreur de build.
 4. **Build** : **Dockerfile** = **`Dockerfile.erp`** à la **racine** du dépôt (recommandé). Si vous pointez vers `apps/erp/Dockerfile`, vérifiez que le **contexte de build** est bien la racine du clone (pas seulement `apps/erp`) — sinon le build échoue avec des fichiers introuvables (`package-lock.json`, `packages/lib`, etc.).
 5. **Port du conteneur** : **3000** (Next écoute sur `PORT`, défaut 3000).
 6. **Commande de démarrage** : laisser **vide** pour utiliser la `CMD` du Dockerfile (`node .next/standalone/apps/erp/server.js`). Ne pas forcer `next start` — avec `output: "standalone"`, ce n’est pas le runtime prévu.
@@ -76,10 +76,17 @@ Ne commitez jamais de secrets ; saisissez-les uniquement dans Dokploy.
 
 ## 5. Mises à jour
 
-- Push sur la branche suivie → **Redeploy** dans Dokploy (ou webhook auto si configuré).
+- Push sur la branche suivie → **Redeploy** / **Deploy** dans Dokploy (souvent **manuel** si aucun webhook).
+- Dans les **logs** du déploiement, vérifier le **commit SHA** cloné (doit matcher GitHub).
+- Option **rebuild without cache** si le navigateur ou le CDN sert encore d’anciens assets.
+
+Guide monorepo (ERP + website, checklist « dernière version ») :  
+[docs/DEPLOY-DOKPLOY.md](../../../docs/DEPLOY-DOKPLOY.md) (racine du dépôt).
 
 ## Dépannage
 
+- **`Ready in 0ms` dans les logs Next** : signe typique qu’**aucune** image neuve n’a été construite (redémarrage conteneur / cache). Comparer avec un vrai build (plusieurs secondes avant « ready »). **Rebuild without cache** + vérifier [contexte racine + `Dockerfile.erp`](../../../docs/DEPLOY-DOKPLOY.md) (monorepo : **pas** de root limité à `apps/erp` pour ce dépôt).
+- **Pas d’erreur de build mais site pas à jour** : (1) branche Dokploy = branche des commits, (2) **redéployer** après le push, (3) comparer le SHA des logs avec GitHub, (4) rebuild sans cache — voir [DEPLOY-DOKPLOY.md](../../../docs/DEPLOY-DOKPLOY.md).
 - **Server Action … was not found** (ex. génération email OpenAI) : souvent **décalage de déploiement** — faire un **rechargement complet** de la page (`Ctrl+Shift+R` / vider le cache). En Docker, définir **`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** (même valeur au build et au runtime, voir le tableau ci-dessus) puis **Rebuild**. Vérifier qu’une seule version du conteneur tourne après un deploy.
 - **Login infini sur « Connexion… »** : vérifier `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY` (runtime) **ou** `NEXT_PUBLIC_*` présentes au build ; puis redéploiement / rebuild. Vérifier aussi l’URL / redirect URLs Supabase pour ton domaine de prod.
 - **Compte `*.local`** : si `admin@effinor.local` n’existe que dans un seed **local**, crée le même utilisateur dans le projet Supabase **cloud** (ou utilise un compte réellement présent dans Auth).

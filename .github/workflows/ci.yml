@@ -1,0 +1,60 @@
+# Vérification du monorepo sur chaque push (ERP + website).
+# Le déploiement sur le VPS reste géré par Dokploy (webhook / branche / redeploy manuel).
+name: CI
+
+on:
+  push:
+    branches: [main, refonte/monorepo-nextjs]
+  pull_request:
+    branches: [main, refonte/monorepo-nextjs]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ERP + Website
+        run: npm run build:all
+
+  # Déclenche un déploiement Dokploy (ERP) uniquement si activé + secret renseigné.
+  # Voir docs/DEPLOY-DOKPLOY.md — le job CI ne remplace pas un Deploy manuel ou l’auto-deploy Dokploy.
+  trigger-dokploy-erp:
+    name: Trigger Dokploy ERP (optional)
+    needs: build
+    if: github.event_name == 'push' && vars.DOKPLOY_ERP_DEPLOY_VIA_CI == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call Dokploy deploy webhook
+        env:
+          WEBHOOK: ${{ secrets.DOKPLOY_ERP_DEPLOY_WEBHOOK }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "Skip: set repository secret DOKPLOY_ERP_DEPLOY_WEBHOOK (see docs/DEPLOY-DOKPLOY.md)"
+            exit 0
+          fi
+          which jq >/dev/null || (echo "jq missing" && exit 1)
+          BODY=$(jq -n --arg ref "$REF" --arg sha "$SHA" \
+            '{ref: $ref, head_commit: {id: $sha, message: "from GitHub Actions CI (after build)"}}')
+          echo "POST deploy webhook (ref=$REF)"
+          curl -fS -X POST "$WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -H "x-github-event: push" \
+            -d "$BODY"

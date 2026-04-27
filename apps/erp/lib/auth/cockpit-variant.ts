@@ -14,6 +14,7 @@ export type CockpitVariant =
   | "admin_agent"
   | "installer"
   | "lead_generation_quantifier"
+  | "marketing_manager"
   | "default";
 
 /**
@@ -38,7 +39,8 @@ export async function userIsActiveCeeTeamManager(userId: string): Promise<boolea
 }
 
 /**
- * Priorité dashboard home : direction → rôles spécialisés → ops terrain → quantifier → default.
+ * Priorité dashboard home : direction → commercial / terrain → quantifier → marketing
+ * (seul) → default. `marketing_manager` est en dernier pour ne pas masquer un rôle opérationnel.
  *
  * Ne renvoie plus `"manager"` — le concept legacy CEE a été retiré du routing
  * (équivalent moderne = `sales_director`). Un ancien manager retombe naturellement
@@ -59,5 +61,6 @@ export async function resolveCockpitVariant(access: AccessContext): Promise<Cock
   if (codes.includes("admin_agent")) return "admin_agent";
   if (codes.includes("installer")) return "installer";
   if (codes.includes("lead_generation_quantifier")) return "lead_generation_quantifier";
+  if (codes.includes("marketing_manager")) return "marketing_manager";
   return "default";
 }

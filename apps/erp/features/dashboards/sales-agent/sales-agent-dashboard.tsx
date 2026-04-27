@@ -1,42 +1,115 @@
-import { CheckCircle2, PhoneCall, PhoneForwarded, Target, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, ListChecks, UserPlus } from "lucide-react";
 
+import { buttonVariants } from "@/components/ui/button-variants";
+import { getCockpitPeriodDetailLabel, getCockpitPeriodRange } from "@/features/dashboard/lib/cockpit-period";
+import { getAgentLeadGenWorkSummary } from "@/features/lead-generation/queries/get-agent-lead-generation-work-summary";
+import { getAgentLgcToCrmConversions } from "@/features/lead-generation/queries/get-agent-lgc-to-crm-conversions";
+import { getMyLeadGenerationQueue } from "@/features/lead-generation/queries/get-my-lead-generation-queue";
+import { canViewAgentLeadGenWorkHistory } from "@/lib/auth/lead-generation-work-view";
+import type { AccessContext } from "@/lib/auth/access-context";
+import { createClient } from "@/lib/supabase/server";
+
+import { SalesAgentLeadGenResume } from "@/features/dashboard/components/sales-agent-lead-gen-resume";
 import { DashboardStub } from "../shared/dashboard-stub";
+import { mapDashboardPeriodToCockpitPeriod } from "../shared/map-dashboard-period";
+import { DashboardSalesAgent } from "@/features/dashboard/components/dashboard-sales-agent";
 import type { DashboardPeriod } from "../shared/types";
 
-export function SalesAgentDashboard({ period }: { period: DashboardPeriod }) {
+type Props = {
+  access: AccessContext;
+  period: DashboardPeriod;
+};
+
+/**
+ * Accueil agent commercial : lead gen uniquement (stock, activité, conversions) — pas de métriques pipe CRM.
+ */
+export async function SalesAgentDashboard({ access, period }: Props) {
+  if (access.kind !== "authenticated") {
+    return null;
+  }
+
+  let queue: Awaited<ReturnType<typeof getMyLeadGenerationQueue>> = [];
+  let leadGenActivity: Awaited<ReturnType<typeof getAgentLeadGenWorkSummary>> | null = null;
+  let lgcCrmConversions: Awaited<ReturnType<typeof getAgentLgcToCrmConversions>> = {
+    countInRange: 0,
+    recent: [],
+  };
+  const now = new Date();
+  const cockpitPeriod = mapDashboardPeriodToCockpitPeriod(period);
+  const currentRange = getCockpitPeriodRange(cockpitPeriod, now);
+  const periodDetailLabel = getCockpitPeriodDetailLabel(cockpitPeriod, now);
+
+  let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
+  try {
+    supabase = await createClient();
+  } catch (err) {
+    console.error("[SalesAgentDashboard] createClient", err);
+    return (
+      <DashboardStub
+        title="Mon workspace du jour"
+        description="La session serveur n’a pas pu s’établir. Rechargez la page."
+        period={period}
+        primaryCta={{ label: "Lancer ma session d'appels", href: "/lead-generation/my-queue", icon: CheckCircle2 }}
+        roadmapNote="Connexion base indisponible. Réessayez dans un instant."
+        kpis={[
+          { label: "Fiches en file", value: "—", icon: ListChecks },
+          { label: "Conversions période", value: "—", sublabel: "stock → CRM", icon: UserPlus },
+        ]}
+        features={[
+          { type: "cta", title: "File d'appels", description: "Reprendre la prospection LGC." },
+        ]}
+      />
+    );
+  }
+
+  try {
+    queue = await getMyLeadGenerationQueue(access.userId);
+  } catch (qErr) {
+    console.error("[SalesAgentDashboard] getMyLeadGenerationQueue", qErr);
+  }
+
+  if (canViewAgentLeadGenWorkHistory(access, access.userId)) {
+    try {
+      leadGenActivity = await getAgentLeadGenWorkSummary(
+        supabase,
+        access.userId,
+        currentRange.startIso,
+        currentRange.endIso,
+        { queueItems: queue },
+      );
+    } catch (lgErr) {
+      console.error("[SalesAgentDashboard] getAgentLeadGenWorkSummary", lgErr);
+    }
+  }
+
+  try {
+    lgcCrmConversions = await getAgentLgcToCrmConversions(
+      supabase,
+      access.userId,
+      currentRange.startIso,
+      currentRange.endIso,
+    );
+  } catch (cErr) {
+    console.error("[SalesAgentDashboard] getAgentLgcToCrmConversions", cErr);
+  }
+
   return (
-    <DashboardStub
-      title="Mon workspace du jour"
-      description="Vue agent commercial : activité personnelle, rappels et objectifs du jour."
+    <DashboardSalesAgent
       period={period}
-      primaryCta={{
-        label: "Lancer ma session d'appels",
-        href: "/lead-generation/my-queue",
-        icon: CheckCircle2,
-      }}
-      kpis={[
-        { label: "Mes appels aujourd'hui", value: "—", icon: PhoneCall },
-        { label: "Mes rappels du jour", value: "—", icon: PhoneForwarded },
-        { label: "Mon taux de conversion", value: "—", sublabel: "30 derniers jours", icon: TrendingUp },
-        { label: "Objectif", value: "—", sublabel: "% atteint", icon: Target },
-      ]}
-      features={[
-        {
-          type: "graph",
-          title: "Mes résultats — 7 derniers jours",
-          description: "Line chart appels / accords / signés.",
-        },
-        {
-          type: "list",
-          title: "Prochains rappels (top 5)",
-          description: "Cliquables vers la fiche lead.",
-        },
-        {
-          type: "list",
-          title: "Mes accords en cours (top 5)",
-          description: "Statut + relance attendue.",
-        },
-      ]}
+      periodDetailLabel={periodDetailLabel}
+      leadGenActivity={leadGenActivity}
+      lgcCrmConversions={lgcCrmConversions}
+      topSection={<SalesAgentLeadGenResume userId={access.userId} preloadedQueue={queue} />}
+      extraActions={
+        <Link
+          href="/lead-generation/my-queue"
+          className={buttonVariants({ variant: "default", size: "sm" })}
+        >
+          <CheckCircle2 className="size-3.5" aria-hidden />
+          Lancer ma session
+        </Link>
+      }
     />
   );
 }
