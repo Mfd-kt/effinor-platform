@@ -1,5 +1,17 @@
 # Déployer la dernière version sur Dokploy (monorepo Effinor)
 
+## Qui fait quoi
+
+| Étape | Où |
+|--------|-----|
+| `git push` | Met le code sur **GitHub** uniquement. |
+| Vérification build | **GitHub Actions** — workflow `CI` (`.github/workflows/ci.yml`), commande `npm run build:all`. Ça ne déploie **pas** sur le VPS. |
+| Conteneur + image + URL publique | **Dokploy** (Docker sur ton serveur). |
+
+Quand « d’habitude ça se met à jour tout seul », en général **Dokploy** est relié au dépôt (webhook ou polling) **et** suit la **branche** sur laquelle vous poussez (`main`, `refonte/monorepo-nextjs`, etc.). Personne ne peut lancer Dokploy depuis un message ici : il faut que la config GitHub ↔ Dokploy reste alignée sur **cette** branche.
+
+---
+
 Ce dépôt est un **monorepo** : le **contexte Docker** doit toujours être la **racine** du clone (`effinor-platform/`, celui qui contient `package-lock.json`).
 
 ## Checklist rapide (si « rien ne change » en prod sans message d’erreur)

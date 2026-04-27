@@ -1,0 +1,32 @@
+# Vérification du monorepo sur chaque push (ERP + website).
+# Le déploiement sur le VPS reste géré par Dokploy (webhook / branche / redeploy manuel).
+name: CI
+
+on:
+  push:
+    branches: [main, refonte/monorepo-nextjs]
+  pull_request:
+    branches: [main, refonte/monorepo-nextjs]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ERP + Website
+        run: npm run build:all
