@@ -68,6 +68,8 @@ npm run build:all
 
 (`build:erp` + `build:website` — script défini dans `package.json` à la racine.)
 
+**Repartir de zéro** (suppression de `node_modules` + `npm ci` + build complet) : [BUILD-FROM-SCRATCH.md](./BUILD-FROM-SCRATCH.md).
+
 ---
 
 ## Poussez le code, puis exigez un rebuild côté Dokploy

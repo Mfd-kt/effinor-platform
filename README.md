@@ -54,6 +54,8 @@ Build d’une app :
 npm run build -w @effinor/website
 ```
 
+Tout recompiler **proprement** depuis le dernier `git pull` (suppression de `node_modules` + `npm ci` + ERP + site) : voir [docs/BUILD-FROM-SCRATCH.md](docs/BUILD-FROM-SCRATCH.md), commande cible : `npm run build:all` après `npm ci`.
+
 ## Packages partagés
 
 - `@effinor/ui` — composants React (ex. `Button`)
