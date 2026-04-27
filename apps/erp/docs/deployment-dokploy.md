@@ -85,6 +85,7 @@ Guide monorepo (ERP + website, checklist « dernière version ») :
 
 ## Dépannage
 
+- **`Ready in 0ms` dans les logs Next** : signe typique qu’**aucune** image neuve n’a été construite (redémarrage conteneur / cache). Comparer avec un vrai build (plusieurs secondes avant « ready »). **Rebuild without cache** + vérifier [contexte racine + `Dockerfile.erp`](../../../docs/DEPLOY-DOKPLOY.md) (monorepo : **pas** de root limité à `apps/erp` pour ce dépôt).
 - **Pas d’erreur de build mais site pas à jour** : (1) branche Dokploy = branche des commits, (2) **redéployer** après le push, (3) comparer le SHA des logs avec GitHub, (4) rebuild sans cache — voir [DEPLOY-DOKPLOY.md](../../../docs/DEPLOY-DOKPLOY.md).
 - **Server Action … was not found** (ex. génération email OpenAI) : souvent **décalage de déploiement** — faire un **rechargement complet** de la page (`Ctrl+Shift+R` / vider le cache). En Docker, définir **`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`** (même valeur au build et au runtime, voir le tableau ci-dessus) puis **Rebuild**. Vérifier qu’une seule version du conteneur tourne après un deploy.
 - **Login infini sur « Connexion… »** : vérifier `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY` (runtime) **ou** `NEXT_PUBLIC_*` présentes au build ; puis redéploiement / rebuild. Vérifier aussi l’URL / redirect URLs Supabase pour ton domaine de prod.

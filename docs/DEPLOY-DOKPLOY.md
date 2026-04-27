@@ -23,6 +23,28 @@ Quand « d’habitude ça se met à jour tout seul », en général **Dokploy** 
 
 Ce dépôt est un **monorepo** : le **contexte Docker** doit toujours être la **racine** du clone (`effinor-platform/`, celui qui contient `package-lock.json`).
 
+### Symptôme : `Ready in 0ms` (ou démarrage instantané) dans les logs
+
+C’est l’indice le plus fiable : **Next.js** met en pratique **plusieurs secondes** avant d’indiquer qu’il est prêt. Un démarrage en **0 ms** signifie en général qu’**aucun build Next n’a eu lieu** pour ce déploiement : Dokploy a **rebindé l’ancien conteneur** / une **image en cache** sans reconstruire, ou l’étape de build a été **court-circuitée**.
+
+Que faire : **pas seulement « Redeploy »** sur l’existant, mais un **Rebuild without cache** (ou équivalent) pour **forcer** `docker build` + `next build` à partir du dernier code. Puis vérifier dans les logs que l’image est bien **reconstruite** (étapes `npm ci`, `next build`, durées plausibles).
+
+### Monorepo et ancienne config Dokploy (refonte / changement d’arborescence)
+
+Un passage à la branche `refonte/monorepo-nextjs` change **chemins** et **Dockerfile** par rapport à un ancien dépôt « app seule à la racine ». Si l’appli Dokploy a encore l’**ancienne** config (mauvais répertoire, mauvais Dockerfile, mauvaise branche), le moteur peut se retrouver avec un build incohérent, réutiliser une **image d’avant** — d’où le **0 ms** et parfois des **variables d’environnement** qui semblent « manquantes » côté app alors qu’elles sont pourtant saisies (ancienne image, ancien binaire, cache).
+
+Dans **Dokploy → ton application → General** (libellés selon version) :
+
+| Champ (souvent) | **Effinor (ce dépôt)** | Piège classique |
+|-----------------|------------------------|-----------------|
+| **Branche** | Celle des pushes, ex. `refonte/monorepo-nextjs` | Branche jamais poussée → déploiement figé. |
+| **Contexte de build** / **Root** / **Build path** | **Racine du dépôt cloné** (là où se trouvent `package-lock.json` et `Dockerfile.erp`) | Un répertoire **uniquement** `apps/erp` : le `Dockerfile.erp` **racine** exécute `npm ci` et copie le lockfile **à la racine** — un contexte limité à `apps/erp` **casse** le monorepo ou pousse des chemins vides, puis repli sur l’**ancien** conteneur. |
+| **Chemin du Dockerfile** | `Dockerfile.erp` (fichier à la **racine** du repo) | L’ancien `Dockerfile` d’un seul app, ou seul `apps/erp/Dockerfile` **sans** contexte racine. |
+
+Puis enchaîner avec **Rebuild without cache** une fois la config corrigée.
+
+> **Rappel** : beaucoup de guides conseillent de mettre le « root » sur `apps/…` parce que le code s’y trouve. **Pour ce monorepo ce n’est pas le bon réglage** : le `Dockerfile.erp` **attend** le contexte **clone racine** (voir commentaire en tête de [`Dockerfile.erp`](../Dockerfile.erp) à la racine du dépôt).
+
 ## Checklist rapide (si « rien ne change » en prod sans message d’erreur)
 
 1. **Branche Git** dans Dokploy = celle où vous poussez (ex. `refonte/monorepo-nextjs` ou `main`).  
