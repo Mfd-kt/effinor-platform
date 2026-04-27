@@ -8,7 +8,16 @@
 | Vérification build | **GitHub Actions** — workflow `CI` (`.github/workflows/ci.yml`), commande `npm run build:all`. Ça ne déploie **pas** sur le VPS. |
 | Conteneur + image + URL publique | **Dokploy** (Docker sur ton serveur). |
 
-Quand « d’habitude ça se met à jour tout seul », en général **Dokploy** est relié au dépôt (webhook ou polling) **et** suit la **branche** sur laquelle vous poussez (`main`, `refonte/monorepo-nextjs`, etc.). Personne ne peut lancer Dokploy depuis un message ici : il faut que la config GitHub ↔ Dokploy reste alignée sur **cette** branche.
+Quand « d’habitude ça se met à jour tout seul », en général **Dokploy** est relié au dépôt (webhook ou polling) **et** suit la **branche** sur laquelle vous poussez (`main`, `refonte/monorepo-nextjs`, etc.). Un push ou un CI vert **ne lance jamais** le build sur Dokploy **tant qu’aucun** des mécanismes ci‑dessous n’est en place côté Dokploy (voir section suivante).
+
+### Pourquoi le site Dokploy n’a pas bougé après le push
+
+1. **Le workflow CI et Dokploy sont indépendants** : `npm run build:all` sur GitHub valide le code ; l’**image Docker** et le **démarrage** du conteneur se font **uniquement** sur le serveur quand **Dokploy** lance un build (déploiement).
+2. **Sans intégration explicite**, un `git push` **ne** déclenche **pas** un déploiement sur le VPS. Il faut l’une des options :
+   - **Déploiement manuel** : panel Dokploy → application **ERP** (ou **website**) → **Deploy** / **Redeploy** / **Rebuild** (souvent nécessaire si l’automatisation n’est pas configurée).
+   - **Auto deploy Dokploy** : dans l’app → activer l’[auto deploy](https://docs.dokploy.com/docs/core/auto-deploy) et s’assurer que le **dépôt + la branche** dans Dokploy sont les mêmes que ceux que vous poussez. Avec **GitHub**, Dokploy peut brancher le dépôt : sans ça, ou si la branche ne correspond pas, aucun build ne part.
+   - **Webhook** : URL fournie par Dokploy (souvent dans l’onglet **Deployments** / logs de déploiement) colée côté **GitHub** → *Settings* → *Webhooks* (événements push sur la branche voulue), **ou** utiliser le **job optionnel** décrit plus bas.
+3. Vérifier dans les **logs de déploiement Dokploy** le **SHA** du commit cloné : s’il est plus vieux que sur GitHub, c’est en général un problème de **branche** ou l’**absence** de redéploiement après le push.
 
 ---
 
@@ -79,3 +88,18 @@ npm run build:all
 3. Confirmer dans les **logs** que le **commit** cloné est le bon.
 
 Sans étape 2, **aucun conteneur ne change** : le build peut être « vert » sur une ancienne image si le trigger n’a pas tourné.
+
+---
+
+## Option : déclencher Dokploy après le CI (GitHub Actions, webhook ERP)
+
+Quand le CI a réussi sur un `push`, un job **optionnel** peut appeler l’**URL de webhook** de déploiement Dokploy (celle de votre application **ERP**), ce qui lance le même flux qu’un **Deploy** manuel. Ce n’est activé **que** si vous configurez le dépôt GitHub.
+
+| Paramètre | Où le définir |
+|------------|---------------|
+| `DOKPLOY_ERP_DEPLOY_VIA_CI` | *Settings* → *Variables and secrets* → **Variable** = `true` (repository). |
+| `DOKPLOY_ERP_DEPLOY_WEBHOOK` | **Secret** = URL fournie par Dokploy pour l’app ERP (onglet *Deployments* / auto deploy, selon votre version de Dokploy). |
+
+Documentation officielle (webhook + branche) : [Auto deploy](https://docs.dokploy.com/docs/core/auto-deploy).
+
+**Website** : dupliquer la logique avec une seconde variable/secret (ou un second webhook dans Dokploy) si vous voulez le même mode pour `apps/website`.
