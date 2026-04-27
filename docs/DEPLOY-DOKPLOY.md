@@ -58,7 +58,7 @@ Puis enchaîner avec **Rebuild without cache** une fois la config corrigée.
 
 4. **Cache Docker** : si l’interface le propose, utiliser **Rebuild without cache** (ou équivalent) une fois pour forcer une image neuve à partir du dernier code.
 
-5. **Deux applications** : une app Dokploy pour **l’ERP**, une pour le **website** — chacune avec le bon **Dockerfile** et la même branche si vous voulez la même fraîcheur de code.
+5. **Plusieurs applications** : au minimum **ERP** + **website** ; chaque **landing** en prod = **une app Dokploy de plus** (voir section *DNS et domaines* plus bas). Même branche si vous voulez la même fraîcheur de code.
 
 ---
 
@@ -86,6 +86,33 @@ Détails variables d’environnement, Supabase, `NEXT_SERVER_ACTIONS_ENCRYPTION_
 | Port | **3000** (vérifier la `EXPOSE` / `CMD` du fichier) |
 
 Les `NEXT_PUBLIC_*` doivent être disponibles au **build** (build args / env de build) pour le bundle client, selon le Dockerfile.
+
+### Landings Next (optionnel, une app Dokploy par landing)
+
+| App dans le repo | Dockerfile (contexte = racine du dépôt) |
+|------------------|----------------------------------------|
+| `landing-pac` | `apps/landing-pac/Dockerfile` |
+| `landing-reno-global` | `apps/landing-reno-global/Dockerfile` |
+
+Chaque landing est un **service séparé** (autre image, autre conteneur). Si tu ne la déploies pas dans Dokploy, aucun domaine ne doit pointer vers le VPS pour cette URL (ou tu la sers ailleurs).
+
+---
+
+## DNS (Squarespace) et domaines dans Dokploy — plusieurs apps en parallèle
+
+**Squarespace** (ou un autre registrar) ne se connecte **pas** à Dokploy. Tu y configures seulement les **DNS** : en général des enregistrements **A** (ou **AAAA**) vers l’**IP du VPS** où tourne Dokploy, ou un **CNAME** vers un nom fourni par ton hébergeur.
+
+**Dokploy** ne « va pas chercher » la config dans Squarespace : quand une requête HTTPS arrive sur le VPS, le **reverse proxy** de Dokploy doit savoir **quel conteneur** répond pour **quel nom d’hôte** (`Host:`). Ça se règle dans **chaque application** → onglet **Domains** (ou équivalent) : tu y ajoutes **exactement** les noms que les navigateurs utilisent (`effinor.fr`, `www.effinor.fr`, `erp.effinor.fr`, `pac.effinor.fr`, etc.). Dokploy déclenche alors le **certificat** (souvent Let’s Encrypt) pour ces noms.
+
+Ordre cohérent :
+
+1. **Décider** quelle URL publique = quelle app (ERP, site vitrine, landing 1, landing 2…).
+2. **DNS** : pour chaque nom, enregistrement chez Squarespace pointant vers le **même** VPS (même IP pour tous les sous-domaines, c’est normal).
+3. **Dokploy** : pour **chaque** app déployée, ajouter **les domaines** qui doivent la servir, puis vérifier que le conteneur est **démarré** et qu’il n’y a pas **un seul** service qui mange tous les hôtes par erreur.
+
+Dans ce monorepo, comptez au minimum **2 apps Dokploy** (ERP + website) et **+1 par landing** que vous mettez en production (`landing-pac`, `landing-reno-global`…), chacune avec son **Dockerfile** et sa liste de domaines.
+
+**Piège fréquent** : DNS OK partout, mais **seulement l’ERP** (ou seulement le site) a été ajouté dans Dokploy — les autres noms répondent 404, mauvais site, ou certificat / routage incohérent. Il faut **les deux côtés** : DNS + domaines sur **la** bonne app.
 
 ---
 
