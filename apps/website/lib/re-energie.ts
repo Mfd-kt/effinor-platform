@@ -89,7 +89,9 @@ export async function getReEnergieHubData(): Promise<ReEnergieCategoryWithArticl
   for (const row of articles ?? []) {
     const a = row as ReEnergieHubArticle & { category_id: string }
     if (!byCat.has(a.category_id)) byCat.set(a.category_id, [])
-    byCat.get(a.category_id)!.push({
+    const list = byCat.get(a.category_id)!
+    if (list.some((x) => x.slug === a.slug)) continue
+    list.push({
       id: a.id,
       slug: a.slug,
       title: a.title,
