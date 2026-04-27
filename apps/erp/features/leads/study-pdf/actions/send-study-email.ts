@@ -18,6 +18,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
 
 export type EmailVariant = "A" | "B";
+// TODO: brancher E-05 ici — quand un type "docs" / envoi documents à signer
+// sera ajouté à ce flux, importer `renderE05EnvoiDocumentsEmail` depuis
+// `@/lib/email/templates/e05-envoi-documents` et logger via
+// `EmailType.DOCS_TO_SIGN` (`@/lib/email/email-types`).
 export type EmailType = "study" | "relance_signature" | "libre" | "premier_contact";
 
 export type SendStudyEmailResult =

@@ -10,8 +10,14 @@ import {
 } from "@/features/leads/lib/lead-siret-compat";
 import { LeadInsertSchema } from "@/features/leads/schemas/lead.schema";
 import type { LeadRow } from "@/features/leads/types";
+import { sendEmail } from "@/lib/email/email-orchestrator";
+import {
+  buildFromAddress,
+  getEmailTemplateForSource,
+  getReplyToAddress,
+} from "@/lib/email/email-router";
+import { getMailTransport } from "@/lib/email/gmail-transport";
 import { createClient } from "@/lib/supabase/server";
-import { sendStudyEmail } from "@/features/leads/study-pdf/actions/send-study-email";
 import { notifyDuplicateLeadAttempt, notifyNewLead } from "@/features/notifications/services/notification-service";
 
 export type CreateLeadResult =
@@ -108,24 +114,74 @@ export async function createLead(
 
   void notifyNewLead(data);
 
-  // Auto-send first contact email if the lead has an email address
+  // Auto-send du premier contact via le router B2C (template choisi en fonction
+  // de `lead.source`). Fire-and-forget : l'échec d'envoi ne doit pas faire
+  // échouer la création du lead.
   const leadEmail = data.email?.trim();
   if (!options?.skipPremierContactEmail && leadEmail && leadEmail.includes("@")) {
-    sendStudyEmail({
-      to: leadEmail,
-      leadId: data.id,
-      clientName: data.contact_name ?? "",
-      companyName: data.company_name ?? "",
-      siteName: [data.worksite_address, data.worksite_postal_code, data.worksite_city]
-        .filter(Boolean)
-        .join(", ") || "",
-      presentationUrl: null,
-      accordUrl: null,
-      variant: "A",
-      emailType: "premier_contact",
-    }).catch((err) => {
-      console.error("[createLead] auto premier_contact email failed:", err);
-    });
+    void (async () => {
+      try {
+        // Best-effort : récupère le prénom de l'agent créateur depuis `profiles`
+        // (la table contient `full_name`, pas de `first_name` séparé).
+        let agentPrenom = "L'équipe";
+        if (creatorId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", creatorId)
+            .maybeSingle();
+          const fullName = (profile?.full_name as string | null | undefined)?.trim();
+          const first = fullName?.split(/\s+/)[0];
+          if (first) agentPrenom = first;
+        }
+
+        const appBaseUrl = (
+          process.env.APP_URL?.trim() ||
+          process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+          ""
+        ).replace(/\/+$/, "");
+        const lienAction = appBaseUrl
+          ? `${appBaseUrl}/leads/${data.id}`
+          : "https://effinor.fr/contact";
+
+        const rendered = getEmailTemplateForSource(data.source ?? "other", {
+          agentPrenom,
+          destinataireEmail: leadEmail,
+          destinatairePrenom: (data.first_name as string | null | undefined)?.trim() || "vous",
+          lienAction,
+        });
+
+        await sendEmail({
+          type: rendered.emailType,
+          recipient: leadEmail,
+          metadata: {
+            provider: "smtp",
+            sourceModule: `leads/create-lead/${rendered.templateId}`,
+          },
+          context: {
+            leadId: data.id,
+            leadSource: data.source ?? null,
+            templateId: rendered.templateId,
+          },
+          execute: async () => {
+            const transport = getMailTransport();
+            const info = await transport.sendMail({
+              from: buildFromAddress(agentPrenom),
+              replyTo: getReplyToAddress(),
+              to: leadEmail,
+              subject: rendered.subject,
+              html: rendered.html,
+              text: rendered.text,
+            });
+            return info?.accepted?.length
+              ? { ok: true }
+              : { ok: false, error: "SMTP rejected" };
+          },
+        });
+      } catch (err) {
+        console.error("[createLead] auto premier_contact email failed:", err);
+      }
+    })();
   }
 
   return { ok: true, data };
