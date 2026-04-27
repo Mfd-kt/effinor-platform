@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { LeadGenerationHubStockSection } from "@/features/lead-generation/components/lead-generation-hub-stock-section";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canAccessLeadGenerationHub } from "@/lib/auth/module-access";
+import { canAccessLeadGenerationHub, canAccessLeadGenerationMyQueue } from "@/lib/auth/module-access";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,14 @@ export default async function LeadGenerationPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const access = await getAccessContext();
-  if (access.kind !== "authenticated" || !(await canAccessLeadGenerationHub(access))) {
+  if (access.kind !== "authenticated") {
+    notFound();
+  }
+  const canHub = await canAccessLeadGenerationHub(access);
+  if (!canHub) {
+    if (canAccessLeadGenerationMyQueue(access)) {
+      redirect("/lead-generation/my-queue");
+    }
     notFound();
   }
 

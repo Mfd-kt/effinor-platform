@@ -4,12 +4,11 @@ import type { DispatchQueueRulesSettings } from "../settings/default-settings";
 
 import { computeLeadGenerationDispatchQueueRank } from "./dispatch-queue-rank";
 
-/** Seuils explicites — ajustables sans toucher au reste du module. */
+/** Seuils hérités (priorisation / textes) — la diffusion ne bloque plus sur la qualification quantif. */
 const DEFAULT_RULES: DispatchQueueRulesSettings = {
   score_ready_min: 55,
   score_ready_strong: 72,
   score_low_band: 30,
-  /** Plancher score pour autoriser la diffusion sans exiger email / site / confiance enrichissement (voir logique E/F). */
   score_enrich_floor: 0,
 };
 
@@ -28,79 +27,51 @@ function hasPhone(row: LeadGenerationStockRow): boolean {
 }
 
 /**
- * Décision de file de dispatch (fonction pure, étape 13).
- * Exclusions dures → téléphone → score → diffusion possible sans exiger enrichissement email/site
- * (le score commercial et le rang restent utilisés pour la priorisation).
+ * Décision de file de dispatch (fiche pure, étape 13).
+ *
+ * Règle produit : toute fiche **importable** (hors doublon / rejet / terminée) avec **téléphone**
+ * part en **prêt maintenant** — imports CSV, Apify, etc. ne restent plus bloqués en « non diffusé »
+ * faute de passage par la quantif.
+ *
+ * Cas exclus : fiches déjà prises en charge côté terrain (attribué / en cours) → `review` ;
+ * sans moyen de contact téléphonique → `low_value`.
  */
 export function computeLeadGenerationDispatchQueue(
   row: LeadGenerationStockRow,
-  rules: DispatchQueueRulesSettings = DEFAULT_RULES,
+  _rules: DispatchQueueRulesSettings = DEFAULT_RULES,
 ): LeadGenerationDispatchQueueDecision {
-  const score = row.commercial_score ?? 0;
-  const priority = row.commercial_priority ?? "normal";
-
   const phone = hasPhone(row);
 
-  // A — Non distribuable
+  // A — Non distribuable (exclusions dures)
   if (row.duplicate_of_stock_id != null || row.qualification_status === "duplicate") {
     return finalize(row, "do_not_dispatch", "doublon");
   }
   if (row.qualification_status === "rejected" || row.stock_status === "rejected") {
     return finalize(row, "do_not_dispatch", "rejet");
   }
-  if (row.stock_status === "converted") {
+  if (row.stock_status === "converted" || row.converted_lead_id) {
     return finalize(row, "do_not_dispatch", "déjà convertie");
   }
   if (row.stock_status === "expired" || row.stock_status === "archived") {
     return finalize(row, "do_not_dispatch", "stock non actif");
   }
 
-  if (row.qualification_status !== "qualified") {
-    if (row.qualification_status === "to_validate" || row.qualification_status === "pending") {
-      return finalize(row, "do_not_dispatch", "non qualifié — validation quantificateur requise");
-    }
-    return finalize(row, "do_not_dispatch", "fiche non qualifiée pour diffusion");
-  }
-
-  // B — Déjà dans un circuit commercial (pas « à distribuer maintenant » comme neuf)
+  // B — Déjà dans le circuit opérationnel (file agent / ouvert) : pas le même sens que « à sonner maintenant »
   if (row.stock_status === "assigned" || row.stock_status === "in_progress") {
-    return finalize(row, "review", "déjà attribuée ou en cours");
+    return finalize(row, "review", "déjà attribuée ou en cours côté commercial");
   }
 
-  // C — Téléphone indispensable pour une mise en relation
+  // C — Pas de ligne téléphonique exploitable
   if (!phone) {
-    return finalize(row, "low_value", "téléphone manquant");
+    return finalize(row, "low_value", "téléphone manquant — ne peut pas figurer en prêt à contacter");
   }
 
-  // D — Très faible score : intérêt limité même avec téléphone
-  if (score <= rules.score_low_band && priority === "low") {
-    return finalize(row, "low_value", "score commercial trop faible");
-  }
-
-  // E — Prête maintenant : stock qualifié « ready », téléphone présent, score ≥ plancher (sans exiger email/site/confiance)
-  if (
-    row.stock_status === "ready" &&
-    score >= rules.score_ready_min
-  ) {
-    return finalize(row, "ready_now", "fiche prête — diffusion autorisée (enrichissement complémentaire possible)");
-  }
-
-  // F — Score modéré : diffusion autorisée quand même (téléphone + plancher score), pas de blocage « enrich_first »
-  if (
-    row.stock_status === "ready" &&
-    score >= rules.score_enrich_floor &&
-    score < rules.score_ready_min
-  ) {
-    return finalize(row, "ready_now", "diffusion autorisée — score modéré, enrichissement complémentaire possible ensuite");
-  }
-
-  // G — Faible valeur commerciale (sans être hors-cible absolue)
-  if (score <= rules.score_low_band + 5 && priority === "low") {
-    return finalize(row, "low_value", "priorité commerciale basse");
-  }
-
-  // H — Cas intermédiaires (ex. statut « new » à valider, score moyen…)
-  return finalize(row, "review", "à trancher manuellement");
+  // D — Défaut : prêt maintenant (nouveau, to_validate, CSV, Apify, etc.)
+  return finalize(
+    row,
+    "ready_now",
+    "Prêt à contacter — fiche importée ou disponible pour appel / dispatch (règle par défaut).",
+  );
 }
 
 function finalize(

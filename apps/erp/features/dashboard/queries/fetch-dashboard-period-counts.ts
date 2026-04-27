@@ -15,6 +15,9 @@ export async function countLeadsCreatedInRange(
   startIso: string,
   endIso: string,
 ): Promise<number> {
+  if (leadIds !== "all" && leadIds.length === 0) {
+    return 0;
+  }
   let q = supabase
     .from("leads")
     .select("id", { count: "exact", head: true })
@@ -38,6 +41,10 @@ export async function fetchDashboardPeriodCounts(
   startIso: string,
   endIso: string,
 ): Promise<DashboardTodayCounts> {
+  if (leadIds !== "all" && leadIds.length === 0) {
+    return { leadsCreated: 0, callbacks: 0, technicalVisits: 0 };
+  }
+
   const leadCountBase = () => {
     let q = supabase.from("leads").select("id", { count: "exact", head: true }).is("deleted_at", null);
     if (leadIds !== "all") {

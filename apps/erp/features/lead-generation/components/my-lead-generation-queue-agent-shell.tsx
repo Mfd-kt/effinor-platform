@@ -461,9 +461,13 @@ export function MyLeadGenerationQueueAgentShell({
               </div>
             </div>
             <p className="text-[10px] leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">Nouveaux</span> = fiches attribuées sans action enregistrée encore.{" "}
+              <span className="font-medium text-foreground">En suivi</span> = contact / répondeur / rappel (statuts «
+              contacté », « à rappeler », ou 1ʳᵉ relance dès qu’une activité est tracée). Rappel : une date de rappel sur la
+              fiche génère une tâche (30&nbsp;min avant) si renseignée.{" "}
               <span className="font-medium text-foreground">Objectif de nouveaux simultanés (dispatch)&nbsp;:</span> {maxCap}
-              . Les quatre chiffres ci-dessus couvrent l’ensemble de vos assignations actives (hors converties, hors cible et
-              archivées), alignés sur le plafond {COMMERCIAL_CAPACITY_BLOCK_THRESHOLD}.
+              . Plafond total {COMMERCIAL_CAPACITY_BLOCK_THRESHOLD} sur l’ensemble des assignations actives (hors converties, hors
+              cible et archivées).
             </p>
           </div>
 

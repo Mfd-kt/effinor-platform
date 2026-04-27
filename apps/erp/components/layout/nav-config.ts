@@ -72,6 +72,8 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Acquisition de leads",
         icon: Target,
         roles: "*",
+        /** File LGC / fiches assignées : le menu principal pointe vers le hub, le filtrage RBAC repose sur les sous-routes. */
+        matchPrefixes: ["/lead-generation"],
         badgeKey: "leadsCount",
         shortcut: "G A",
       },

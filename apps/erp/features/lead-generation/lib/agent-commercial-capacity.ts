@@ -42,6 +42,8 @@ function resolveLevel(total: number): AgentCommercialCapacityLevel {
 
 type AssignmentRow = {
   commercial_pipeline_status: string | null;
+  /** Présent pour le découpage capacité ; optionnel si l’appelant ne charge que le pipeline (ex. file). */
+  last_activity_at?: string | null;
   stock: { converted_lead_id: string | null; stock_status: string | null } | { converted_lead_id: string | null; stock_status: string | null }[] | null;
 };
 
@@ -81,16 +83,20 @@ function accumulateRow(row: AssignmentRow, acc: { stockNeuf: number; suivi: numb
     return;
   }
   const ps = (row.commercial_pipeline_status ?? "").trim();
-  if (ps === "new") {
+  const engaged = row.last_activity_at != null && String(row.last_activity_at).trim() !== "";
+
+  /** « Nouveaux » = fiche distribuée mais encore jamais d’action enregistrée (ni relance planifiée). */
+  if (ps === "new" && !engaged) {
     acc.stockNeuf += 1;
-  } else if (ps === "contacted" || ps === "follow_up") {
+  } else {
+    /** Suivi : contacté, à rappeler, ou `new` déjà travaillé (en attente de synchro pipeline). */
     acc.suivi += 1;
   }
 }
 
 /**
- * Volume opérationnel agent : stock neuf (pipeline `new`) + suivi (`contacted`, `follow_up`),
- * en excluant les fiches converties, rejetées / archivées / expirées côté stock.
+ * Volume opérationnel agent : **Nouveaux** = pipeline `new` sans aucune activité encore enregistrée ;
+ * **Suivi** = `contacted`, `follow_up`, ou `new` déjà engagé (dernière activité renseignée).
  */
 export async function computeAgentCommercialCapacity(
   supabase: SupabaseClient,
@@ -99,7 +105,7 @@ export async function computeAgentCommercialCapacity(
   const t = lgTable(supabase, "lead_generation_assignments");
   const { data, error } = await t
     .select(
-      `commercial_pipeline_status, stock:lead_generation_stock!${LEAD_GENERATION_ASSIGNMENTS_STOCK_ID_FKEY}!inner(converted_lead_id, stock_status)`,
+      `commercial_pipeline_status, last_activity_at, stock:lead_generation_stock!${LEAD_GENERATION_ASSIGNMENTS_STOCK_ID_FKEY}!inner(converted_lead_id, stock_status)`,
     )
     .eq("agent_id", agentId)
     .eq("outcome", "pending")
@@ -137,7 +143,7 @@ export async function computeCommercialCapacityForAgents(
   const t = lgTable(supabase, "lead_generation_assignments");
   const { data, error } = await t
     .select(
-      `agent_id, commercial_pipeline_status, stock:lead_generation_stock!${LEAD_GENERATION_ASSIGNMENTS_STOCK_ID_FKEY}!inner(converted_lead_id, stock_status)`,
+      `agent_id, commercial_pipeline_status, last_activity_at, stock:lead_generation_stock!${LEAD_GENERATION_ASSIGNMENTS_STOCK_ID_FKEY}!inner(converted_lead_id, stock_status)`,
     )
     .in("agent_id", uniq)
     .eq("outcome", "pending")

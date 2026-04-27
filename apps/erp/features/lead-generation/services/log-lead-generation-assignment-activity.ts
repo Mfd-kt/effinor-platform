@@ -110,6 +110,7 @@ export async function logLeadGenerationAssignmentActivity(
   const nextPipe = nextCommercialPipelineStatusAfterActivity({
     current: cur,
     nextActionAt: input.nextActionAt,
+    activityOutcome: input.outcome ?? null,
   });
   const pipelinePatch: Record<string, unknown> =
     nextPipe === cur ? {} : { commercial_pipeline_status: nextPipe };

@@ -181,15 +181,18 @@ export async function getDashboardMetrics(
   }
 
   const leadIds = await getLeadIdsForAccess(supabase, access);
-  if (leadIds !== "all" && leadIds.length === 0) {
-    return empty;
-  }
+  /** Aucun lead CRM en périmètre (ex. agent 100 % LGC) : KPI CRM / VT à zéro, sans court-circuiter la structure. */
+  const hasCrmLeadScope = leadIds === "all" || leadIds.length > 0;
+  const IMPOSSIBLE_LEAD_ID = "00000000-0000-0000-0000-000000000001";
 
   const currentRange = getCockpitPeriodRange(period, now);
   const previousRange = getCockpitPreviousPeriodRange(period, now);
 
   const leadCountBase = () => {
     let q = supabase.from("leads").select("id", { count: "exact", head: true }).is("deleted_at", null);
+    if (!hasCrmLeadScope) {
+      return q.eq("id", IMPOSSIBLE_LEAD_ID);
+    }
     if (leadIds !== "all") {
       q = q.in("id", leadIds);
     }
@@ -198,6 +201,9 @@ export async function getDashboardMetrics(
 
   const leadRowsBase = () => {
     let q = supabase.from("leads").select("id, company_name, created_at, lead_status").is("deleted_at", null);
+    if (!hasCrmLeadScope) {
+      return q.eq("id", IMPOSSIBLE_LEAD_ID);
+    }
     if (leadIds !== "all") {
       q = q.in("id", leadIds);
     }
@@ -206,6 +212,9 @@ export async function getDashboardMetrics(
 
   const vtCountBase = () => {
     let q = supabase.from("technical_visits").select("id", { count: "exact", head: true }).is("deleted_at", null);
+    if (!hasCrmLeadScope) {
+      return q.eq("lead_id", IMPOSSIBLE_LEAD_ID);
+    }
     if (leadIds !== "all") {
       q = q.in("lead_id", leadIds);
     }
@@ -288,7 +297,9 @@ export async function getDashboardMetrics(
     .not("sim_cee_prime_estimated", "is", null)
     .gte("created_at", currentRange.startIso)
     .lt("created_at", currentRange.endIso);
-  if (leadIds !== "all") {
+  if (!hasCrmLeadScope) {
+    financialQuery = financialQuery.eq("id", IMPOSSIBLE_LEAD_ID);
+  } else if (leadIds !== "all") {
     financialQuery = financialQuery.in("id", leadIds);
   }
   const { data: financialRows } = await financialQuery;

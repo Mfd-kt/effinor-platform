@@ -10,6 +10,7 @@ import { hasFullCeeWorkflowAccess } from "./cee-workflows-scope";
 import {
   canAccessAdminCeeSheets,
   canAccessCeeWorkflowsModule,
+  canAccessLeadGenerationMyQueue,
   canAccessLeadGenerationQuantification,
   canAccessLeadGenerationQuantifierImports,
   canAccessCloserWorkspace,
@@ -64,6 +65,10 @@ export async function buildAllowedNavHrefs(
   }
   if (shouldShowLeadGenerationMyQueueNav(access)) {
     extra.push("/lead-generation/my-queue");
+  }
+  /** Permet le lien menu « Acquisition de leads » → la page /lead-generation redirige vers la file si l’agent n’a pas le hub. */
+  if (canAccessLeadGenerationMyQueue(access) && !extra.includes("/lead-generation")) {
+    extra.push("/lead-generation");
   }
   if (canAccessLeadGenerationQuantification(access)) {
     extra.push("/lead-generation/quantification");

@@ -128,6 +128,7 @@ export function LeadGenShell({ access, children }: LeadGenShellProps) {
   const activeKey = resolveActiveTab(pathname);
 
   const visibleTabs = TAB_DEFINITIONS.filter((tab) => pickAccess(access, tab.key));
+  const onlyMyFile = visibleTabs.length === 1 && visibleTabs[0]?.key === "my-queue";
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -137,11 +138,13 @@ export function LeadGenShell({ access, children }: LeadGenShellProps) {
           Acquisition de leads
         </h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Pipeline de prospection immobilière CEE — du scraping au closing.
+          {onlyMyFile
+            ? "Votre file : appels, relances et suivi d’activité — uniquement les fiches qui vous sont assignées."
+            : "Pipeline de prospection immobilière CEE — du scraping au closing."}
         </p>
       </header>
 
-      {visibleTabs.length > 1 ? (
+      {visibleTabs.length > 0 ? (
         <nav
           aria-label="Sections acquisition de leads"
           className="border-b border-border/60"

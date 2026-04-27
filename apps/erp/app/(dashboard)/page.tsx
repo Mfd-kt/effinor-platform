@@ -53,7 +53,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     case "closer":
       return <CloserDashboard period={period} />;
     case "sales_agent":
-      return <SalesAgentDashboard period={period} />;
+      return <SalesAgentDashboard access={access} period={period} />;
     case "technician":
       return <TechnicianDashboard period={period} />;
     case "admin_agent":
