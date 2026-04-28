@@ -7,8 +7,10 @@ import {
   Controller,
   useForm,
   useWatch,
+  type FieldNamesMarkedBoolean,
   type Resolver,
   type UseFormRegister,
+  type UseFormReturn,
   type UseFormSetValue,
 } from "react-hook-form";
 
@@ -56,6 +58,76 @@ const selectClassName = cn(
   "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 );
 
+/**
+ * Vrai si le champ a été modifié par l'utilisateur depuis le dernier reset.
+ *
+ * RHF stocke `dirtyFields` sous forme de `Partial<DeepMap<TFieldValues, boolean>>` :
+ * - champs primitifs : `boolean | undefined` (absent = non dirty),
+ * - champs tableaux : `boolean[] | undefined` (un index par élément touché),
+ * - champs objets imbriqués : `Record<string, boolean> | undefined`.
+ *
+ * On considère un champ composé "dirty" dès qu'au moins un sous-champ l'est.
+ */
+function isLeadFormFieldDirty(
+  dirtyFields: FieldNamesMarkedBoolean<LeadFormInput>,
+  key: keyof LeadFormInput,
+): boolean {
+  const v = dirtyFields[key];
+  if (v === undefined) return false;
+  if (typeof v === "boolean") return v;
+  if (Array.isArray(v)) return v.some(Boolean);
+  return Object.values(v as Record<string, unknown>).some(Boolean);
+}
+
+/**
+ * Applique les valeurs serveur au formulaire en préservant les saisies en cours.
+ *
+ * Pour chaque champ :
+ * - si l'utilisateur l'a modifié (dirty) depuis le dernier reset → on garde sa
+ *   saisie locale (évite l'écrasement pendant la latence réseau de l'autosave),
+ * - sinon → on adopte la valeur serveur (utile pour les normalisations côté
+ *   serveur — phone E.164 par ex. — et pour les broadcasts realtime venant
+ *   d'un autre onglet ou utilisateur).
+ *
+ * Pourquoi un merge manuel et pas `reset(values, { keepDirtyValues: true })` ?
+ * Les deux approches préservent les valeurs des champs dirty. La différence est
+ * sur l'état `isDirty` post-reset :
+ * - `keepDirtyValues: true` (RHF 7.49+) → `isDirty` reste `true` sur les champs
+ *   préservés (la baseline serveur diffère de la valeur locale conservée),
+ * - merge manuel + `keepDirty: false` (défaut) → la baseline du form devient le
+ *   merge (server + local préservé), `isDirty` repasse à `false` jusqu'à la
+ *   prochaine frappe utilisateur.
+ *
+ * On préfère le merge manuel parce que (a) l'idempotence de l'autosave repose
+ * sur `JSON.stringify(payload) === lastSavedSerializedRef.current`, indépendante
+ * du flag `isDirty`, et (b) l'UX de l'indicateur de saisie (à venir) est plus
+ * lisible quand `isDirty` reflète strictement « il y a des frappes non encore
+ * envoyées au serveur » plutôt que « il y a des frappes non encore canonicalisées
+ * par le serveur ».
+ *
+ * NE PAS « simplifier » en `reset(values, { keepDirtyValues: true })` — ça change
+ * la sémantique de `isDirty` et casse silencieusement l'indicateur UX.
+ */
+function applyServerValuesToLeadForm(
+  formApi: UseFormReturn<LeadFormInput, unknown, LeadInsertInput>,
+  serverValues: LeadFormInput,
+): void {
+  const currentValues = formApi.getValues();
+  const dirtyFields = formApi.formState.dirtyFields;
+  const merged: Record<string, unknown> = { ...serverValues };
+
+  for (const key of Object.keys(serverValues) as Array<keyof LeadFormInput>) {
+    if (isLeadFormFieldDirty(dirtyFields, key)) {
+      merged[key as string] = currentValues[key];
+    }
+  }
+
+  formApi.reset(merged as LeadFormInput, {
+    keepTouched: true,
+    keepErrors: true,
+  });
+}
+
 type LeadFormProps = {
   mode: "create" | "edit";
   leadId?: string;
@@ -96,6 +168,13 @@ export function LeadForm({
   const lastSavedSerializedRef = useRef<string | null>(null);
   /** Derniers modes de chauffage connus en base — évite d’écraser la colonne si le champ n’a pas été modifié (autosave sur le reste du formulaire). */
   const lastCommittedHeatingModesRef = useRef<LeadInsertInput["heating_type"]>(undefined);
+  /**
+   * Track le premier passage du useEffect de baseline serveur. Permet de distinguer
+   * « init du form (useForm a déjà appliqué defaultValues) » vs « RSC re-rendu après
+   * router.refresh() » — seul ce second cas doit déclencher la propagation realtime
+   * via applyServerValuesToLeadForm.
+   */
+  const isInitialDefaultValuesSyncRef = useRef(true);
   const [duplicateDialog, setDuplicateDialog] = useState<
     | { open: false }
     | {
@@ -150,6 +229,9 @@ export function LeadForm({
     if (mode !== "edit") {
       lastSavedSerializedRef.current = null;
       lastCommittedHeatingModesRef.current = undefined;
+      // Reset le flag pour qu'un éventuel re-mount en mode "edit" n'applique pas
+      // les nouvelles valeurs serveur sur le 1er passage (useForm s'en charge).
+      isInitialDefaultValuesSyncRef.current = true;
       return;
     }
     if (serverSnapshotKey !== null) {
@@ -161,7 +243,24 @@ export function LeadForm({
           : undefined;
       }
     }
-  }, [mode, leadId, serverSnapshotKey, defaultValues]);
+
+    if (isInitialDefaultValuesSyncRef.current) {
+      isInitialDefaultValuesSyncRef.current = false;
+      return;
+    }
+
+    // defaultValues a changé après l'init : RSC re-rendu (typiquement via
+    // router.refresh() depuis LeadRealtimeListener après une modification dans un
+    // autre onglet ou par un autre utilisateur). RHF lit defaultValues uniquement
+    // à l'init du form, donc on applique manuellement les nouvelles valeurs serveur
+    // en préservant les saisies dirty de l'utilisateur courant via le helper.
+    // Pour les champs non touchés : adopte la nouvelle valeur DB (utile pour
+    // refléter une modif d'un autre utilisateur). Pour les champs dirty : on
+    // garde la saisie en cours, qui sera persistée au prochain cycle d'autosave.
+    if (defaultValues) {
+      applyServerValuesToLeadForm(form, defaultValues);
+    }
+  }, [mode, leadId, serverSnapshotKey, defaultValues, form]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -189,13 +288,16 @@ export function LeadForm({
           const canonical = LeadInsertSchema.safeParse(leadRowToFormValues(result.data));
           if (canonical.success) {
             lastSavedSerializedRef.current = JSON.stringify(canonical.data);
-            reset(leadRowToFormValues(result.data));
+            applyServerValuesToLeadForm(form, leadRowToFormValues(result.data));
           } else {
             lastSavedSerializedRef.current = nextSerialized;
-            reset(leadInsertToFormInput(payload));
+            applyServerValuesToLeadForm(form, leadInsertToFormInput(payload));
           }
           setAutoSaveState("saved");
-          router.refresh();
+          // router.refresh() retiré : on a déjà appliqué result.data côté client
+          // via applyServerValuesToLeadForm. Les autres pages (liste, technical-visits)
+          // sont invalidées par revalidatePath() côté Server Action update-lead.ts.
+          // Les autres onglets sont resynchronisés par LeadRealtimeListener.
           window.setTimeout(() => setAutoSaveState("idle"), 2500);
         } else {
           setFormError(result.message);
@@ -205,7 +307,7 @@ export function LeadForm({
     }, 1200);
 
     return () => window.clearTimeout(timer);
-   }, [readOnly, watchedValues, mode, leadId, getValues, getFieldState, reset, router, form]);
+   }, [readOnly, watchedValues, mode, leadId, getValues, getFieldState, form]);
 
   async function onSubmit(values: LeadInsertInput) {
     setFormError(null);
@@ -250,6 +352,12 @@ export function LeadForm({
     const modes = normalizeHeatingModesFromDb(result.data.heating_type);
     lastCommittedHeatingModesRef.current = modes.length ? modes : undefined;
     const canonical = LeadInsertSchema.safeParse(leadRowToFormValues(result.data));
+    // Reset complet (vs `applyServerValuesToLeadForm` utilisé par l'autosave) :
+    // l'utilisateur a explicitement cliqué « Enregistrer maintenant », donc on
+    // accepte d'écraser d'éventuelles saisies post-clic — en pratique le bouton
+    // est cliqué quand le form est stable. Ne pas remplacer par
+    // applyServerValuesToLeadForm sous peine de masquer une rétro-action
+    // serveur attendue par l'utilisateur après l'action explicite.
     if (canonical.success) {
       lastSavedSerializedRef.current = JSON.stringify(canonical.data);
       reset(leadRowToFormValues(result.data));
