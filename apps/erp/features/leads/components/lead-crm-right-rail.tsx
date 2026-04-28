@@ -75,8 +75,11 @@ export async function LeadCrmRightRail({
         "mt-6 w-full max-w-lg shrink-0 space-y-3 self-stretch sm:max-w-none",
         "lg:mt-0 lg:fixed lg:z-20 lg:max-w-none lg:space-y-3",
         "lg:w-[28rem] xl:w-[31rem] 2xl:w-[34rem]",
-        "lg:max-h-[calc(100vh-13.5rem)] lg:overflow-y-auto lg:overscroll-contain",
-        "lg:right-6 lg:bottom-8 xl:right-8 2xl:right-10",
+        "lg:max-h-[calc(100vh-14.5rem)] lg:overflow-y-auto lg:overscroll-contain",
+        // 48px = 40px AppFooter + 8px gap visuel. Le rail droit
+        // doit toujours rester au-dessus du footer global du shell
+        // dashboard, voir components/layout/app-footer.tsx.
+        "lg:right-6 lg:bottom-12 xl:right-8 2xl:right-10",
         className,
       )}
     >

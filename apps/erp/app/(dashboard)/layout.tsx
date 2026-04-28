@@ -78,7 +78,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <SidebarProvider initialCollapsed={initialCollapsed}>
-      <div className="flex h-screen min-h-screen w-full bg-background text-foreground">
+      <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
         <AppSidebar
           roleCodes={roleCodes}
           allowedNavHrefs={allowedNavHrefs}
@@ -92,13 +92,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             impersonationRoleOptions,
           }}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {topBanner}
           <AppTopbar
             userId={effectiveId}
             includeCloserLeadReminders={includeCloserLeadReminders}
           />
-          <main className="flex-1 overflow-auto px-4 py-6 md:px-6 md:py-6 lg:px-8 lg:py-8">
+          <main className="flex-1 overflow-auto [scrollbar-gutter:stable] px-4 py-6 md:px-6 md:py-6 lg:px-8 lg:py-8">
             {children}
           </main>
           <AppFooter />

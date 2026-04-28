@@ -23,9 +23,8 @@ import {
 } from "@/features/leads/lib/resolve-lead-commercial-category";
 import { getLeadById } from "@/features/leads/queries/get-lead-by-id";
 import { getAccessContext } from "@/lib/auth/access-context";
-import { canUserSwitchLeadCeeSheetOnLead } from "@/lib/auth/switch-cee-sheet-eligibility";
-import { canAccessCeeWorkflowsModule, canAccessCloserWorkspace, canAccessLeadsDirectoryNav } from "@/lib/auth/module-access";
-import { canDeleteLead, canReassignLeadCreator, canReassignWorkflowRoles } from "@/lib/auth/lead-permissions";
+import { canAccessCeeWorkflowsModule } from "@/lib/auth/module-access";
+import { canDeleteLead, canReassignLeadCreator } from "@/lib/auth/lead-permissions";
 import {
   isRestrictedAgentLeadConsultationReadOnly,
   isRestrictedFieldAgent,
@@ -34,7 +33,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getLeadInternalNotes } from "@/features/leads/queries/get-lead-internal-notes";
 import { getActiveTechnicalVisitForLead } from "@/features/leads/queries/get-active-technical-visit-for-lead";
 import { getTechnicalVisitRefsForLead } from "@/features/leads/queries/get-technical-visits-for-lead";
-import { getLeadFormOptions, getLeadProfileOptionsForReassign } from "@/features/leads/queries/get-lead-form-options";
+import { getLeadProfileOptionsForReassign } from "@/features/leads/queries/get-lead-form-options";
+import type { LeadCrmRightRailWorkflowRef } from "@/features/leads/components/lead-crm-right-rail";
+import type { LeadWorkflowActivityEventRow } from "@/features/leads/queries/get-lead-workflow-activity-events";
 import { CollapsibleSection } from "@/components/shared/collapsible-section";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { formatDateTimeFr } from "@/lib/format";
@@ -77,30 +78,26 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const access = await getAccessContext();
   const canReassign =
     access.kind === "authenticated" && canReassignLeadCreator(access.roleCodes);
-  const canEditWorkflowAssignments =
-    access.kind === "authenticated" && canReassignWorkflowRoles(access.roleCodes);
   const canDelete =
     access.kind === "authenticated" && canDeleteLead(access.roleCodes);
 
   const isAgentLeadExperience =
     access.kind === "authenticated" && isRestrictedFieldAgent(access);
 
-  const [lead, vtRefs, activeVisit, internalNotes, studyDocs, emailTracking, leadEmails, leadFormOpts] =
-    await Promise.all([
-      getLeadById(id, access.kind === "authenticated" ? access : undefined),
-      isAgentLeadExperience
-        ? Promise.resolve([])
-        : getTechnicalVisitRefsForLead(id, access.kind === "authenticated" ? access : undefined),
-      isAgentLeadExperience
-        ? Promise.resolve(null)
-        : getActiveTechnicalVisitForLead(id, access.kind === "authenticated" ? access : undefined),
-      isAgentLeadExperience ? Promise.resolve([]) : getLeadInternalNotes(id),
-      isAgentLeadExperience ? Promise.resolve([]) : getLeadStudyDocuments(id),
-      isAgentLeadExperience ? Promise.resolve([]) : getEmailTrackingForLead(id),
-      isAgentLeadExperience ? Promise.resolve([]) : getLeadEmails(id),
-      canEditWorkflowAssignments ? getLeadFormOptions() : Promise.resolve({ profiles: [] }),
-    ]);
-  const ceeWorkflows: any[] = [];
+  const [lead, vtRefs, activeVisit, internalNotes, studyDocs, emailTracking, leadEmails] = await Promise.all([
+    getLeadById(id, access.kind === "authenticated" ? access : undefined),
+    isAgentLeadExperience
+      ? Promise.resolve([])
+      : getTechnicalVisitRefsForLead(id, access.kind === "authenticated" ? access : undefined),
+    isAgentLeadExperience
+      ? Promise.resolve(null)
+      : getActiveTechnicalVisitForLead(id, access.kind === "authenticated" ? access : undefined),
+    isAgentLeadExperience ? Promise.resolve([]) : getLeadInternalNotes(id),
+    isAgentLeadExperience ? Promise.resolve([]) : getLeadStudyDocuments(id),
+    isAgentLeadExperience ? Promise.resolve([]) : getEmailTrackingForLead(id),
+    isAgentLeadExperience ? Promise.resolve([]) : getLeadEmails(id),
+  ]);
+  const ceeWorkflows: LeadCrmRightRailWorkflowRef[] = [];
 
   const agentProfiles = canReassign ? await getLeadProfileOptionsForReassign() : [];
 
@@ -111,7 +108,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const supabase = await createClient();
   const agentConsultationReadOnly = await isRestrictedAgentLeadConsultationReadOnly(supabase, access, lead.id);
 
-  const workflowActivityEvents: any[] = [];
+  const workflowActivityEvents: LeadWorkflowActivityEventRow[] = [];
 
   const leadListBackHref = "/leads";
   const leadListBackLabel = "Retour à la liste";
@@ -255,7 +252,6 @@ export default async function LeadDetailPage({ params }: PageProps) {
               leadId={lead.id}
               defaultValues={leadFormDefaultValues}
               derivedCommercialCategory={commercialCategoryLabel.trim() || null}
-              className="max-w-4xl"
               canReassignCreator={canReassign}
               agentOptions={agentProfiles}
               externalFooter
@@ -263,6 +259,20 @@ export default async function LeadDetailPage({ params }: PageProps) {
               readOnly={agentConsultationReadOnly}
               simplifiedAgentView={isAgentLeadExperience}
             />
+            {!agentConsultationReadOnly ? (
+              <div className="mt-4 flex flex-col items-start gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Sauvegarde automatique (environ 1 s après la dernière modification).
+                </p>
+                <button
+                  type="submit"
+                  form={`lead-form-${lead.id}`}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0")}
+                >
+                  Enregistrer maintenant
+                </button>
+              </div>
+            ) : null}
           </CollapsibleSection>
 
           <CollapsibleSection title="Appel (Aircall)" defaultOpen>
@@ -315,22 +325,6 @@ export default async function LeadDetailPage({ params }: PageProps) {
                 />
               </CollapsibleSection>
             </>
-          ) : null}
-
-          {/* ── Footer enregistrement ── */}
-          {!agentConsultationReadOnly ? (
-            <div className="sticky bottom-0 z-10 -mx-1 flex items-center gap-4 rounded-lg border border-border bg-background/95 px-5 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
-              <p className="text-sm text-muted-foreground">
-                Sauvegarde automatique (environ 1 s après la dernière modification).
-              </p>
-              <button
-                type="submit"
-                form={`lead-form-${lead.id}`}
-                className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                Enregistrer maintenant
-              </button>
-            </div>
           ) : null}
         </div>
 

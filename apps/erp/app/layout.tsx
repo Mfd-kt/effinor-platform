@@ -61,7 +61,7 @@ export default async function RootLayout({
       data-theme={theme}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex h-full flex-col overflow-hidden">
         <RuntimeSupabaseInjectClient config={publicSupabase} />
         {children}
         <Toaster position="bottom-right" richColors closeButton />
