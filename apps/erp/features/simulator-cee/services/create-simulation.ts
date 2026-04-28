@@ -2,6 +2,13 @@ import { computeResult } from "@/features/simulator-cee/domain/eligibility-rules
 import type { SimulationAnswers } from "@/features/simulator-cee/domain/types";
 import { normalizeFrPhoneToE164 } from "@/features/simulator-cee/lib/phone";
 import type { SubmitSimulationInput } from "@/features/simulator-cee/schemas/simulation.schema";
+import { sendEmail } from "@/lib/email/email-orchestrator";
+import {
+  buildFromAddress,
+  getEmailTemplateForSource,
+  getReplyToAddress,
+} from "@/lib/email/email-router";
+import { getMailTransport } from "@/lib/email/gmail-transport";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function mapChauffageToHeatingDb(
@@ -96,6 +103,77 @@ export async function createSimulation(args: {
   if (leadErr || !leadRow?.id) {
     console.error("createSimulation lead insert", leadErr);
     throw new Error("Impossible de créer le lead");
+  }
+
+  // Auto-send du premier contact via le router B2C — fire-and-forget.
+  // Pas de await : l'échec d'envoi ne doit pas faire échouer la création
+  // du lead ni l'enregistrement de la simulation qui suit.
+  const leadEmail = contact?.email?.trim();
+  if (leadEmail && leadEmail.includes("@")) {
+    void (async () => {
+      try {
+        let agentPrenom = "L'équipe";
+        if (args.userId) {
+          const { data: profile } = await admin
+            .from("profiles")
+            .select("full_name")
+            .eq("id", args.userId)
+            .maybeSingle();
+          const fullName = (profile?.full_name as string | null | undefined)?.trim();
+          const first = fullName?.split(/\s+/)[0];
+          if (first) agentPrenom = first;
+        }
+
+        const appBaseUrl = (
+          process.env.APP_URL?.trim() ||
+          process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+          ""
+        ).replace(/\/+$/, "");
+        const lienAction = appBaseUrl
+          ? `${appBaseUrl}/leads/${leadRow.id}`
+          : "https://effinor.fr/contact";
+
+        const rendered = getEmailTemplateForSource("simulator_cee", {
+          agentPrenom,
+          destinataireEmail: leadEmail,
+          destinatairePrenom: firstName || "vous",
+          lienAction,
+        });
+
+        await sendEmail({
+          type: rendered.emailType,
+          recipient: leadEmail,
+          metadata: {
+            provider: "smtp",
+            sourceModule: `simulator-cee/create-simulation/${rendered.templateId}`,
+          },
+          context: {
+            leadId: leadRow.id,
+            leadSource: "simulator_cee",
+            templateId: rendered.templateId,
+          },
+          execute: async () => {
+            const transport = getMailTransport();
+            const info = await transport.sendMail({
+              from: buildFromAddress(agentPrenom),
+              replyTo: getReplyToAddress(),
+              to: leadEmail,
+              subject: rendered.subject,
+              html: rendered.html,
+              text: rendered.text,
+            });
+            return info?.accepted?.length
+              ? { ok: true }
+              : { ok: false, error: "SMTP rejected" };
+          },
+        });
+      } catch (err) {
+        console.error(
+          "[createSimulation] auto premier_contact email failed:",
+          err,
+        );
+      }
+    })();
   }
 
   const zoneForDb =
