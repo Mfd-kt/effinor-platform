@@ -20,10 +20,11 @@ import { formatMediaListForDisplay } from "@/features/leads/lib/lead-media-json"
 import type { LeadRow } from "@/features/leads/types";
 import { cn } from "@/lib/utils";
 
-const REASON_LABEL: Record<"company" | "email" | "phone", string> = {
+const REASON_LABEL: Record<"company" | "email" | "phone" | "siret", string> = {
   company: "la même raison sociale",
   email: "le même e-mail",
   phone: "le même numéro de téléphone",
+  siret: "le même SIRET",
 };
 
 function str(v: string | null | undefined): string {
@@ -69,7 +70,7 @@ export type DuplicateLeadModalProps = {
   onOpenChange: (open: boolean) => void;
   leadId: string;
   lead: LeadRow | null;
-  matchReason: "company" | "email" | "phone";
+  matchReason: "company" | "email" | "phone" | "siret";
 };
 
 export function DuplicateLeadModal({

@@ -181,7 +181,7 @@ export function LeadForm({
         open: true;
         leadId: string;
         lead: LeadRow | null;
-        reason: "company" | "email" | "phone";
+        reason: "company" | "email" | "phone" | "siret";
       }
   >({ open: false });
 

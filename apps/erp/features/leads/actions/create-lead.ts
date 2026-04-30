@@ -26,15 +26,16 @@ export type CreateLeadResult =
       ok: false;
       message: string;
       duplicateLeadId?: string;
-      duplicateReason?: "company" | "email" | "phone";
+      duplicateReason?: "company" | "email" | "phone" | "siret";
       /** Fiche existante (si chargement OK) pour affichage dans la modale doublon. */
       duplicateLead?: LeadRow | null;
     };
 
-const DUPLICATE_REASON_LABEL: Record<"company" | "email" | "phone", string> = {
+const DUPLICATE_REASON_LABEL: Record<"company" | "email" | "phone" | "siret", string> = {
   company: "la même raison sociale",
   email: "le même e-mail",
   phone: "le même numéro de téléphone",
+  siret: "le même SIRET",
 };
 
 export async function createLead(
@@ -57,6 +58,9 @@ export async function createLead(
     company_name: parsed.data.company_name,
     email: parsed.data.email,
     phone: parsed.data.phone,
+    siret: parsed.data.siret,
+    head_office_siret: parsed.data.head_office_siret,
+    worksite_siret: parsed.data.worksite_siret,
   });
 
   if (duplicate) {
