@@ -81,6 +81,11 @@ function LeadNotationCell({ score }: { score: number | null }) {
 
 const FILTER_ALL = "__all__";
 
+/** Valeurs internes du Select « Type » (hors `FILTER_ALL`). */
+const FILTER_LEAD_TYPE_UNKNOWN = "__lead_type_unknown__";
+const FILTER_LEAD_TYPE_B2C = "b2c";
+const FILTER_LEAD_TYPE_B2B = "b2b";
+
 function leadMatchesSearch(lead: LeadListRow, needle: string): boolean {
   if (!needle) return true;
   const q = needle.toLowerCase();
@@ -108,6 +113,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(FILTER_ALL);
   const [sourceFilter, setSourceFilter] = useState<string>(FILTER_ALL);
+  const [leadTypeFilter, setLeadTypeFilter] = useState<string>(FILTER_ALL);
 
   const filteredData = useMemo(() => {
     return data.filter((lead) => {
@@ -117,12 +123,27 @@ export function LeadsTable({ data }: LeadsTableProps) {
       if (sourceFilter !== FILTER_ALL && lead.source !== sourceFilter) {
         return false;
       }
+      if (leadTypeFilter !== FILTER_ALL) {
+        if (leadTypeFilter === FILTER_LEAD_TYPE_UNKNOWN) {
+          if (lead.lead_type != null && lead.lead_type !== "" && lead.lead_type !== "unknown") {
+            return false;
+          }
+        } else if (leadTypeFilter === FILTER_LEAD_TYPE_B2C) {
+          if (lead.lead_type !== "b2c") {
+            return false;
+          }
+        } else if (leadTypeFilter === FILTER_LEAD_TYPE_B2B) {
+          if (lead.lead_type !== "b2b") {
+            return false;
+          }
+        }
+      }
       if (!leadMatchesSearch(lead, search.trim())) {
         return false;
       }
       return true;
     });
-  }, [data, statusFilter, sourceFilter, search]);
+  }, [data, statusFilter, sourceFilter, leadTypeFilter, search]);
 
   const columns = useMemo<ColumnDef<LeadListRow>[]>(
     () => [
@@ -278,7 +299,10 @@ export function LeadsTable({ data }: LeadsTableProps) {
   });
 
   const filtersActive =
-    search.trim() !== "" || statusFilter !== FILTER_ALL || sourceFilter !== FILTER_ALL;
+    search.trim() !== "" ||
+    statusFilter !== FILTER_ALL ||
+    sourceFilter !== FILTER_ALL ||
+    leadTypeFilter !== FILTER_ALL;
 
   return (
     <div className="space-y-4">
@@ -331,6 +355,20 @@ export function LeadsTable({ data }: LeadsTableProps) {
             </SelectContent>
           </Select>
         </div>
+        <div className="w-full space-y-2 sm:w-[200px]">
+          <Label className="text-xs text-muted-foreground">Type</Label>
+          <Select value={leadTypeFilter} onValueChange={(v) => setLeadTypeFilter(v ?? FILTER_ALL)}>
+            <SelectTrigger className="h-9 w-full">
+              <SelectValue placeholder="Tous" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={FILTER_ALL}>Tous</SelectItem>
+              <SelectItem value={FILTER_LEAD_TYPE_UNKNOWN}>À qualifier</SelectItem>
+              <SelectItem value={FILTER_LEAD_TYPE_B2C}>B2C</SelectItem>
+              <SelectItem value={FILTER_LEAD_TYPE_B2B}>B2B</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card shadow-sm">
@@ -354,6 +392,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
                 setSearch("");
                 setStatusFilter(FILTER_ALL);
                 setSourceFilter(FILTER_ALL);
+                setLeadTypeFilter(FILTER_ALL);
               }}
             >
               Réinitialiser les filtres
