@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +41,19 @@ import { LeadStatusBadge } from "./lead-status-badge";
 type LeadsTableProps = {
   data: LeadListRow[];
 };
+
+function leadTypeListBadge(leadType: LeadListRow["lead_type"] | null | undefined): {
+  variant: "default" | "secondary" | "outline";
+  label: string;
+} {
+  if (leadType === "b2c") {
+    return { variant: "secondary", label: "B2C" };
+  }
+  if (leadType === "b2b") {
+    return { variant: "default", label: "B2B" };
+  }
+  return { variant: "outline", label: "À qualifier" };
+}
 
 function LeadNotationCell({ score }: { score: number | null }) {
   if (score == null || !Number.isFinite(score)) {
@@ -118,9 +132,13 @@ export function LeadsTable({ data }: LeadsTableProps) {
         sortUndefined: "last",
         cell: ({ row }) => {
           const lead = row.original;
+          const typeBadge = leadTypeListBadge(lead.lead_type);
           return (
             <div>
-              <div className="font-medium text-foreground">{lead.display_name}</div>
+              <div className="flex flex-wrap items-center gap-2 font-medium text-foreground">
+                <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>
+                <span>{lead.display_name}</span>
+              </div>
               {lead.lead_type === "b2b" && lead.company_name?.trim() ? (
                 <div className="text-xs text-muted-foreground">{lead.company_name}</div>
               ) : null}
