@@ -71,6 +71,7 @@ function leadMatchesSearch(lead: LeadListRow, needle: string): boolean {
   if (!needle) return true;
   const q = needle.toLowerCase();
   const hay = [
+    lead.display_name,
     lead.company_name,
     lead.civility,
     lead.first_name,
@@ -112,12 +113,20 @@ export function LeadsTable({ data }: LeadsTableProps) {
   const columns = useMemo<ColumnDef<LeadListRow>[]>(
     () => [
       {
-        accessorKey: "company_name",
+        accessorKey: "display_name",
         header: "Entreprise",
         sortUndefined: "last",
-        cell: ({ row }) => (
-          <span className="font-medium text-foreground">{row.original.company_name ?? "—"}</span>
-        ),
+        cell: ({ row }) => {
+          const lead = row.original;
+          return (
+            <div>
+              <div className="font-medium text-foreground">{lead.display_name}</div>
+              {lead.lead_type === "b2b" && lead.company_name?.trim() ? (
+                <div className="text-xs text-muted-foreground">{lead.company_name}</div>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         id: "contact_name",

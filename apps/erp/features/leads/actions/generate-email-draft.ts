@@ -82,7 +82,10 @@ export async function generateEmailDraft(input: {
 
   const leadContext = [
     `## Fiche Lead`,
-    `- Entreprise : ${lead.company_name || "Non renseigné"}`,
+    `- Nom affiché (contact / client) : ${lead.display_name || "Non renseigné"}`,
+    lead.lead_type === "b2b" && lead.company_name?.trim()
+      ? `- Raison sociale : ${lead.company_name}`
+      : "",
     `- Contact : ${lead.contact_name || "Non renseigné"}`,
     `- Email : ${lead.email || "Non renseigné"}`,
     `- Téléphone : ${lead.phone || "Non renseigné"}`,

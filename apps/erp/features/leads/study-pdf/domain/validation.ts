@@ -104,8 +104,8 @@ export function validateLeadForStudyPdf(
     opts?.mergedSimulationJson,
   );
 
-  if (!lead.company_name.trim()) {
-    issues.push({ code: "missing_company", label: "Société manquante" });
+  if (!lead.display_name?.trim()) {
+    issues.push({ code: "missing_company", label: "Nom du client manquant" });
   }
   if (lead.sim_surface_m2 === null && lead.surface_m2 === null) {
     issues.push({ code: "missing_surface", label: "Surface manquante" });

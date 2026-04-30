@@ -92,8 +92,8 @@ export async function createTechnicalVisitFromLead(
     };
   }
 
-  if (!lead.company_name?.trim()) {
-    return { ok: false, message: "Le nom de la société est obligatoire." };
+  if (!lead.display_name?.trim()) {
+    return { ok: false, message: "Le nom du client est obligatoire." };
   }
 
   if (!leadAddressesComplete(lead)) {

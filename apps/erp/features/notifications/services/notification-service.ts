@@ -39,7 +39,7 @@ function isHotLead(lead: LeadRow): boolean {
 
 export async function notifyNewLead(lead: LeadRow): Promise<void> {
   const payload = T.templateLeadCreated({
-    companyName: lead.company_name,
+    companyName: lead.display_name,
     leadId: lead.id,
     sourceLabel: sourceLabel(lead.source),
     leadStatus: pipelineLabel(lead.lead_status),
@@ -55,7 +55,7 @@ export async function notifyNewLead(lead: LeadRow): Promise<void> {
 
   if (isHotLead(lead)) {
     const hot = T.templateLeadHot({
-      companyName: lead.company_name,
+      companyName: lead.display_name,
       leadId: lead.id,
       reason:
         lead.lead_status === "accord_received"
@@ -76,7 +76,7 @@ export async function notifyNewLead(lead: LeadRow): Promise<void> {
 
 export async function notifyLeadFromSimulator(lead: LeadRow): Promise<void> {
   const payload = T.templateLeadFromSimulator({
-    companyName: lead.company_name,
+    companyName: lead.display_name,
     leadId: lead.id,
     score: lead.sim_lead_score,
     primeEur: lead.sim_cee_prime_estimated,
@@ -90,7 +90,7 @@ export async function notifyLeadFromSimulator(lead: LeadRow): Promise<void> {
   );
   if (isHotLead(lead)) {
     const hot = T.templateLeadHot({
-      companyName: lead.company_name,
+      companyName: lead.display_name,
       leadId: lead.id,
       reason: "Score simulateur élevé (≥ 75) ou statut prioritaire",
     });
@@ -105,7 +105,7 @@ export async function notifyLeadFromSimulator(lead: LeadRow): Promise<void> {
 }
 
 export async function notifyLeadStudyPdfsGenerated(lead: LeadRow): Promise<void> {
-  const study = T.templateStudyPdfGenerated({ companyName: lead.company_name, leadId: lead.id });
+  const study = T.templateStudyPdfGenerated({ companyName: lead.display_name, leadId: lead.id });
   safeNotify(
     sendSlackNotification(study, {
       eventType: SlackEventType.STUDY_PDF_GENERATED,
@@ -113,7 +113,7 @@ export async function notifyLeadStudyPdfsGenerated(lead: LeadRow): Promise<void>
       entityId: lead.id,
     }),
   );
-  const accord = T.templateAccordGenerated({ companyName: lead.company_name, leadId: lead.id });
+  const accord = T.templateAccordGenerated({ companyName: lead.display_name, leadId: lead.id });
   safeNotify(
     sendSlackNotification(accord, {
       eventType: SlackEventType.ACCORD_GENERATED,
@@ -158,10 +158,10 @@ export async function notifyTechnicalVisitStarted(params: {
     const supabase = await createClient();
     const { data: lr } = await supabase
       .from("leads")
-      .select("company_name")
+      .select("display_name")
       .eq("id", params.leadId)
       .maybeSingle();
-    companyName = lr?.company_name ?? null;
+    companyName = lr?.display_name ?? null;
   }
   const payload = T.templateVtStarted({
     vtReference: params.vtReference,
