@@ -9,7 +9,6 @@ import {
   getReplyToAddress,
 } from "@/lib/email/email-router";
 import { getMailTransport } from "@/lib/email/gmail-transport";
-import { computeDisplayName } from "@/features/leads/lib/map-to-db";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function mapChauffageToHeatingDb(
@@ -69,16 +68,12 @@ export async function createSimulation(args: {
   const contactName =
     firstName || lastName ? `${firstName} ${lastName}`.trim() : null;
 
-  const displayName = computeDisplayName(firstName, lastName, companyName);
-
   const { data: leadRow, error: leadErr } = await admin
     .from("leads")
     .insert({
       source: "simulator_cee",
       lead_status: "new",
       qualification_status: "pending",
-      lead_type: "unknown",
-      display_name: displayName,
       company_name: companyName,
       first_name: firstName || null,
       last_name: lastName || null,
