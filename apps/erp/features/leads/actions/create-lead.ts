@@ -90,6 +90,7 @@ export async function createLead(
     data: { user },
   } = await supabase.auth.getUser();
 
+  /** Payload inclut lead_type + display_name via insertFromLeadForm (Phase 2.3.C.3.b). */
   const row = insertFromLeadForm(parsed.data);
   const creatorId =
     options?.createdByAgentId !== undefined ? options.createdByAgentId : user?.id ?? null;

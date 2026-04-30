@@ -16,6 +16,24 @@ function trimOrNull(s: string | undefined | null): string | null {
   return t === "" ? null : t;
 }
 
+/**
+ * Aligné sur le trigger I.0 (migration 2.1), avec libellé de secours "Lead anonyme"
+ * si aucune des deux sources n’est utilisable (défensif — le formulaire impose company_name).
+ */
+function computeDisplayNameForLeadInsert(data: LeadInsertInput): string {
+  const firstName = (data.first_name ?? "").trim();
+  const lastName = (data.last_name ?? "").trim();
+  const person = [firstName, lastName].filter(Boolean).join(" ");
+  if (person) {
+    return person;
+  }
+  const company = data.company_name.trim();
+  if (company) {
+    return company;
+  }
+  return "Lead anonyme";
+}
+
 function mapCommon(data: LeadInsertInput): Omit<
   LeadInsert,
   "id" | "qualification_status" | "created_by_agent_id"
@@ -73,6 +91,10 @@ export function insertFromLeadForm(data: LeadInsertInput): LeadInsert {
   return {
     ...mapCommon(rest as LeadInsertInput),
     qualification_status: "pending",
+    /** B2B/B2C : nouvelles fiches ERP restent tranchables plus tard (convertLeadType). */
+    lead_type: "unknown",
+    /** Calcul TS cohérent avec I.0 ; le trigger reste filet si un autre chemin oublie display_name. */
+    display_name: computeDisplayNameForLeadInsert(rest as LeadInsertInput),
   };
 }
 
