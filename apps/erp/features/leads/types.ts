@@ -1,3 +1,4 @@
+import type { LeadB2BActiveRow, LeadB2CActiveRow } from "@/features/leads/lib/lead-extensions-access";
 import type { Database } from "@/types/database.types";
 
 /** Suivi d’appel manuel (sans sync Aircall automatique). */
@@ -12,6 +13,11 @@ export type LeadRow = Database["public"]["Tables"]["leads"]["Row"] & LeadCallTra
 
 /** Lead liste prospects : jointure optionnelle sur le référentiel fiches CEE. */
 export type LeadListRow = LeadRow & {
+  /**
+   * Colonne `lead_type` (migration 2.1). Incluse via `SELECT *` dans `getLeads` ;
+   * typée ici pour les composants qui affichent un sous-titre B2B conditionnel.
+   */
+  lead_type?: string | null;
   /** Présent si la requête joint `cee_sheets` ; sinon traiter comme `null`. */
   cee_sheet?: {
     code: string | null;
@@ -43,6 +49,12 @@ export type LeadDetailRow = LeadRow & {
   confirmed_by: ProfileMini | null;
   /** Renseigné par `getLeadById` ; absent si le lead est chargé ailleurs sans jointure. */
   cee_sheet?: LeadDetailCeeSheetPick | null;
+};
+
+/** Retour de `getLeadById` après Phase 2.3.C.2 : extensions actives chargées en parallèle. */
+export type LeadDetailWithExtensions = LeadDetailRow & {
+  b2b: LeadB2BActiveRow | null;
+  b2c: LeadB2CActiveRow | null;
 };
 
 export type LeadInternalNoteWithAuthor = {

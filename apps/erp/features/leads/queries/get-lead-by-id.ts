@@ -6,16 +6,21 @@ import {
   canAccessLeadForAssignedWorkflowRole,
   canAccessLeadForCeeTeamManager,
 } from "@/lib/auth/switch-cee-sheet-eligibility";
+import { getActiveLeadExtensions } from "@/features/leads/lib/lead-extensions-access";
 
-import type { LeadDetailRow } from "@/features/leads/types";
+import type { LeadDetailRow, LeadDetailWithExtensions } from "@/features/leads/types";
 
-export async function getLeadById(id: string, access?: AccessContext): Promise<LeadDetailRow | null> {
+export async function getLeadById(
+  id: string,
+  access?: AccessContext,
+): Promise<LeadDetailWithExtensions | null> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("leads")
-    .select(
-      `
+  const [{ data, error }, { b2b, b2c }] = await Promise.all([
+    supabase
+      .from("leads")
+      .select(
+        `
       *,
       cee_sheet:cee_sheets!cee_sheet_id (
         id,
@@ -37,10 +42,12 @@ export async function getLeadById(id: string, access?: AccessContext): Promise<L
         avatar_url
       )
     `,
-    )
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
+      )
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    getActiveLeadExtensions(supabase, id),
+  ]);
 
   if (error) {
     throw new Error(`Impossible de charger le lead : ${error.message}`);
@@ -63,5 +70,5 @@ export async function getLeadById(id: string, access?: AccessContext): Promise<L
     }
   }
 
-  return row;
+  return { ...row, b2b, b2c };
 }

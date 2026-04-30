@@ -7,6 +7,7 @@ import type { LeadListRow } from "@/features/leads/types";
 
 export type LeadListVisibility = "active" | "lost_only";
 
+/* `*` inclut `lead_type` (migration 2.1) ; pas de jointure extensions (éviter N+1 sur la liste). */
 const LEADS_LIST_SELECT = `
   *,
   cee_sheet:cee_sheets!cee_sheet_id(code, label, simulator_key, workflow_key)
