@@ -17,17 +17,21 @@ function trimOrNull(s: string | undefined | null): string | null {
 }
 
 /**
- * Aligné sur le trigger I.0 (migration 2.1), avec libellé de secours "Lead anonyme"
- * si aucune des deux sources n’est utilisable (défensif — le formulaire impose company_name).
+ * Prénom + nom → libellé société / fallback — aligné sur le trigger I.0 (migration 2.1).
+ * Export pour les INSERT hors `LeadInsertSchema` (ex. simulateur ERP).
  */
-function computeDisplayNameForLeadInsert(data: LeadInsertInput): string {
-  const firstName = (data.first_name ?? "").trim();
-  const lastName = (data.last_name ?? "").trim();
-  const person = [firstName, lastName].filter(Boolean).join(" ");
+export function computeDisplayName(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+  companyName: string | null | undefined,
+): string {
+  const fn = (firstName ?? "").trim();
+  const ln = (lastName ?? "").trim();
+  const person = [fn, ln].filter(Boolean).join(" ");
   if (person) {
     return person;
   }
-  const company = data.company_name.trim();
+  const company = (companyName ?? "").trim();
   if (company) {
     return company;
   }
@@ -94,7 +98,7 @@ export function insertFromLeadForm(data: LeadInsertInput): LeadInsert {
     /** B2B/B2C : nouvelles fiches ERP restent tranchables plus tard (convertLeadType). */
     lead_type: "unknown",
     /** Calcul TS cohérent avec I.0 ; le trigger reste filet si un autre chemin oublie display_name. */
-    display_name: computeDisplayNameForLeadInsert(rest as LeadInsertInput),
+    display_name: computeDisplayName(rest.first_name, rest.last_name, rest.company_name),
   };
 }
 
