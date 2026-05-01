@@ -121,16 +121,13 @@ export async function POST(request: Request) {
     },
   }
 
-  const { data: row, error } = await supabase
-    .from('leads')
-    .insert({
+  const { data: leadId, error } = await supabase.rpc('create_lead_with_b2c_extension', {
+    p_lead_payload: {
       // Valeur d'enum dédiée landing PAC (libellé ERP : « Landing PAC »)
       // — ajoutée via migration 20260426170000_lead_source_landing_pac.sql.
       // Le simulateur garde sim_version='website-simulator-v1' pour que
       // l'ERP reconnaisse le payload via extractWebsiteSimulatorPayload().
       source: 'landing_pac',
-      lead_status: 'new',
-      qualification_status: 'pending',
       company_name: companyName,
       first_name: firstName || null,
       last_name: lastName || null,
@@ -148,12 +145,11 @@ export async function POST(request: Request) {
       sim_payload_json: simPayload,
       sim_version: 'website-simulator-v1',
       simulated_at: new Date().toISOString(),
-    })
-    .select('id')
-    .single()
+    },
+  })
 
-  if (error || !row) {
-    console.error('[api/simulator] insert leads failed:', error)
+  if (error || !leadId) {
+    console.error('[api/simulator] create_lead_with_b2c_extension failed:', error)
     return NextResponse.json(
       {
         ok: false,
@@ -164,5 +160,5 @@ export async function POST(request: Request) {
     )
   }
 
-  return NextResponse.json({ ok: true, id: row.id }, { status: 201 })
+  return NextResponse.json({ ok: true, id: leadId }, { status: 201 })
 }
