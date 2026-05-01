@@ -34,7 +34,7 @@ import { LeadMediaFilesField } from "@/features/leads/components/lead-media-file
 import { RecordingNotesMarkdownPreview } from "@/features/leads/components/recording-notes-markdown-preview";
 import { RecordingNotesAiButton } from "@/features/leads/components/recording-notes-ai-button";
 import { BUILDING_TYPE_LABELS, BUILDING_TYPE_VALUES } from "@/features/leads/lib/building-types";
-import { EMPTY_LEAD_FORM, leadInsertToFormInput, leadRowToFormValues } from "@/features/leads/lib/form-defaults";
+import { EMPTY_LEAD_FORM, heatingModesToB2cDb, leadInsertToFormInput, leadRowToFormValues } from "@/features/leads/lib/form-defaults";
 import { mergeAiLeadFillIntoForm } from "@/features/leads/lib/merge-ai-lead-fill";
 import { normalizeHeatingModesFromDb } from "@/features/leads/lib/heating-modes";
 import { mergeLeadPayloadPreservingUntouchedHeating } from "@/features/leads/lib/lead-form-heating-preserve";
@@ -59,6 +59,18 @@ const selectClassName = cn(
 );
 
 const LEAD_TYPE_FORM_VALUES = ["b2b", "b2c", "unknown"] as const;
+
+const B2C_PROPERTY_OPTIONS: { value: string; label: string }[] = [
+  { value: "maison", label: "Maison" },
+  { value: "appartement", label: "Appartement" },
+  { value: "immeuble", label: "Autre / immeuble" },
+];
+
+const B2C_FENETRES_OPTIONS: { value: string; label: string }[] = [
+  { value: "simple", label: "Simple vitrage" },
+  { value: "double", label: "Double vitrage" },
+  { value: "triple", label: "Triple vitrage" },
+];
 
 /**
  * Vrai si le champ a été modifié par l'utilisateur depuis le dernier reset.
@@ -207,6 +219,24 @@ export function LeadForm({
   const recordingFilesRaw = useWatch({ control, name: "recording_files" });
   const recordingFileUrls = stringArrayFromLeadJson(recordingFilesRaw as Json);
   const recordingNotesWatched = useWatch({ control, name: "recording_notes" }) ?? "";
+  const watchedLeadTypeRaw = useWatch({ control, name: "lead_type" });
+  const watchedLeadType: "b2b" | "b2c" | "unknown" =
+    watchedLeadTypeRaw === "b2b" || watchedLeadTypeRaw === "b2c" || watchedLeadTypeRaw === "unknown"
+      ? watchedLeadTypeRaw
+      : "unknown";
+  const heatingTypeWatched = useWatch({ control, name: "heating_type" });
+
+  const addressCardIsResidential = mode === "edit" && watchedLeadType === "b2c";
+  const showB2bTechnicalBlock = mode === "edit" && (watchedLeadType === "b2b" || watchedLeadType === "unknown");
+  const showB2cTechnicalBlock = mode === "edit" && watchedLeadType === "b2c";
+
+  useEffect(() => {
+    if (mode !== "edit" || watchedLeadType !== "b2c") return;
+    setValue("heating_mode_b2c", heatingModesToB2cDb(heatingTypeWatched), {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+  }, [mode, watchedLeadType, heatingTypeWatched, setValue]);
 
   useEffect(() => {
     if (mode !== "edit" || !leadId || readOnly) return;
@@ -420,6 +450,8 @@ export function LeadForm({
               />
             )}
           />
+          <Controller name="sim_residentiel_payload" control={control} render={() => <span className="hidden" />} />
+          <Controller name="sim_residentiel_result" control={control} render={() => <span className="hidden" />} />
         </>
       ) : null}
 
@@ -653,39 +685,53 @@ export function LeadForm({
       <Card>
         <CardHeader>
           <CardTitle>{simplifiedAgentView ? "2. Adresses" : "3. Adresses"}</CardTitle>
-          <CardDescription>Siège social et site des travaux (préparation visite technique).</CardDescription>
+          <CardDescription>
+            {addressCardIsResidential
+              ? "Adresse du logement du particulier (préparation visite)."
+              : "Siège social et site des travaux (préparation visite technique)."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
+          {!addressCardIsResidential ? (
+            <>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="head_office_address">Adresse siège</Label>
+                <Input id="head_office_address" {...register("head_office_address")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="head_office_siret">SIRET siège</Label>
+                <Input id="head_office_siret" {...register("head_office_siret")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="head_office_postal_code">CP siège</Label>
+                <Input id="head_office_postal_code" {...register("head_office_postal_code")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="head_office_city">Ville siège</Label>
+                <Input id="head_office_city" {...register("head_office_city")} />
+              </div>
+            </>
+          ) : null}
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="head_office_address">Adresse siège</Label>
-            <Input id="head_office_address" {...register("head_office_address")} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="head_office_siret">SIRET siège</Label>
-            <Input id="head_office_siret" {...register("head_office_siret")} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="head_office_postal_code">CP siège</Label>
-            <Input id="head_office_postal_code" {...register("head_office_postal_code")} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="head_office_city">Ville siège</Label>
-            <Input id="head_office_city" {...register("head_office_city")} />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="worksite_address">Adresse travaux</Label>
+            <Label htmlFor="worksite_address">
+              {addressCardIsResidential ? "Adresse du logement" : "Adresse travaux"}
+            </Label>
             <Input id="worksite_address" {...register("worksite_address")} />
           </div>
+          {!addressCardIsResidential ? (
+            <div className="space-y-2">
+              <Label htmlFor="worksite_siret">SIRET travaux</Label>
+              <Input id="worksite_siret" {...register("worksite_siret")} />
+            </div>
+          ) : null}
           <div className="space-y-2">
-            <Label htmlFor="worksite_siret">SIRET travaux</Label>
-            <Input id="worksite_siret" {...register("worksite_siret")} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="worksite_postal_code">CP travaux</Label>
+            <Label htmlFor="worksite_postal_code">
+              {addressCardIsResidential ? "Code postal" : "CP travaux"}
+            </Label>
             <Input id="worksite_postal_code" {...register("worksite_postal_code")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="worksite_city">Ville travaux</Label>
+            <Label htmlFor="worksite_city">{addressCardIsResidential ? "Ville" : "Ville travaux"}</Label>
             <Input id="worksite_city" {...register("worksite_city")} />
           </div>
         </CardContent>
@@ -733,69 +779,198 @@ export function LeadForm({
 
           <Separator />
 
-          <section className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Bâtiment &amp; chauffage (résumé)
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="building_type">Type de bâtiment</Label>
-                <select id="building_type" className={selectClassName} {...register("building_type")}>
-                  <option value="">—</option>
-                  {BUILDING_TYPE_VALUES.map((value) => (
-                    <option key={value} value={value}>
-                      {BUILDING_TYPE_LABELS[value]}
-                    </option>
-                  ))}
-                </select>
-                {errors.building_type ? (
-                  <p className="text-sm text-destructive">{errors.building_type.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="heated_building">Bâtiment chauffé</Label>
-                <select id="heated_building" className={selectClassName} {...register("heated_building")}>
-                  <option value="">—</option>
-                  <option value="true">Oui</option>
-                  <option value="false">Non</option>
-                </select>
-              </div>
-            </div>
-          </section>
+          {showB2bTechnicalBlock ? (
+            <>
+              <section className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Bâtiment &amp; chauffage (professionnel)
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="building_type">Type de bâtiment</Label>
+                    <select id="building_type" className={selectClassName} {...register("building_type")}>
+                      <option value="">—</option>
+                      {BUILDING_TYPE_VALUES.map((value) => (
+                        <option key={value} value={value}>
+                          {BUILDING_TYPE_LABELS[value]}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.building_type ? (
+                      <p className="text-sm text-destructive">{errors.building_type.message}</p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="heated_building">Bâtiment chauffé</Label>
+                    <select id="heated_building" className={selectClassName} {...register("heated_building")}>
+                      <option value="">—</option>
+                      <option value="true">Oui</option>
+                      <option value="false">Non</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
 
-          <Separator />
+              <Separator />
 
-          <section className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Mode de chauffage
-            </p>
-            <div className="space-y-2">
-              <Label id="lead_heating_type-label">Mode de chauffage actuel</Label>
-              <Controller
-                name="heating_type"
-                control={control}
-                render={({ field }) => (
-                  <HeatingModeField
-                    id="lead_heating_type"
-                    value={field.value ?? []}
-                    onChange={field.onChange}
+              <section className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Mode de chauffage
+                </p>
+                <div className="space-y-2">
+                  <Label id="lead_heating_type-label">Mode de chauffage actuel</Label>
+                  <Controller
+                    name="heating_type"
+                    control={control}
+                    render={({ field }) => (
+                      <HeatingModeField
+                        id="lead_heating_type"
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
-                )}
-              />
-            </div>
-          </section>
+                </div>
+              </section>
 
-          <Separator />
+              <Separator />
 
-          <section className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Logistique
-            </p>
-            <div className="max-w-xs space-y-2">
-              <Label htmlFor="warehouse_count">Nombre d&apos;entrepôts</Label>
-              <Input id="warehouse_count" type="number" min={0} step={1} {...register("warehouse_count")} />
-            </div>
-          </section>
+              <section className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Logistique
+                </p>
+                <div className="max-w-xs space-y-2">
+                  <Label htmlFor="warehouse_count">Nombre d&apos;entrepôts</Label>
+                  <Input id="warehouse_count" type="number" min={0} step={1} {...register("warehouse_count")} />
+                </div>
+              </section>
+            </>
+          ) : null}
+
+          {showB2cTechnicalBlock ? (
+            <>
+              <section className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Logement &amp; isolation (particulier)
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="property_type">Type de logement</Label>
+                    <select id="property_type" className={selectClassName} {...register("property_type")}>
+                      <option value="">—</option>
+                      {B2C_PROPERTY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="periode_construction">Période de construction</Label>
+                    <select
+                      id="periode_construction"
+                      className={selectClassName}
+                      {...register("periode_construction")}
+                    >
+                      <option value="">—</option>
+                      <option value="avant_2000">Avant 1975</option>
+                      <option value="avant_2000">Entre 1975 et 2000</option>
+                      <option value="apres_2000">Après 2000</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dpe_class">Classe DPE</Label>
+                    <select id="dpe_class" className={selectClassName} {...register("dpe_class")}>
+                      <option value="">—</option>
+                      {(["A", "B", "C", "D", "E", "F", "G", "inconnu"] as const).map((v) => (
+                        <option key={v} value={v}>
+                          {v === "inconnu" ? "Inconnu" : v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nb_personnes">Nombre de personnes du foyer</Label>
+                    <Input
+                      id="nb_personnes"
+                      type="number"
+                      min={1}
+                      max={20}
+                      step={1}
+                      {...register("nb_personnes")}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Controller
+                      name="ite_iti_recente"
+                      control={control}
+                      render={({ field }) => (
+                        <label className="flex cursor-pointer items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="size-4 rounded border-input"
+                            checked={field.value === true}
+                            onChange={(e) => field.onChange(e.target.checked ? true : undefined)}
+                          />
+                          Isolation (ITE / ITI) récente
+                        </label>
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fenetres">Menuiseries / vitrage</Label>
+                    <select id="fenetres" className={selectClassName} {...register("fenetres")}>
+                      <option value="">—</option>
+                      {B2C_FENETRES_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Controller
+                      name="vmc_installee"
+                      control={control}
+                      render={({ field }) => (
+                        <label className="flex cursor-pointer items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="size-4 rounded border-input"
+                            checked={field.value === true}
+                            onChange={(e) => field.onChange(e.target.checked ? true : undefined)}
+                          />
+                          VMC installée
+                        </label>
+                      )}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <Separator />
+
+              <section className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Mode de chauffage
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="lead_heating_type_b2c">Mode de chauffage actuel</Label>
+                  <Controller
+                    name="heating_type"
+                    control={control}
+                    render={({ field }) => (
+                      <HeatingModeField
+                        id="lead_heating_type_b2c"
+                        value={field.value ?? []}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </div>
+              </section>
+            </>
+          ) : null}
         </CardContent>
       </Card>
       ) : null}

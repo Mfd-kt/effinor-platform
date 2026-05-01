@@ -4,6 +4,8 @@ import { BUILDING_TYPE_VALUES } from "@/features/leads/lib/building-types";
 import { HEATING_MODE_VALUES } from "@/features/leads/lib/heating-modes";
 import type { LeadSource, LeadStatus } from "@/types/database.types";
 
+import { HEATING_MODE_B2C_VALUES } from "./lead-b2c.schema";
+
 /** Sources alignées sur `public.lead_source` (migration SQL). */
 export const LEAD_SOURCE_VALUES = [
   "website",
@@ -108,6 +110,20 @@ const buildingTypeField = z.preprocess(
   z.union([z.literal(""), buildingTypeEnum]),
 ).transform((v) => (v === "" ? undefined : v));
 
+const heatingModeB2CEnum = z.enum(HEATING_MODE_B2C_VALUES);
+
+/** Booléen optionnel (cases à cocher) — aligné sur les colonnes nullable de `leads_b2c`. */
+const optionalB2cCheckbox = z.preprocess((v: unknown) => {
+  if (v === true || v === "true" || v === "on") return true;
+  return undefined;
+}, z.boolean().optional());
+
+const optionalB2cEnum = <const T extends [string, ...string[]]>(values: T) =>
+  z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.enum(values).optional(),
+  );
+
 /** Champs formulaire (création + édition). L’agent créateur et l’IA restent gérés côté serveur / affichage. */
 export const LeadInsertSchema = z.object({
   source: z.enum(LEAD_SOURCE_VALUES),
@@ -149,6 +165,52 @@ export const LeadInsertSchema = z.object({
     const n = parseInt(String(val).trim(), 10);
     return Number.isFinite(n) ? n : undefined;
   }, z.number().int().min(0).optional()),
+  // --- Extension résidentielle B2C (`leads_b2c`) : optionnels, typés comme le patch bundle. ---
+  property_type: optionalB2cEnum(["maison", "appartement", "immeuble"]),
+  periode_construction: optionalB2cEnum(["avant_2000", "apres_2000"]),
+  dpe_class: optionalB2cEnum(["A", "B", "C", "D", "E", "F", "G", "inconnu"]),
+  age_logement: optionalB2cEnum(["moins_15_ans", "plus_15_ans"]),
+  nb_personnes: z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    if (typeof val === "number") return Number.isInteger(val) ? val : undefined;
+    const n = parseInt(String(val).trim(), 10);
+    return Number.isFinite(n) ? n : undefined;
+  }, z.number().int().min(1).max(20).optional()),
+  tranche_revenu: optionalB2cEnum(["tres_modeste", "modeste", "intermediaire", "superieur"]),
+  profil_occupant: optionalB2cEnum([
+    "proprietaire_occupant",
+    "bailleur",
+    "sci",
+    "locataire",
+  ]),
+  raison_sociale_sci: z.string().max(200).optional(),
+  patrimoine_type: optionalB2cEnum(["appartements", "maisons", "mixte"]),
+  nb_logements: z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    if (typeof val === "number") return Number.isInteger(val) ? val : undefined;
+    const n = parseInt(String(val).trim(), 10);
+    return Number.isFinite(n) ? n : undefined;
+  }, z.number().int().min(0).optional()),
+  ite_iti_recente: optionalB2cCheckbox,
+  fenetres: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : String(v).trim()),
+    z.string().max(2000).optional(),
+  ),
+  sous_sol: optionalB2cCheckbox,
+  btd_installe: optionalB2cCheckbox,
+  vmc_installee: optionalB2cCheckbox,
+  chauffage_24_mois: optionalB2cCheckbox,
+  travaux_cee_recus: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : String(v).trim()),
+    z.string().max(2000).optional(),
+  ),
+  surface_totale_m2: optionalNumber,
+  heating_mode_b2c: z.preprocess(
+    (val) => (Array.isArray(val) ? val : []),
+    z.array(heatingModeB2CEnum).optional(),
+  ),
+  sim_residentiel_payload: z.any().optional(),
+  sim_residentiel_result: z.any().optional(),
   lead_status: z.enum(LEAD_STATUS_VALUES),
   lead_type: leadTypeEnum.default("unknown"),
   callback_at: optionalDateTimeInput,

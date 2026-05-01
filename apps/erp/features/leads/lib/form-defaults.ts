@@ -16,6 +16,54 @@ import { isoToDatetimeLocal } from "@/features/technical-visits/lib/datetime";
 import type { LeadFormInput, LeadInsertInput } from "@/features/leads/schemas/lead.schema";
 import type { LeadDetailRow, LeadDetailWithExtensions, LeadRow } from "@/features/leads/types";
 
+/** Valeurs initiales pour les champs `leads_b2c` (évite champs manquants pour Zod / RHF). */
+const EMPTY_B2C_EXTENSION_FORM: Pick<
+  LeadFormInput,
+  | "property_type"
+  | "periode_construction"
+  | "dpe_class"
+  | "age_logement"
+  | "nb_personnes"
+  | "tranche_revenu"
+  | "profil_occupant"
+  | "raison_sociale_sci"
+  | "patrimoine_type"
+  | "nb_logements"
+  | "ite_iti_recente"
+  | "fenetres"
+  | "sous_sol"
+  | "btd_installe"
+  | "vmc_installee"
+  | "chauffage_24_mois"
+  | "travaux_cee_recus"
+  | "surface_totale_m2"
+  | "heating_mode_b2c"
+  | "sim_residentiel_payload"
+  | "sim_residentiel_result"
+> = {
+  property_type: undefined,
+  periode_construction: undefined,
+  dpe_class: undefined,
+  age_logement: undefined,
+  nb_personnes: undefined,
+  tranche_revenu: undefined,
+  profil_occupant: undefined,
+  raison_sociale_sci: undefined,
+  patrimoine_type: undefined,
+  nb_logements: undefined,
+  ite_iti_recente: undefined,
+  fenetres: undefined,
+  sous_sol: undefined,
+  btd_installe: undefined,
+  vmc_installee: undefined,
+  chauffage_24_mois: undefined,
+  travaux_cee_recus: undefined,
+  surface_totale_m2: undefined,
+  heating_mode_b2c: [],
+  sim_residentiel_payload: undefined,
+  sim_residentiel_result: undefined,
+};
+
 /** Chaînes `""` plutôt que `undefined` pour les champs `<Input />` (évite controlled/uncontrolled). */
 export const EMPTY_LEAD_FORM: LeadFormInput = {
   source: "cold_call",
@@ -43,6 +91,7 @@ export const EMPTY_LEAD_FORM: LeadFormInput = {
   heated_building: "",
   heating_type: [],
   warehouse_count: undefined,
+  ...EMPTY_B2C_EXTENSION_FORM,
   lead_status: "new",
   lead_type: "unknown",
   callback_at: undefined,
@@ -96,59 +145,23 @@ function heatingModesFromB2c(modes: readonly string[] | null | undefined): Heati
   return [...new Set(out)];
 }
 
-function mergeB2bExtensionIntoForm(base: LeadFormInput, b: LeadB2BActiveRow): LeadFormInput {
-  const b2bHeating = normalizeHeatingModesFromDb(b.heating_mode_b2b);
-  return {
-    ...base,
-    company_name: b.company_name,
-    siret: strOrEmpty(b.siret),
-    head_office_siret: strOrEmpty(b.head_office_siret) || strOrEmpty(b.siret),
-    worksite_siret: strOrEmpty(b.worksite_siret),
-    head_office_address: strOrEmpty(b.head_office_address),
-    head_office_postal_code: strOrEmpty(b.head_office_postal_code),
-    head_office_city: strOrEmpty(b.head_office_city),
-    building_type: coerceBuildingTypeForForm(b.building_type) || base.building_type,
-    heated_building:
-      b.heated_building === null || b.heated_building === undefined
-        ? base.heated_building
-        : b.heated_building
-          ? "true"
-          : "false",
-    heating_type: b2bHeating.length ? b2bHeating : base.heating_type,
-    warehouse_count: b.warehouse_count ?? base.warehouse_count,
-    contact_role:
-      strOrEmpty(b.contact_role) ||
-      strOrEmpty(b.job_title) ||
-      strOrEmpty(b.department) ||
-      base.contact_role,
-    ...b2bExtensionExtraFields(b),
-  } as LeadFormInput;
-}
-
-/** Champs B2C non présents sur `LeadInsertSchema` : conservés pour Phase 2.4+ (futurs inputs). */
-function b2cExtensionExtraFields(c: LeadB2CActiveRow): Record<string, unknown> {
-  const out: Record<string, unknown> = {
-    property_type: c.property_type,
-    periode_construction: c.periode_construction,
-    dpe_class: c.dpe_class,
-    age_logement: c.age_logement,
-    nb_personnes: c.nb_personnes,
-    tranche_revenu: c.tranche_revenu,
-    profil_occupant: c.profil_occupant,
-    raison_sociale_sci: c.raison_sociale_sci,
-    patrimoine_type: c.patrimoine_type,
-    nb_logements: c.nb_logements,
-    ite_iti_recente: c.ite_iti_recente,
-    fenetres: c.fenetres,
-    sous_sol: c.sous_sol,
-    btd_installe: c.btd_installe,
-    vmc_installee: c.vmc_installee,
-    chauffage_24_mois: c.chauffage_24_mois,
-    travaux_cee_recus: c.travaux_cee_recus,
-    sim_residentiel_payload: c.sim_residentiel_payload,
-    sim_residentiel_result: c.sim_residentiel_result,
+/** Codes formulaire (`HEATING_MODE_VALUES`) → codes `heating_mode_b2c` (extension). */
+export function heatingModesToB2cDb(modes: readonly HeatingMode[] | null | undefined): string[] {
+  if (!modes?.length) return [];
+  const m = modes[0];
+  if (!m) return [];
+  const map: Partial<Record<HeatingMode, string>> = {
+    chaudiere_eau: "gaz",
+    electrique_direct: "elec",
+    pac_air_eau: "pac_air_eau",
+    pac_air_air: "pac_air_air",
+    autre_inconnu: "bois",
+    rayonnement: "elec",
+    mix_air_rayonnement: "elec",
+    air_chaud_soufflage: "gaz",
   };
-  return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined));
+  const code = map[m] ?? "gaz";
+  return [code];
 }
 
 /** Champs simulateur / métadonnées B2B hors formulaire plat. */
@@ -184,19 +197,69 @@ function b2bExtensionExtraFields(b: LeadB2BActiveRow): Record<string, unknown> {
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined));
 }
 
+function mergeB2bExtensionIntoForm(base: LeadFormInput, b: LeadB2BActiveRow): LeadFormInput {
+  const b2bHeating = normalizeHeatingModesFromDb(b.heating_mode_b2b);
+  return {
+    ...base,
+    company_name: b.company_name,
+    siret: strOrEmpty(b.siret),
+    head_office_siret: strOrEmpty(b.head_office_siret) || strOrEmpty(b.siret),
+    worksite_siret: strOrEmpty(b.worksite_siret),
+    head_office_address: strOrEmpty(b.head_office_address),
+    head_office_postal_code: strOrEmpty(b.head_office_postal_code),
+    head_office_city: strOrEmpty(b.head_office_city),
+    building_type: coerceBuildingTypeForForm(b.building_type) || base.building_type,
+    heated_building:
+      b.heated_building === null || b.heated_building === undefined
+        ? base.heated_building
+        : b.heated_building
+          ? "true"
+          : "false",
+    heating_type: b2bHeating.length ? b2bHeating : base.heating_type,
+    warehouse_count: b.warehouse_count ?? base.warehouse_count,
+    contact_role:
+      strOrEmpty(b.contact_role) ||
+      strOrEmpty(b.job_title) ||
+      strOrEmpty(b.department) ||
+      base.contact_role,
+    ...b2bExtensionExtraFields(b),
+  } as LeadFormInput;
+}
+
 function mergeB2cExtensionIntoForm(base: LeadFormInput, c: LeadB2CActiveRow): LeadFormInput {
   const b2cHeating = heatingModesFromB2c(c.heating_mode_b2c);
   const surfacePatch =
     c.surface_totale_m2 != null && c.surface_totale_m2 !== undefined
       ? { surface_m2: Number(c.surface_totale_m2) }
       : {};
+  const b2cModes = c.heating_mode_b2c?.length ? [...c.heating_mode_b2c] : base.heating_mode_b2c;
 
   return {
     ...base,
     ...surfacePatch,
     heating_type: b2cHeating.length ? b2cHeating : base.heating_type,
-    ...b2cExtensionExtraFields(c),
-  } as LeadFormInput;
+    property_type: c.property_type ?? undefined,
+    periode_construction: c.periode_construction ?? undefined,
+    dpe_class: c.dpe_class ?? undefined,
+    age_logement: c.age_logement ?? undefined,
+    nb_personnes: c.nb_personnes ?? undefined,
+    tranche_revenu: c.tranche_revenu ?? undefined,
+    profil_occupant: c.profil_occupant ?? undefined,
+    raison_sociale_sci: c.raison_sociale_sci ?? undefined,
+    patrimoine_type: c.patrimoine_type ?? undefined,
+    nb_logements: c.nb_logements ?? undefined,
+    surface_totale_m2: c.surface_totale_m2 != null ? Number(c.surface_totale_m2) : undefined,
+    ite_iti_recente: c.ite_iti_recente ?? undefined,
+    fenetres: c.fenetres ?? undefined,
+    sous_sol: c.sous_sol ?? undefined,
+    btd_installe: c.btd_installe ?? undefined,
+    vmc_installee: c.vmc_installee ?? undefined,
+    chauffage_24_mois: c.chauffage_24_mois ?? undefined,
+    travaux_cee_recus: c.travaux_cee_recus ?? undefined,
+    heating_mode_b2c: b2cModes,
+    sim_residentiel_payload: c.sim_residentiel_payload ?? undefined,
+    sim_residentiel_result: c.sim_residentiel_result ?? undefined,
+  };
 }
 
 export function heatingTypeFromSimulator(raw: string | null | undefined) {
@@ -308,6 +371,7 @@ export function leadRowToFormValues(
           : "false",
     heating_type: resolvedHeatingType,
     warehouse_count: row.warehouse_count ?? undefined,
+    ...EMPTY_B2C_EXTENSION_FORM,
     lead_status: row.lead_status,
     lead_type:
       row.lead_type === "b2b" || row.lead_type === "b2c" || row.lead_type === "unknown"
