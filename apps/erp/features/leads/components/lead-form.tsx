@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { convertLeadType } from "@/features/leads/actions/convert-lead-type";
 import { createLead } from "@/features/leads/actions/create-lead";
 import { updateLeadMediaFieldAction } from "@/features/leads/actions/update-lead-media";
 import { updateLead } from "@/features/leads/actions/update-lead";
@@ -52,6 +53,7 @@ import type { LeadRow } from "@/features/leads/types";
 import type { ProfileOption } from "@/features/leads/queries/get-lead-form-options";
 import type { Json } from "@/types/database.types";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 const selectClassName = cn(
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
@@ -198,6 +200,8 @@ export function LeadForm({
         reason: "company" | "email" | "phone" | "siret";
       }
   >({ open: false });
+  const [isConverting, setIsConverting] = useState(false);
+  const [conversionError, setConversionError] = useState<string | null>(null);
 
   const form = useForm<LeadFormInput, unknown, LeadInsertInput>({
     resolver: zodResolver(LeadInsertSchema) as Resolver<LeadFormInput, unknown, LeadInsertInput>,
@@ -214,6 +218,56 @@ export function LeadForm({
     setValue,
     getFieldState,
   } = form;
+
+  const leadTypeField = register("lead_type");
+
+  async function handleLeadTypeChange(
+    newType: "b2b" | "b2c" | "unknown",
+    previousType: "b2b" | "b2c" | "unknown",
+  ) {
+    if (!leadId || mode !== "edit") return;
+    if (newType === previousType) return;
+    setConversionError(null);
+
+    if (newType !== "b2b" && newType !== "b2c") {
+      setConversionError(
+        "Le type « À qualifier » ne peut pas être appliqué par cette action (seuls B2B et B2C sont pris en charge).",
+      );
+      setValue("lead_type", previousType, { shouldDirty: false, shouldValidate: true });
+      return;
+    }
+
+    if (previousType !== "unknown") {
+      const confirmed = window.confirm(
+        "Changer le type du lead migrera les données vers la nouvelle extension. Continuer ?",
+      );
+      if (!confirmed) {
+        setValue("lead_type", previousType, { shouldDirty: false, shouldValidate: true });
+        return;
+      }
+    }
+
+    setIsConverting(true);
+    setConversionError(null);
+
+    try {
+      const result = await convertLeadType({
+        leadId,
+        target: newType,
+        confirmArchive: true,
+        reason: "manual_conversion",
+      });
+
+      if (result.ok) {
+        router.refresh();
+      } else {
+        setConversionError(result.error);
+        setValue("lead_type", previousType, { shouldDirty: false, shouldValidate: true });
+      }
+    } finally {
+      setIsConverting(false);
+    }
+  }
 
   const watchedValues = useWatch({ control });
   const recordingFilesRaw = useWatch({ control, name: "recording_files" });
@@ -298,8 +352,10 @@ export function LeadForm({
     if (readOnly) return;
     if (mode !== "edit" || !leadId) return;
     if (lastSavedSerializedRef.current === null) return;
+    if (isConverting) return;
 
     const timer = window.setTimeout(() => {
+      if (isConverting) return;
       const parsed = LeadInsertSchema.safeParse(getValues());
       if (!parsed.success) return;
       const heatingDirty = getFieldState("heating_type", form.formState).isDirty;
@@ -339,7 +395,7 @@ export function LeadForm({
     }, 1200);
 
     return () => window.clearTimeout(timer);
-   }, [readOnly, watchedValues, mode, leadId, getValues, getFieldState, form]);
+   }, [readOnly, watchedValues, mode, leadId, getValues, getFieldState, form, isConverting]);
 
   async function onSubmit(values: LeadInsertInput) {
     setFormError(null);
@@ -550,7 +606,7 @@ export function LeadForm({
               <>
                 {/* RHF n’inclut pas les champs non enregistrés : source doit être présent pour Zod. */}
                 <input type="hidden" {...register("source")} />
-                <input type="hidden" {...register("lead_type")} />
+                <input type="hidden" {...leadTypeField} />
                 <div className="space-y-2">
                   <Label htmlFor="lead_status">Statut *</Label>
                   <select id="lead_status" className={selectClassName} {...register("lead_status")}>
@@ -579,9 +635,15 @@ export function LeadForm({
                   <select
                     id="lead_type"
                     className={selectClassName}
-                    disabled
-                    aria-disabled
-                    {...register("lead_type")}
+                    disabled={isConverting}
+                    {...leadTypeField}
+                    onChange={(e) => {
+                      const newType = e.target.value as "b2b" | "b2c" | "unknown";
+                      const previousType = getValues("lead_type") as "b2b" | "b2c" | "unknown";
+                      if (newType === previousType) return;
+                      leadTypeField.onChange(e);
+                      void handleLeadTypeChange(newType, previousType);
+                    }}
                   >
                     {LEAD_TYPE_FORM_VALUES.map((value) => (
                       <option key={value} value={value}>
@@ -589,9 +651,20 @@ export function LeadForm({
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-muted-foreground">
-                    Lecture seule pour l&apos;instant. La conversion de type sera disponible prochainement.
-                  </p>
+                  {isConverting ? (
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                      Conversion en cours…
+                    </p>
+                  ) : null}
+                  {conversionError ? (
+                    <p className="text-xs text-destructive">Erreur : {conversionError}</p>
+                  ) : null}
+                  {!isConverting && !conversionError ? (
+                    <p className="text-xs text-muted-foreground">
+                      Le changement de type migre les données vers l&apos;extension correspondante.
+                    </p>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="callback_at">RDV téléphone (rappel)</Label>
