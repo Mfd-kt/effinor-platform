@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { LEAD_SOURCE_VALUES, LEAD_STATUS_VALUES } from "./lead.schema";
+import { LEAD_SOURCE_VALUES, LEAD_STATUS_VALUES, leadTypeEnum } from "./lead.schema";
 
 /** Aligné sur `public.qualification_status`. */
 export const QUALIFICATION_STATUS_VALUES = [
@@ -9,8 +9,6 @@ export const QUALIFICATION_STATUS_VALUES = [
   "qualified",
   "disqualified",
 ] as const;
-
-const leadTypeEnum = z.enum(["unknown", "b2c", "b2b"]);
 
 const optionalUuidNullable = z.string().uuid().nullable().optional();
 

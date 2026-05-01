@@ -8,6 +8,7 @@ import { LeadAircallCallSection } from "@/features/leads/components/lead-aircall
 import { LeadForm } from "@/features/leads/components/lead-form";
 import { LeadCrmRightRail } from "@/features/leads/components/lead-crm-right-rail";
 import { LeadStatusBadge } from "@/features/leads/components/lead-status-badge";
+import { LeadTypeBadge, leadTypeForBadge } from "@/features/leads/components/lead-type-badge";
 import { LeadStudyPdfCard } from "@/features/leads/study-pdf/components/lead-study-pdf-card";
 import { LeadRealtimeListener } from "@/features/leads/components/lead-realtime-listener";
 import { getLeadStudyDocuments } from "@/features/leads/study-pdf/queries/get-lead-study-documents";
@@ -159,6 +160,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
                 {lead.company_name}
               </h1>
               <LeadStatusBadge status={lead.lead_status} className="text-xs px-2.5 py-0.5" />
+              <LeadTypeBadge type={leadTypeForBadge(lead.lead_type)} className="text-xs px-2.5 py-0.5" />
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               {contact && <span className="font-medium text-foreground/80">{contact}</span>}

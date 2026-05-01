@@ -38,6 +38,9 @@ export const LEAD_STATUS_VALUES = [
   "converted",
 ] as const satisfies readonly LeadStatus[];
 
+/** Aligné sur `public.lead_type` — source unique partagée avec `lead-common.schema`. */
+export const leadTypeEnum = z.enum(["unknown", "b2c", "b2b"]);
+
 const optionalUuidOrEmpty = z
   .string()
   .optional()
@@ -147,6 +150,7 @@ export const LeadInsertSchema = z.object({
     return Number.isFinite(n) ? n : undefined;
   }, z.number().int().min(0).optional()),
   lead_status: z.enum(LEAD_STATUS_VALUES),
+  lead_type: leadTypeEnum.default("unknown"),
   callback_at: optionalDateTimeInput,
   confirmed_by_user_id: optionalUuidOrEmpty,
   aerial_photos: mediaUrlList,

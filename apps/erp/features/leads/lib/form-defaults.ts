@@ -44,6 +44,7 @@ export const EMPTY_LEAD_FORM: LeadFormInput = {
   heating_type: [],
   warehouse_count: undefined,
   lead_status: "new",
+  lead_type: "unknown",
   callback_at: undefined,
   confirmed_by_user_id: undefined,
   aerial_photos: [],
@@ -308,6 +309,10 @@ export function leadRowToFormValues(
     heating_type: resolvedHeatingType,
     warehouse_count: row.warehouse_count ?? undefined,
     lead_status: row.lead_status,
+    lead_type:
+      row.lead_type === "b2b" || row.lead_type === "b2c" || row.lead_type === "unknown"
+        ? row.lead_type
+        : "unknown",
     callback_at: isoToDatetimeLocal(row.callback_at),
     confirmed_by_user_id: row.confirmed_by_user_id ?? undefined,
     aerial_photos: stringArrayFromLeadJson(row.aerial_photos),

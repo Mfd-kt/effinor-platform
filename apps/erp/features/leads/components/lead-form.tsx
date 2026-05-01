@@ -46,7 +46,7 @@ import {
   type LeadFormInput,
   type LeadInsertInput,
 } from "@/features/leads/schemas/lead.schema";
-import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS } from "@/features/leads/constants";
+import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from "@/features/leads/constants";
 import { LEAD_CIVILITY_OPTIONS } from "@/features/leads/lib/civility-options";
 import type { LeadRow } from "@/features/leads/types";
 import type { ProfileOption } from "@/features/leads/queries/get-lead-form-options";
@@ -57,6 +57,8 @@ const selectClassName = cn(
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
   "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 );
+
+const LEAD_TYPE_FORM_VALUES = ["b2b", "b2c", "unknown"] as const;
 
 /**
  * Vrai si le champ a été modifié par l'utilisateur depuis le dernier reset.
@@ -516,6 +518,7 @@ export function LeadForm({
               <>
                 {/* RHF n’inclut pas les champs non enregistrés : source doit être présent pour Zod. */}
                 <input type="hidden" {...register("source")} />
+                <input type="hidden" {...register("lead_type")} />
                 <div className="space-y-2">
                   <Label htmlFor="lead_status">Statut *</Label>
                   <select id="lead_status" className={selectClassName} {...register("lead_status")}>
@@ -538,6 +541,25 @@ export function LeadForm({
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lead_type">Type de lead</Label>
+                  <select
+                    id="lead_type"
+                    className={selectClassName}
+                    disabled
+                    aria-disabled
+                    {...register("lead_type")}
+                  >
+                    {LEAD_TYPE_FORM_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {LEAD_TYPE_LABELS[value] ?? value}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Lecture seule pour l&apos;instant. La conversion de type sera disponible prochainement.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="callback_at">RDV téléphone (rappel)</Label>

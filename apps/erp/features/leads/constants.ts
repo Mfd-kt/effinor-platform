@@ -31,3 +31,9 @@ export const LEAD_STATUS_LABELS: Record<string, string> = {
   lost: "Perdu",
   converted: "Converti",
 };
+
+export const LEAD_TYPE_LABELS: Record<string, string> = {
+  b2b: "Professionnel (B2B)",
+  b2c: "Particulier (B2C)",
+  unknown: "À qualifier",
+};
