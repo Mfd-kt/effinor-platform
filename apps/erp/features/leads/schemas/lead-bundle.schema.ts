@@ -6,7 +6,8 @@ import { LeadCommonUpdateSchema } from "./lead-common.schema";
 
 export const LeadUpsertBundleSchema = z
   .object({
-    lead: LeadCommonUpdateSchema,
+    /** Colonnes `public.leads` hors schéma commun (ex. company_name) : conservées pour le formulaire ERP. */
+    lead: LeadCommonUpdateSchema.passthrough(),
     b2b: LeadB2BPatchSchema.optional(),
     b2c: LeadB2CPatchSchema.optional(),
   })
