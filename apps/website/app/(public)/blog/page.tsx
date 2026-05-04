@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   },
 }
 
-// ISR : revalide toutes les heures (3600 s)
-export const revalidate = 3600
+// Données toujours à jour depuis Supabase (évite une page /blog figée alors que des articles viennent d’être publiés).
+export const dynamic = 'force-dynamic'
 
 export default async function BlogPage() {
   const posts = await getPublishedBlogPosts()
@@ -37,13 +37,13 @@ export default async function BlogPage() {
         <Container size="site">
           <div className="py-12 lg:py-16">
             <div className="text-center max-w-content mx-auto">
-              <p className="text-sm font-semibold uppercase tracking-widest text-secondary-700">
+              <p className="text-xs font-semibold uppercase tracking-widest text-secondary-700 sm:text-sm">
                 Blog Effinor
               </p>
-              <h1 className="mt-3 text-4xl font-bold tracking-tight text-primary-900 sm:text-5xl">
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-primary-900 sm:text-4xl">
                 Conseils &amp; actualités
               </h1>
-              <p className="mt-4 text-lg text-muted-foreground">
+              <p className="mt-4 text-base text-muted-foreground sm:text-lg">
                 Guides pratiques sur la rénovation énergétique, les aides de
                 l&apos;État et nos retours d&apos;expérience terrain.
               </p>
@@ -69,7 +69,7 @@ export default async function BlogPage() {
               {/* Article à la une */}
               {featuredPost ? (
                 <div>
-                  <p className="mb-5 text-sm font-semibold uppercase tracking-widest text-secondary-700">
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-secondary-700 sm:text-sm">
                     À la une
                   </p>
                   <BlogPostCard post={featuredPost} featured />
@@ -80,7 +80,7 @@ export default async function BlogPage() {
               {otherPosts.length > 0 && (
                 <div>
                   {featuredPost ? (
-                    <p className="mb-6 text-sm font-semibold uppercase tracking-widest text-secondary-700">
+                    <p className="mb-5 text-xs font-semibold uppercase tracking-widest text-secondary-700 sm:text-sm">
                       Tous les articles
                     </p>
                   ) : null}

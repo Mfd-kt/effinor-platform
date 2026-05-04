@@ -64,7 +64,7 @@ export function BlogPostCard({
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50">
-            <span className="text-5xl font-bold text-primary-200">
+            <span className="text-4xl font-bold text-primary-200 sm:text-5xl">
               {post.title.charAt(0).toUpperCase()}
             </span>
           </div>
@@ -77,8 +77,13 @@ export function BlogPostCard({
       </div>
 
       {/* Contenu */}
-      <div className={cn('flex flex-1 flex-col p-5', featured && 'lg:p-8')}>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div
+        className={cn(
+          'flex flex-1 flex-col p-4 sm:p-5',
+          featured && 'lg:p-7'
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground sm:text-xs">
           <span className="inline-flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
             {formattedDate}
@@ -93,9 +98,9 @@ export function BlogPostCard({
 
         <h2
           className={cn(
-            'mt-3 font-semibold leading-snug tracking-tight text-primary-900',
+            'mt-2.5 font-semibold leading-snug tracking-tight text-primary-900',
             'transition-colors group-hover:text-secondary-700',
-            featured ? 'text-2xl lg:text-3xl' : 'text-lg'
+            featured ? 'text-xl lg:text-2xl' : 'text-base'
           )}
         >
           <Link
@@ -106,7 +111,7 @@ export function BlogPostCard({
           </Link>
         </h2>
 
-        <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+        <p className="mt-2.5 flex-1 text-sm leading-snug text-muted-foreground line-clamp-3 sm:leading-relaxed">
           {post.excerpt}
         </p>
 
@@ -123,7 +128,7 @@ export function BlogPostCard({
           </div>
         )}
 
-        <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-secondary-700">
+        <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-secondary-700 sm:text-sm">
           Lire l&apos;article
           <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover:translate-x-1" />
         </div>

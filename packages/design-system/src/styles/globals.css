@@ -39,22 +39,26 @@ body {
 /* ============================================ */
 /* TYPOGRAPHIE DE BASE                          */
 /* ============================================ */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: var(--font-semibold);
-  line-height: var(--leading-tight);
-  letter-spacing: -0.02em;
-  color: var(--foreground);
-}
+/* Dans @layer base pour que les utilitaires Tailwind (text-sm, text-lg, etc.)
+ * puissent surcharger la taille — hors layer, ces règles gagnaient sur @layer utilities. */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+  }
 
-h1 { font-size: var(--text-5xl); letter-spacing: -0.03em; }
-h2 { font-size: var(--text-4xl); letter-spacing: -0.025em; }
-h3 { font-size: var(--text-3xl); }
-h4 { font-size: var(--text-2xl); }
-h5 { font-size: var(--text-xl); }
-h6 { font-size: var(--text-lg); }
+  h1 { font-size: var(--text-5xl); letter-spacing: -0.03em; }
+  h2 { font-size: var(--text-4xl); letter-spacing: -0.025em; }
+  h3 { font-size: var(--text-3xl); }
+  h4 { font-size: var(--text-2xl); }
+  h5 { font-size: var(--text-xl); }
+  h6 { font-size: var(--text-lg); }
 
-p {
-  line-height: var(--leading-relaxed);
+  p {
+    line-height: var(--leading-relaxed);
+  }
 }
 
 /* ============================================ */

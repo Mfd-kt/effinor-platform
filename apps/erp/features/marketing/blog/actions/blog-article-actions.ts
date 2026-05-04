@@ -61,6 +61,8 @@ export async function createBlogArticleAction(
       reading_time_min: data.content_html
         ? calcReadingTime(data.content_html)
         : null,
+      // INSERT ne déclenchait pas le trigger published_at (avant migration 20260526280100).
+      ...(data.status === "published" ? { published_at: new Date().toISOString() } : {}),
     })
     .select("id")
     .single()

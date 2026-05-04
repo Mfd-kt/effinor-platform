@@ -45,16 +45,14 @@ export async function getPublishedBlogPosts(params?: {
     .eq('status', 'published')
     .not('published_at', 'is', null)
     .lte('published_at', new Date().toISOString())
-    .order('featured', { ascending: false })
     .order('published_at', { ascending: false })
 
   if (params?.category) {
     query = query.eq('category', params.category)
   }
 
-  if (params?.limit) {
-    query = query.limit(params.limit)
-  }
+  const effectiveLimit = params?.limit ?? 200
+  query = query.limit(effectiveLimit)
 
   const { data, error } = await query
 
@@ -63,7 +61,15 @@ export async function getPublishedBlogPosts(params?: {
     return []
   }
 
-  return (data ?? []) as unknown as BlogPostCard[]
+  const rows = (data ?? []) as unknown as BlogPostCard[]
+  // Tri secondaire côté app : mis en avant d’abord, puis date (évite tout edge case multi-.order PostgREST).
+  rows.sort((a, b) => {
+    const fa = a.featured ? 1 : 0
+    const fb = b.featured ? 1 : 0
+    if (fb !== fa) return fb - fa
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  })
+  return rows
 }
 
 /**
